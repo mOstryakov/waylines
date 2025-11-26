@@ -1,0 +1,283 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Чаты - Waylines{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <!-- Боковая панель -->
+        <div class="col-md-4">
+            <!-- Поиск и быстрые действия -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">💬 Мои чаты</h5>
+                </div>
+                <div class="card-body">
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" placeholder="Поиск..." id="chat-search">
+                        <button class="btn btn-outline-secondary" type="button">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#newChatModal">
+                            <i class="fas fa-plus"></i> Новый чат
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Список диалогов -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">Личные сообщения</h6>
+                </div>
+                <div class="card-body p-0">
+                    {% if conversations_data %}
+                    <div class="list-group list-group-flush">
+                        {% for conv_data in conversations_data %}
+                            <a href="{% url 'chat:private_chat' conv_data.other_user.id %}" 
+                               class="list-group-item list-group-item-action d-flex justify-content-between align-items-center {% if conv_data.unread_count > 0 %}bg-light{% endif %}">
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar me-3">
+                                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
+                                             style="width: 40px; height: 40px; font-size: 14px;">
+                                            {{ conv_data.other_user.username|first|upper }}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-0">{{ conv_data.other_user.username }}</h6>
+                                        <small class="text-muted">
+                                            {% if conv_data.last_message %}
+                                                {{ conv_data.last_message.content|truncatewords:5 }}
+                                            {% else %}
+                                                Нет сообщений
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                </div>
+                                {% if conv_data.unread_count > 0 %}
+                                <span class="badge bg-danger rounded-pill">{{ conv_data.unread_count }}</span>
+                                {% endif %}
+                            </a>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-comments fa-2x text-muted mb-2"></i>
+                        <p class="text-muted mb-0">Нет личных сообщений</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Основной контент -->
+        <div class="col-md-8">
+            <!-- Приветственный блок -->
+            <div class="card mb-4">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-comments fa-3x text-primary mb-3"></i>
+                    <h3>Добро пожаловать в чаты!</h3>
+                    <p class="text-muted">Общайтесь с друзьями и участниками маршрутов</p>
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <i class="fas fa-user-friends fa-2x text-success mb-2"></i>
+                                <h5>Личные сообщения</h5>
+                                <p class="small text-muted">Общайтесь один на один</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <i class="fas fa-route fa-2x text-warning mb-2"></i>
+                                <h5>Чаты маршрутов</h5>
+                                <p class="small text-muted">Обсуждайте маршруты с участниками</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <i class="fas fa-users fa-2x text-info mb-2"></i>
+                                <h5>Групповые обсуждения</h5>
+                                <p class="small text-muted">Планируйте совместные поездки</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Чаты маршрутов -->
+            <div class="row">
+                <!-- Мои маршруты -->
+                {% if user_routes_chats %}
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">🗺️ Мои маршруты</h6>
+                        </div>
+                        <div class="card-body">
+                            {% for chat in user_routes_chats %}
+                            <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                                <div>
+                                    <h6 class="mb-1">{{ chat.route.name }}</h6>
+                                    <small class="text-muted">
+                                        {{ chat.messages.count }} сообщ.
+                                    </small>
+                                </div>
+                                <a href="{% url 'route_chat' chat.route.id %}" class="btn btn-sm btn-outline-primary">
+                                    Перейти
+                                </a>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Доступные маршруты -->
+                {% if participant_chats or public_chats %}
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">👥 Доступные чаты</h6>
+                        </div>
+                        <div class="card-body">
+                            {% for chat in participant_chats %}
+                            <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                                <div>
+                                    <h6 class="mb-1">{{ chat.route.name }}</h6>
+                                    <small class="text-muted">Автор: {{ chat.route.author.username }}</small>
+                                </div>
+                                <a href="{% url 'route_chat' chat.route.id %}" class="btn btn-sm btn-outline-success">
+                                    Присоединиться
+                                </a>
+                            </div>
+                            {% endfor %}
+                            
+                            {% for chat in public_chats %}
+                            <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                                <div>
+                                    <h6 class="mb-1">{{ chat.route.name }}</h6>
+                                    <small class="text-muted">Публичный маршрут</small>
+                                </div>
+                                <a href="{% url 'route_chat' chat.route.id %}" class="btn btn-sm btn-outline-info">
+                                    Присоединиться
+                                </a>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Быстрый доступ к друзьям -->
+            {% if friends %}
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">👋 Быстрый старт с друзьями</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for friend in friends|slice:":6" %}
+                        <div class="col-md-4 mb-2">
+                            <a href="{% url 'chat:private_chat' friend.id %}" class="btn btn-outline-primary btn-sm w-100 text-start">
+                                <i class="fas fa-user me-1"></i>
+                                {{ friend.username }}
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно нового чата -->
+<div class="modal fade" id="newChatModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Новый чат</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {% if friends %}
+                <p class="text-muted mb-3">Выберите друга для начала диалога:</p>
+                <div class="list-group">
+                    {% for friend in friends %}
+                    <a href="{% url 'chat:private_chat' friend.id %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex align-items-center">
+                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" 
+                                 style="width: 35px; height: 35px; font-size: 12px;">
+                                {{ friend.username|first|upper }}
+                            </div>
+                            <div>
+                                <h6 class="mb-0">{{ friend.username }}</h6>
+                                <small class="text-muted">Начать диалог</small>
+                            </div>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-3">
+                    <i class="fas fa-users fa-2x text-muted mb-2"></i>
+                    <p class="text-muted">У вас пока нет друзей</p>
+                    <a href="{% url 'find_friends' %}" class="btn btn-primary">Найти друзей</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.avatar {
+    flex-shrink: 0;
+}
+.list-group-item:hover {
+    background-color: #f8f9fa;
+}
+.chat-preview {
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Поиск в чатах
+document.getElementById('chat-search').addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    const chatItems = document.querySelectorAll('.list-group-item');
+    
+    chatItems.forEach(item => {
+        const userName = item.querySelector('h6').textContent.toLowerCase();
+        if (userName.includes(searchTerm)) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+});
+
+// Подсветка активного чата
+const currentPath = window.location.pathname;
+document.querySelectorAll('.list-group-item').forEach(item => {
+    if (item.href && currentPath.includes(item.href)) {
+        item.classList.add('active');
+    }
+});
+</script>
+{% endblock %}

@@ -15,7 +15,7 @@ import json
 import math
 from .models import *
 from .forms import UserRegistrationForm, UserProfileForm
-from .models import Route, Friendship, RoutePoint, UserProfile, RouteFavorite, User
+from .models import Route, Friendship, RoutePoint, UserProfile, RouteFavorite, User, RouteRating, SavedPlace
 
 
 def home(request):
@@ -195,6 +195,14 @@ def create_route(request):
     if request.method == "POST":
         try:
             data = json.loads(request.body)
+            
+            # Валидация обязательных полей
+            if not data.get('name'):
+                return JsonResponse({"success": False, "error": "Название маршрута обязательно"})
+            
+            if not data.get('points'):
+                return JsonResponse({"success": False, "error": "Добавьте хотя бы одну точку маршрута"})
+
             route = Route.objects.create(
                 author=request.user,
                 name=data.get("name"),
@@ -227,9 +235,15 @@ def create_route(request):
                 )
 
             return JsonResponse({"success": True, "route_id": route.id})
+            
+        except json.JSONDecodeError:
+            return JsonResponse({"success": False, "error": "Неверный формат JSON"})
+        except KeyError as e:
+            return JsonResponse({"success": False, "error": f"Отсутствует обязательное поле: {str(e)}"})
         except Exception as e:
-            return JsonResponse({"success": False, "error": str(e)})
+            return JsonResponse({"success": False, "error": f"Ошибка сервера: {str(e)}"})
 
+    # GET запрос - показать форму
     context = {
         "pending_friend_requests": Friendship.objects.filter(
             to_user=request.user, status="pending"
@@ -644,24 +658,33 @@ def add_saved_place(request):
 
 # Карта всех точек
 def map_view(request):
-    """Карта со всеми публичными точками"""
-    points = RoutePoint.objects.filter(
-        route__privacy="public", route__is_active=True
-    ).select_related("route")
-
-    context = {
-        "points": points,
-    }
-
-    if request.user.is_authenticated:
-        context["pending_friend_requests"] = Friendship.objects.filter(
-            to_user=request.user, status="pending"
-        )[:5]
-        context["pending_requests_count"] = Friendship.objects.filter(
-            to_user=request.user, status="pending"
-        ).count()
-
-    return render(request, "map/map_view.html", context)
+    routes = Route.objects.filter(privacy="public", is_active=True).prefetch_related('points')
+    routes_json = json.dumps([
+        {
+            "id": r.id,
+            "title": r.name,
+            "short_description": r.short_description,
+            "description": r.description,
+            "distance": r.total_distance,
+            "rating": r.get_average_rating() or 0,
+            "has_audio": r.has_audio_guide,
+            "difficulty": r.route_type,  # или отдельное поле
+            "category": {"name": r.theme} if r.theme else None,
+            "points": [
+                {
+                    "lat": p.latitude,
+                    "lng": p.longitude,
+                    "name": p.name,
+                    "address": p.address,
+                    "description": p.description,
+                    "order": p.order,
+                }
+                for p in r.points.all()
+            ]
+        }
+        for r in routes
+    ])
+    return render(request, "map/map_view.html", {"routes_json": routes_json, "routes": routes})
 
 
 # Вспомогательные функции
@@ -745,14 +768,3 @@ def logout_view(request):
     return redirect("home")
 
 
-def friends(request):
-    friendships = request.user.friendship_requests_received.filter(status="accepted")
-    friend_ids = [f.from_user_id for f in friendships]
-
-    friends_with_counts = User.objects.filter(id__in=friend_ids).annotate(
-        public_active_route_count=Count(
-            "routes", filter=Q(routes__privacy="public", routes__is_active=True)
-        )
-    )
-
-    return render(request, "friends/friends.html", {"friends": friends_with_counts})

@@ -13,13 +13,13 @@
             <!-- Элементы управления картой -->
             <div class="map-controls position-absolute top-0 start-0 m-3">
                 <div class="btn-group-vertical shadow">
-                    <button id="style-toggle" class="btn btn-sm btn-light border">
+                    <button id="style-toggle" class="btn btn-sm btn-light border" title="Сменить стиль карты">
                         <i class="fas fa-satellite"></i>
                     </button>
-                    <button id="locate-me" class="btn btn-sm btn-light border">
+                    <button id="locate-me" class="btn btn-sm btn-light border" title="Мое местоположение">
                         <i class="fas fa-location-arrow"></i>
                     </button>
-                    <button id="reset-route" class="btn btn-sm btn-light border text-danger">
+                    <button id="reset-route" class="btn btn-sm btn-light border text-danger" title="Сбросить маршрут">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -27,7 +27,7 @@
 
             <!-- Индикатор загрузки -->
             <div class="route-loading position-absolute top-50 start-50 translate-middle bg-white rounded p-3 shadow" 
-                 style="display: none; z-index: 1000;">
+                 id="route-loading" style="display: none; z-index: 1000;">
                 <div class="d-flex align-items-center">
                     <div class="spinner-border spinner-border-sm text-primary me-2"></div>
                     <span>Построение маршрута...</span>
@@ -57,20 +57,26 @@
                         
                         <div class="mb-3">
                             <label class="form-label small fw-bold">Название маршрута *</label>
-                            <input type="text" id="route-name" class="form-control form-control-sm" 
+                            <input type="text" id="name" class="form-control form-control-sm" 
                                    value="{{ route.name|default:'' }}" placeholder="Введите название маршрута" required>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label small fw-bold">Краткое описание</label>
-                            <textarea id="route-short-description" class="form-control form-control-sm" rows="2" 
+                            <textarea id="short_description" class="form-control form-control-sm" rows="2" 
                                       placeholder="Краткое описание для карточки маршрута">{{ route.short_description|default:'' }}</textarea>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label small fw-bold">Полное описание</label>
-                            <textarea id="route-description" class="form-control form-control-sm" rows="3" 
+                            <textarea id="description" class="form-control form-control-sm" rows="3" 
                                       placeholder="Подробное описание маршрута">{{ route.description|default:'' }}</textarea>
+                        </div>
+    
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Продолжительность (мин)</label>
+                            <input type="number" id="duration_minutes" class="form-control form-control-sm" 
+                                value="{{ route.duration_minutes|default:0 }}" min="0">
                         </div>
                     </div>
 
@@ -81,22 +87,19 @@
                         <div class="row g-2 mb-3">
                             <div class="col-6">
                                 <label class="form-label small fw-bold">Тип маршрута</label>
-                                <select id="route-type" class="form-select form-select-sm">
-                                    {% for value, label in route.route_types %}
-                                    <option value="{{ value }}" {% if route.route_type == value %}selected{% endif %}>
-                                        {{ label }}
-                                    </option>
-                                    {% endfor %}
+                                <select id="route_type" class="form-select form-select-sm">
+                                    <option value="walking">Пеший</option>
+                                    <option value="driving">Автомобильный</option>
+                                    <option value="cycling">Велосипедный</option>
                                 </select>
                             </div>
                             <div class="col-6">
                                 <label class="form-label small fw-bold">Приватность</label>
-                                <select id="route-privacy" class="form-select form-select-sm">
-                                    {% for value, label in route.privacy_choices %}
-                                    <option value="{{ value }}" {% if route.privacy == value %}selected{% endif %}>
-                                        {{ label }}
-                                    </option>
-                                    {% endfor %}
+                                <select id="privacy" class="form-select form-select-sm">
+                                    <option value="public">Публичный</option>
+                                    <option value="private">Приватный</option>
+                                    <option value="link">По ссылке</option>
+                                    <option value="personal">Персональный</option>
                                 </select>
                             </div>
                         </div>
@@ -104,24 +107,24 @@
                         <div class="row g-2 mb-3">
                             <div class="col-6">
                                 <label class="form-label small fw-bold">Настроение</label>
-                                <select id="route-mood" class="form-select form-select-sm">
+                                <select id="mood" class="form-select form-select-sm">
                                     <option value="">Выберите настроение</option>
-                                    {% for value, label in route.mood_choices %}
-                                    <option value="{{ value }}" {% if route.mood == value %}selected{% endif %}>
-                                        {{ label }}
-                                    </option>
-                                    {% endfor %}
+                                    <option value="relaxed">Спокойный</option>
+                                    <option value="adventure">Приключенческий</option>
+                                    <option value="romantic">Романтический</option>
+                                    <option value="family">Семейный</option>
+                                    <option value="extreme">Экстремальный</option>
                                 </select>
                             </div>
                             <div class="col-6">
                                 <label class="form-label small fw-bold">Тема</label>
-                                <select id="route-theme" class="form-select form-select-sm">
+                                <select id="theme" class="form-select form-select-sm">
                                     <option value="">Выберите тему</option>
-                                    {% for value, label in route.theme_choices %}
-                                    <option value="{{ value }}" {% if route.theme == value %}selected{% endif %}>
-                                        {{ label }}
-                                    </option>
-                                    {% endfor %}
+                                    <option value="historical">Исторический</option>
+                                    <option value="nature">Природный</option>
+                                    <option value="city">Городской</option>
+                                    <option value="gastronomy">Гастрономический</option>
+                                    <option value="art">Искусство</option>
                                 </select>
                             </div>
                         </div>
@@ -129,37 +132,37 @@
                         <div class="row g-2 mb-3">
                             <div class="col-6">
                                 <label class="form-label small fw-bold">Продолжительность (мин)</label>
-                                <input type="number" id="route-duration" class="form-control form-control-sm" 
+                                <input type="number" id="duration_minutes" class="form-control form-control-sm" 
                                        value="{{ route.duration_minutes|default:0 }}" min="0">
                             </div>
                             <div class="col-6">
                                 <label class="form-label small fw-bold">Расстояние (км)</label>
-                                <input type="number" id="route-distance" class="form-control form-control-sm" 
+                                <input type="number" id="total_distance" class="form-control form-control-sm" 
                                        value="{{ route.total_distance|default:0 }}" min="0" step="0.1" readonly>
                             </div>
                         </div>
 
                         <div class="form-check form-switch mb-3">
-                            <input class="form-check-input" type="checkbox" id="route-audio-guide" 
+                            <input class="form-check-input" type="checkbox" id="has_audio_guide" 
                                    {% if route.has_audio_guide %}checked{% endif %}>
-                            <label class="form-check-label small" for="route-audio-guide">
+                            <label class="form-check-label small" for="has_audio_guide">
                                 Есть аудиогид
                             </label>
                         </div>
 
                         <div class="form-check form-switch mb-3">
-                            <input class="form-check-input" type="checkbox" id="route-elderly-friendly" 
+                            <input class="form-check-input" type="checkbox" id="is_elderly_friendly" 
                                    {% if route.is_elderly_friendly %}checked{% endif %}>
-                            <label class="form-check-label small" for="route-elderly-friendly">
+                            <label class="form-check-label small" for="is_elderly_friendly">
                                 Подходит для пожилых
                             </label>
                         </div>
 
                         {% if route %}
                         <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="route-active" 
+                            <input class="form-check-input" type="checkbox" id="is_active" 
                                    {% if route.is_active %}checked{% endif %}>
-                            <label class="form-check-label small" for="route-active">
+                            <label class="form-check-label small" for="is_active">
                                 Маршрут активен
                             </label>
                         </div>
@@ -171,6 +174,16 @@
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h6 class="fw-bold mb-0">Точки маршрута</h6>
                             <span class="badge bg-primary" id="points-count">0</span>
+                        </div>
+
+                        <!-- Кнопки истории -->
+                        <div class="history-controls d-flex justify-content-center gap-2 mb-3">
+                            <button id="undo-btn" class="btn btn-sm btn-outline-secondary" title="Отменить (Ctrl+Z)" disabled>
+                                <i class="fas fa-undo"></i>
+                            </button>
+                            <button id="redo-btn" class="btn btn-sm btn-outline-secondary" title="Повторить (Ctrl+Y)" disabled>
+                                <i class="fas fa-redo"></i>
+                            </button>
                         </div>
 
                         <div class="route-stats bg-light rounded p-3 mb-3">
@@ -186,9 +199,22 @@
                             </div>
                         </div>
 
+                        <!-- Переключатель типа маршрута -->
+                        <div class="route-type-toggle d-flex gap-2 mb-3">
+                            <div class="route-type-btn active flex-fill text-center py-2 rounded" data-type="walking">
+                                🚶 Пеший
+                            </div>
+                            <div class="route-type-btn flex-fill text-center py-2 rounded" data-type="driving">
+                                🚗 Авто
+                            </div>
+                            <div class="route-type-btn flex-fill text-center py-2 rounded" data-type="cycling">
+                                🚴 Вело
+                            </div>
+                        </div>
+
                         <!-- Список точек -->
                         <div class="points-list mb-3">
-                            <div id="points-list-container">
+                            <div id="points-list">
                                 <div class="text-center text-muted py-4">
                                     <i class="fas fa-map-marker-alt fa-2x mb-2"></i>
                                     <p class="small">Кликните по карте чтобы добавить точки</p>
@@ -196,8 +222,25 @@
                             </div>
                         </div>
 
-                        <button class="btn btn-outline-primary btn-sm w-100 mb-3" id="optimize-route">
+                        <!-- Детали точки -->
+                        <div class="point-details card mb-3" id="point-details" style="display: none;">
+                            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0" id="point-details-title">Детали точки</h6>
+                                <button type="button" class="btn-close btn-close-sm" onclick="routeEditor.closePointDetails()"></button>
+                            </div>
+                            <div class="card-body py-2">
+                                <div id="point-details-content">
+                                    <!-- Детали будут заполняться динамически -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-outline-primary btn-sm w-100 mb-3" id="optimize-btn">
                             <i class="fas fa-magic"></i> Оптимизировать порядок
+                        </button>
+
+                        <button class="btn btn-outline-secondary btn-sm w-100 mb-3" id="add-waypoint-btn">
+                            <i class="fas fa-plus"></i> Добавить точку вручную
                         </button>
 
                         <div class="search-bar mb-3">
@@ -215,7 +258,7 @@
                     <!-- Кнопки действий -->
                     <div class="border-top pt-3">
                         <div class="d-grid gap-2">
-                            <button id="save-route" class="btn btn-primary">
+                            <button id="save-btn" class="btn btn-primary">
                                 <i class="fas fa-save"></i> 
                                 {% if route %}Сохранить изменения{% else %}Создать маршрут{% endif %}
                             </button>
@@ -234,19 +277,21 @@
 </div>
 
 <!-- Модальные окна -->
-{% include 'modals/point_editor_modal.html' %}
-{% include 'modals/delete_confirm_modal.html' %}
-{% include 'modals/reset_confirm_modal.html' %}
+{% include 'routes/modals/point_editor_modal.html' %}
+{% include 'routes/modals/delete_confirm_modal.html' %}
+{% include 'routes/modals/reset_confirm_modal.html' %}
 
 <!-- Загрузка данных маршрута если редактирование -->
-{% if route %}
-<script id="route-data" type="application/json">
-{{ route_data_json|safe }}
+{% if route_data_json %}
+<script>
+    window.routeData = {{ route_data_json|safe }};
 </script>
 {% endif %}
 {% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
 <style>
     .sidebar {
         box-shadow: -2px 0 10px rgba(0,0,0,0.1);
@@ -261,18 +306,112 @@
         backdrop-filter: blur(5px);
     }
     
-    .point-item {
+    .waypoint-item {
         transition: all 0.2s ease;
         cursor: pointer;
-    }
-    
-    .point-item:hover {
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 8px;
         background: #f8f9fa;
+        border: 1px solid #e9ecef;
     }
     
-    .point-item.active {
-        background: #e3f2fd;
-        border-color: #2196f3;
+    .waypoint-item:hover {
+        background: #f0f9ff;
+        border-color: #2563eb;
+    }
+    
+    .waypoint-item.active {
+        background: #f0f9ff;
+        border-color: #2563eb;
+    }
+    
+    .waypoint-marker {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 12px;
+        color: white;
+        margin-right: 12px;
+        flex-shrink: 0;
+    }
+    
+    .marker-start {
+        background: #48bb78;
+    }
+    
+    .marker-end {
+        background: #f56565;
+    }
+    
+    .marker-waypoint {
+        background: #2563eb;
+    }
+    
+    .waypoint-content {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .waypoint-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 4px;
+    }
+    
+    .waypoint-name {
+        font-weight: 600;
+        font-size: 14px;
+        color: #1a1a1a;
+        flex: 1;
+    }
+    
+    .waypoint-address {
+        font-size: 12px;
+        color: #6b7280;
+        margin-bottom: 6px;
+    }
+    
+    .waypoint-category {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 11px;
+        color: #2563eb;
+        background: #eff6ff;
+        padding: 2px 6px;
+        border-radius: 8px;
+    }
+    
+    .route-type-toggle {
+        display: flex;
+        gap: 8px;
+    }
+    
+    .route-type-btn {
+        flex: 1;
+        padding: 8px 12px;
+        border: 1px solid #dee2e6;
+        background: white;
+        border-radius: 6px;
+        cursor: pointer;
+        text-align: center;
+        transition: all 0.2s ease;
+    }
+    
+    .route-type-btn.active {
+        background: #2563eb;
+        color: white;
+        border-color: #2563eb;
+    }
+    
+    .route-type-btn:hover:not(.active) {
+        background: #f8f9fa;
     }
     
     .search-suggestions {
@@ -285,20 +424,76 @@
         z-index: 1050;
         display: none;
         width: calc(100% - 40px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.2);
     }
     
     .search-suggestion {
         padding: 0.5rem 1rem;
         cursor: pointer;
         border-bottom: 1px solid #f8f9fa;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
     
     .search-suggestion:hover {
         background: #f8f9fa;
     }
+    
+    .hint-section {
+        margin-top: 12px;
+        padding: 12px;
+        background: #fefce8;
+        border-radius: 6px;
+        border-left: 3px solid #f59e0b;
+    }
+    
+    .hint-text {
+        font-size: 14px;
+        color: #92400e;
+        line-height: 1.4;
+    }
+    
+    .hint-author {
+        font-size: 12px;
+        color: #b45309;
+        margin-top: 4px;
+        font-style: italic;
+    }
+    
+    .point-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-bottom: 12px;
+    }
+    
+    .point-tag {
+        background: #e5e7eb;
+        color: #374151;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 12px;
+    }
+    
+    .point-photos {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+    }
+    
+    .point-photo {
+        width: 80px;
+        height: 80px;
+        border-radius: 6px;
+        object-fit: cover;
+        border: 1px solid #e5e7eb;
+    }
 </style>
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="{% static 'js/route_editor.js' %}"></script>
 {% endblock %}

@@ -179,7 +179,7 @@
             </div>
 
             <!-- Комментарии -->
-            <div class="card">
+            <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="card-title mb-0">Обсуждение маршрута</h5>
                 </div>
@@ -220,6 +220,70 @@
                         {% empty %}
                         <p class="text-muted text-center py-3">Пока нет комментариев. Будьте первым!</p>
                         {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Чат маршрута -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-comments"></i> Обсуждение маршрута
+                        <small class="text-muted">(realtime)</small>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="route-chat-container" style="height: 400px;">
+                        <!-- Сообщения чата -->
+                        <div class="chat-messages p-3" id="route-chat-messages" 
+                             style="height: 300px; overflow-y: auto; background: #f8f9fa;">
+                            {% for message in route.chat.messages.all|slice:":20" %}
+                            <div class="message mb-3 {% if message.user == request.user %}message-own{% endif %}">
+                                <div class="message-header d-flex justify-content-between align-items-center mb-1">
+                                    <strong>
+                                        {% if message.user == route.author %}
+                                        <i class="fas fa-crown text-warning" title="Автор маршрута"></i>
+                                        {% endif %}
+                                        {{ message.user.username }}
+                                    </strong>
+                                    <small class="text-muted">{{ message.timestamp|date:"H:i" }}</small>
+                                </div>
+                                <div class="message-body bg-light rounded p-2">
+                                    {{ message.message }}
+                                </div>
+                            </div>
+                            {% empty %}
+                            <div class="text-center text-muted py-4">
+                                <i class="fas fa-comments fa-2x mb-2"></i>
+                                <p>Обсуждение маршрута пока пустое</p>
+                                <small>Будьте первым, кто оставит сообщение!</small>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Форма отправки сообщения -->
+                        {% if user.is_authenticated %}
+                        <div class="chat-input border-top p-3 bg-white">
+                            <form id="route-chat-form" class="d-flex gap-2">
+                                {% csrf_token %}
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="route-chat-message-input" 
+                                       placeholder="Напишите сообщение..." 
+                                       maxlength="1000"
+                                       required>
+                                <button type="submit" class="btn btn-primary" id="route-chat-message-submit">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </form>
+                        </div>
+                        {% else %}
+                        <div class="border-top p-3 bg-light text-center">
+                            <a href="{% url 'login' %}?next={{ request.path }}" class="btn btn-outline-primary">
+                                <i class="fas fa-sign-in-alt"></i> Войдите, чтобы участвовать в обсуждении
+                            </a>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -329,6 +393,25 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.message-own .message-body {
+    background: #007bff !important;
+    color: white;
+}
+.chat-messages {
+    border-radius: 0.375rem;
+}
+.message {
+    animation: fadeIn 0.3s ease-in;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
 {% endblock %}
 
 {% block extra_js %}
@@ -442,6 +525,86 @@
             });
         }
     }
+
+    // Чат маршрута
+    {% if user.is_authenticated %}
+    const routeId = {{ route.id }};
+    const routeCurrentUserId = {{ user.id }};
+    const routeCurrentUsername = "{{ user.username }}";
+
+    // WebSocket соединение для чата маршрута
+    const routeChatSocket = new WebSocket(
+        'ws://' + window.location.host + '/ws/route_chat/' + routeId + '/'
+    );
+
+    routeChatSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        addRouteChatMessage(data);
+    };
+
+    // Отправка сообщения в чат маршрута
+    document.querySelector('#route-chat-form').onsubmit = function(e) {
+        e.preventDefault();
+        const messageInput = document.querySelector('#route-chat-message-input');
+        const message = messageInput.value.trim();
+        
+        if (message) {
+            routeChatSocket.send(JSON.stringify({
+                'message': message,
+                'user_id': routeCurrentUserId,
+                'username': routeCurrentUsername
+            }));
+            messageInput.value = '';
+        }
+    };
+
+    // Добавление сообщения в чат маршрута
+    function addRouteChatMessage(data) {
+        const messagesContainer = document.querySelector('#route-chat-messages');
+        
+        // Убираем сообщение о пустом чате
+        if (messagesContainer.querySelector('.text-center')) {
+            messagesContainer.innerHTML = '';
+        }
+
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message mb-3';
+        
+        if (data.user_id == routeCurrentUserId) {
+            messageDiv.classList.add('message-own');
+        }
+
+        const isAuthor = data.username === "{{ route.author.username }}";
+        const authorIcon = isAuthor ? '<i class="fas fa-crown text-warning" title="Автор маршрута"></i> ' : '';
+
+        messageDiv.innerHTML = `
+            <div class="message-header d-flex justify-content-between align-items-center mb-1">
+                <strong>${authorIcon}${data.username}</strong>
+                <small class="text-muted">${data.timestamp}</small>
+            </div>
+            <div class="message-body bg-light rounded p-2">
+                ${data.message}
+            </div>
+        `;
+
+        messagesContainer.appendChild(messageDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    // Автопрокрутка чата маршрута
+    const routeMessagesContainer = document.querySelector('#route-chat-messages');
+    if (routeMessagesContainer) {
+        routeMessagesContainer.scrollTop = routeMessagesContainer.scrollHeight;
+    }
+
+    // Обработка Enter для чата маршрута
+    document.querySelector('#route-chat-message-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            document.querySelector('#route-chat-form').dispatchEvent(new Event('submit'));
+        }
+    });
+    {% endif %}
     
     // Инициализация при загрузке
     document.addEventListener('DOMContentLoaded', function() {
