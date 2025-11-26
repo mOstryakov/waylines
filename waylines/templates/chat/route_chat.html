@@ -1,0 +1,985 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Чат маршрута {{ route.name }} - Waylines{% endblock %}
+
+{% block content %}
+<!-- Уведомления -->
+<div id="notifications" class="position-fixed top-0 end-0 p-3" style="z-index: 1050; margin-top: 70px;"></div>
+
+<div class="container-fluid h-100 p-0">
+    <div class="row g-0 h-100">
+        <!-- Чат маршрута -->
+        <div class="col-md-8">
+            <div class="chat-container h-100 d-flex flex-column">
+                <!-- Заголовок чата -->
+                <div class="chat-header bg-white border-bottom p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <a href="{% url 'chat:chat_dashboard' %}" class="btn btn-sm btn-outline-secondary me-3">
+                                <i class="fas fa-arrow-left"></i>
+                            </a>
+                            <div class="avatar me-3">
+                                <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center" 
+                                     style="width: 45px; height: 45px; font-size: 16px;">
+                                    <i class="fas fa-route"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h5 class="mb-0">{{ route.name }}</h5>
+                                <small class="text-muted">
+                                    Чат маршрута • {{ route.get_privacy_display }}
+                                </small>
+                            </div>
+                        </div>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{% url 'route_detail' route.id %}">
+                                    <i class="fas fa-info-circle"></i> О маршруте
+                                </a></li>
+                                <li><a class="dropdown-item" href="#" onclick="showParticipants()">
+                                    <i class="fas fa-users"></i> Участники
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="#" onclick="refreshChat()">
+                                    <i class="fas fa-sync-alt"></i> Обновить чат
+                                </a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Сообщения -->
+                <div class="chat-messages flex-grow-1 p-3" id="chat-messages" 
+                     style="overflow-y: auto; background: #f8f9fa;">
+                    {% for message in chat_messages %}
+                    <div class="message mb-3 {% if message.user == request.user %}message-own{% endif %}" data-message-id="{{ message.id }}">
+                        <div class="message-header d-flex justify-content-between align-items-center mb-1">
+                            <div class="d-flex align-items-center">
+                                <strong>{{ message.user.username }}</strong>
+                                {% if message.user == route.author %}
+                                <span class="badge bg-primary ms-2">Автор</span>
+                                {% endif %}
+                            </div>
+                            <small class="text-muted">{{ message.timestamp|date:"H:i" }}</small>
+                        </div>
+                        <div class="message-body {% if message.user == request.user %}bg-primary text-white{% else %}bg-white{% endif %} rounded p-3 border">
+                            {{ message.message|linebreaks }}
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center text-muted py-5" id="empty-chat-message">
+                        <i class="fas fa-route fa-3x mb-3"></i>
+                        <h5>Нет сообщений в чате</h5>
+                        <p>Начните обсуждение маршрута {{ route.name }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Индикатор загрузки -->
+                <div id="chat-loading" class="text-center py-2 bg-light border-top" style="display: none;">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                        <span class="visually-hidden">Загрузка...</span>
+                    </div>
+                    <small class="text-muted ms-2">Загрузка сообщений...</small>
+                </div>
+
+                <!-- Индикатор набора сообщения -->
+                <div id="typing-indicator" class="px-3 py-1" style="display: none;">
+                    <small class="text-muted">
+                        <i class="fas fa-pencil-alt me-1"></i>
+                        <span id="typing-user"></span> печатает...
+                    </small>
+                </div>
+
+                <!-- Форма отправки сообщения -->
+                <div class="chat-input border-top p-3 bg-white">
+                    <form id="chat-form" class="d-flex gap-2">
+                        {% csrf_token %}
+                        <div class="flex-grow-1 position-relative">
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="chat-message-input" 
+                                   placeholder="Введите сообщение для обсуждения маршрута..." 
+                                   maxlength="1000"
+                                   required
+                                   autocomplete="off">
+                        </div>
+                        <button type="submit" class="btn btn-success" id="chat-message-submit">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </form>
+                    <div class="mt-1 d-flex justify-content-between align-items-center">
+                        <small class="text-muted" id="char-counter">0/1000 символов</small>
+                        <small class="text-muted">
+                            <i class="fas fa-bolt me-1"></i>
+                            <span id="connection-status">Подключение...</span>
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Информация о маршруте -->
+        <div class="col-md-4">
+            <div class="route-info-sidebar h-100 bg-light border-start p-3">
+                <div class="text-center mb-4">
+                    <div class="avatar mx-auto mb-3">
+                        <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center mx-auto" 
+                             style="width: 80px; height: 80px; font-size: 24px;">
+                            <i class="fas fa-route"></i>
+                        </div>
+                    </div>
+                    <h5>{{ route.name }}</h5>
+                    <p class="text-muted">Маршрут • {{ route.get_privacy_display }}</p>
+                    
+                    <div class="route-stats mb-3">
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <small class="text-muted">Дистанция</small>
+                                <div><strong>{{ route.distance|default:"-" }} км</strong></div>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-muted">Сложность</small>
+                                <div><strong>{{ route.get_difficulty_display|default:"-" }}</strong></div>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-muted">Участники</small>
+                                <div><strong>{{ route.shared_with.count|add:1 }}</strong></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h6>Информация о маршруте</h6>
+                    <div class="small">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Автор:</span>
+                            <strong>
+                                <a href="{% url 'user_profile' route.author.username %}" class="text-decoration-none">
+                                    {{ route.author.username }}
+                                </a>
+                            </strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Создан:</span>
+                            <strong>{{ route.created_at|date:"d.m.Y" }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Сообщений:</span>
+                            <strong id="messages-count">{{ chat_messages.count }}</strong>
+                        </div>
+                        {% if route.description %}
+                        <div class="mt-2">
+                            <small class="text-muted">Описание:</small>
+                            <p class="mb-0 small">{{ route.description|truncatewords:20 }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h6>Участники чата</h6>
+                    <div class="participants-list">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="avatar me-2">
+                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
+                                     style="width: 32px; height: 32px; font-size: 12px;">
+                                    {{ route.author.username|first|upper }}
+                                </div>
+                            </div>
+                            <div class="flex-grow-1">
+                                <small class="d-block">{{ route.author.username }}</small>
+                                <small class="text-muted">Автор</small>
+                            </div>
+                            <span class="badge bg-success">online</span>
+                        </div>
+                        {% for user in route.shared_with.all %}
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="avatar me-2">
+                                <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center" 
+                                     style="width: 32px; height: 32px; font-size: 12px;">
+                                    {{ user.username|first|upper }}
+                                </div>
+                            </div>
+                            <div class="flex-grow-1">
+                                <small class="d-block">{{ user.username }}</small>
+                                <small class="text-muted">Участник</small>
+                            </div>
+                            <span class="badge bg-secondary">offline</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="mt-auto">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'route_detail' route.id %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-info-circle me-1"></i> Подробнее о маршруте
+                        </a>
+                        <button class="btn btn-outline-warning btn-sm" onclick="refreshChat()">
+                            <i class="fas fa-sync-alt me-1"></i> Обновить чат
+                        </button>
+                        <a href="{% url 'chat:chat_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-comments me-1"></i> Все чаты
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.chat-container {
+    background: #f8f9fa;
+}
+.chat-messages {
+    max-height: calc(100vh - 280px);
+    min-height: 400px;
+}
+.message-own .message-body {
+    background: #007bff !important;
+    color: white;
+    border-color: #007bff !important;
+}
+.message-own .message-header {
+    flex-direction: row-reverse;
+}
+.message {
+    animation: fadeIn 0.3s ease-in;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.avatar {
+    flex-shrink: 0;
+}
+
+/* Стили для уведомлений */
+#notifications {
+    min-width: 300px;
+    max-width: 500px;
+}
+
+.alert {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: none;
+    border-radius: 8px;
+}
+
+.alert-success {
+    background: linear-gradient(135deg, #d4edda, #c3e6cb);
+    color: #155724;
+    border-left: 4px solid #28a745;
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+    color: #721c24;
+    border-left: 4px solid #dc3545;
+}
+
+.alert-warning {
+    background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+    color: #856404;
+    border-left: 4px solid #ffc107;
+}
+
+.alert-info {
+    background: linear-gradient(135deg, #d1ecf1, #bee5eb);
+    color: #0c5460;
+    border-left: 4px solid #17a2b8;
+}
+
+/* Стили для скроллбара */
+.chat-messages::-webkit-scrollbar {
+    width: 8px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 10px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .col-md-4 {
+        display: none;
+    }
+    .col-md-8 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+    .chat-messages {
+        max-height: calc(100vh - 200px);
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Глобальные переменные для роут-чата
+const routeId = {{ route.id }};
+const currentUserId = {{ request.user.id }};
+const currentUsername = "{{ request.user.username }}";
+const routeAuthor = "{{ route.author.username }}";
+let isSending = false;
+let isConnected = false;
+let routeChatSocket;
+let typingTimer;
+let lastTypingTime = 0;
+const TYPING_TIMEOUT = 3000;
+let ajaxPollingInterval;
+
+// Инициализация чата при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    initializeRouteChat();
+    setupEventListeners();
+    updateCharCounter();
+    document.querySelector('#chat-message-input').focus();
+});
+
+// Инициализация чата маршрута
+function initializeRouteChat() {
+    initializeRouteWebSocket();
+    
+    // Резервная проверка
+    setTimeout(() => {
+        if (!isConnected && !ajaxPollingInterval) {
+            console.log('Route WebSocket failed, falling back to AJAX');
+            showWarning('Используется режим AJAX (обновление каждые 5 сек)');
+            startRouteAjaxPolling();
+        }
+    }, 5000);
+}
+
+// Инициализация WebSocket для роут-чата
+function initializeRouteWebSocket() {
+    try {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws/route_chat/${routeId}/`;
+        
+        console.log('Connecting to Route WebSocket:', wsUrl);
+        
+        routeChatSocket = new WebSocket(wsUrl);
+
+        routeChatSocket.onopen = function(e) {
+            console.log('Route WebSocket connected successfully');
+            isConnected = true;
+            updateConnectionStatus('connected', 'Подключено');
+            showSuccess('Чат маршрута подключен');
+            
+            // Останавливаем AJAX polling если был запущен
+            if (ajaxPollingInterval) {
+                clearInterval(ajaxPollingInterval);
+                ajaxPollingInterval = null;
+            }
+        };
+
+        routeChatSocket.onclose = function(e) {
+            console.log('Route WebSocket disconnected');
+            isConnected = false;
+            updateConnectionStatus('disconnected', 'Переподключение...');
+            setTimeout(initializeRouteWebSocket, 3000);
+        };
+
+        routeChatSocket.onerror = function(e) {
+            console.error('Route WebSocket error:', e);
+            isConnected = false;
+            updateConnectionStatus('error', 'Ошибка подключения');
+        };
+
+        routeChatSocket.onmessage = function(e) {
+            try {
+                const data = JSON.parse(e.data);
+                handleRouteWebSocketMessage(data);
+            } catch (error) {
+                console.error('Error parsing route WebSocket message:', error);
+            }
+        };
+    } catch (error) {
+        console.error('Error initializing route WebSocket:', error);
+        if (!ajaxPollingInterval) {
+            startRouteAjaxPolling();
+        }
+    }
+}
+
+// AJAX polling для роут-чата
+function startRouteAjaxPolling() {
+    // Сначала загружаем все сообщения
+    loadRouteMessages();
+    
+    // Затем начинаем опрашивать сервер каждые 5 секунд
+    ajaxPollingInterval = setInterval(() => {
+        if (!isSending) {
+            loadNewRouteMessagesAjax();
+        }
+    }, 5000);
+}
+
+function loadNewRouteMessagesAjax() {
+    const lastMessage = document.querySelector('#chat-messages .message:last-child');
+    const lastMessageId = lastMessage ? lastMessage.dataset.messageId : 0;
+    
+    fetch(`/chat/get_route_messages/${routeId}/?last_id=${lastMessageId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.messages.length > 0) {
+            data.messages.forEach(message => {
+                addRouteMessageToChat(message, true);
+            });
+            updateMessagesCount();
+        }
+    })
+    .catch(error => {
+        console.error('Error loading new route messages:', error);
+    });
+}
+
+// Настройка обработчиков событий
+function setupEventListeners() {
+    const messageInput = document.querySelector('#chat-message-input');
+    
+    document.querySelector('#chat-form').onsubmit = handleRouteMessageSubmit;
+    messageInput.addEventListener('input', updateCharCounter);
+    messageInput.addEventListener('input', handleTyping);
+    
+    messageInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleRouteMessageSubmit(e);
+        }
+    });
+    
+    window.addEventListener('resize', scrollToBottom);
+    document.querySelector('#chat-messages').addEventListener('click', function() {
+        messageInput.focus();
+    });
+}
+
+// Обработка сообщений WebSocket для роут-чата
+function handleRouteWebSocketMessage(data) {
+    switch(data.type) {
+        case 'history':
+            renderRouteMessages(data.messages);
+            break;
+        case 'route_chat_message':
+            addRouteMessageToChat({
+                id: data.message_id,
+                content: data.message,
+                sender: data.username,
+                sender_id: data.user_id,
+                created_at: data.timestamp,
+                is_own: data.user_id == currentUserId
+            }, true);
+            updateMessagesCount();
+            break;
+        case 'user_typing':
+            showTypingIndicator(data.username);
+            break;
+        case 'user_stop_typing':
+            hideTypingIndicator();
+            break;
+        default:
+            console.log('Unknown route message type:', data.type);
+    }
+}
+
+// Обработка отправки сообщения в роут-чат
+function handleRouteMessageSubmit(e) {
+    e.preventDefault();
+    
+    if (isSending) {
+        showWarning('Сообщение отправляется...');
+        return;
+    }
+    
+    const messageInput = document.querySelector('#chat-message-input');
+    const message = messageInput.value.trim();
+    
+    if (message && isConnected) {
+        sendRouteMessageViaWebSocket(message);
+    } else if (message && !isConnected && ajaxPollingInterval) {
+        sendRouteMessageViaAjax(message);
+    } else if (!message) {
+        showWarning('Введите сообщение');
+        messageInput.focus();
+    } else {
+        showError('Соединение не установлено. Попробуйте обновить страницу.');
+    }
+}
+
+// Отправка сообщения через WebSocket
+function sendRouteMessageViaWebSocket(message) {
+    if (isSending || !isConnected) return;
+    
+    isSending = true;
+    const messageInput = document.querySelector('#chat-message-input');
+    const submitBtn = document.querySelector('#chat-message-submit');
+    
+    messageInput.disabled = true;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    
+    stopTyping();
+    
+    try {
+        // Временное сообщение
+        const tempId = 'temp-' + Date.now();
+        addRouteMessageToChat({
+            id: tempId,
+            content: message,
+            sender: currentUsername,
+            sender_id: currentUserId,
+            created_at: getCurrentTime(),
+            is_own: true,
+            is_temp: true
+        }, true);
+        
+        routeChatSocket.send(JSON.stringify({
+            'type': 'chat_message',
+            'message': message,
+            'user_id': currentUserId,
+            'temp_id': tempId
+        }));
+        
+        messageInput.value = '';
+        updateCharCounter();
+        
+    } catch (error) {
+        console.error('Ошибка отправки:', error);
+        showError('Ошибка отправки сообщения');
+        removeTempMessage('temp-' + Date.now());
+    } finally {
+        isSending = false;
+        messageInput.disabled = false;
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+        messageInput.focus();
+    }
+}
+
+// Отправка сообщения через AJAX (резервный метод)
+function sendRouteMessageViaAjax(message) {
+    if (isSending) return;
+    
+    isSending = true;
+    const messageInput = document.querySelector('#chat-message-input');
+    const submitBtn = document.querySelector('#chat-message-submit');
+    
+    messageInput.disabled = true;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    
+    stopTyping();
+    
+    try {
+        // Временное сообщение
+        const tempId = 'temp-' + Date.now();
+        addRouteMessageToChat({
+            id: tempId,
+            content: message,
+            sender: currentUsername,
+            sender_id: currentUserId,
+            created_at: getCurrentTime(),
+            is_own: true,
+            is_temp: true
+        }, true);
+        
+        // Отправляем через AJAX
+        fetch('/chat/send_route_message/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                'route_id': routeId,
+                'message': message
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Заменяем временное сообщение на настоящее
+                removeTempMessage(tempId);
+                addRouteMessageToChat({
+                    id: data.message_id,
+                    content: data.content,
+                    sender: data.sender,
+                    sender_id: data.sender_id,
+                    created_at: data.created_at,
+                    is_own: true
+                }, true);
+                updateMessagesCount();
+                showSuccess('Сообщение отправлено');
+            } else {
+                throw new Error(data.error || 'Ошибка отправки');
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка отправки:', error);
+            showError('Ошибка отправки сообщения: ' + error.message);
+            removeTempMessage(tempId);
+        })
+        .finally(() => {
+            messageInput.value = '';
+            updateCharCounter();
+        });
+        
+    } catch (error) {
+        console.error('Ошибка отправки:', error);
+        showError('Ошибка отправки сообщения');
+        removeTempMessage('temp-' + Date.now());
+    } finally {
+        isSending = false;
+        messageInput.disabled = false;
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+        messageInput.focus();
+    }
+}
+
+// Обработка печати
+function handleTyping() {
+    const now = Date.now();
+    const messageInput = document.querySelector('#chat-message-input');
+    
+    if (messageInput.value.trim().length > 0) {
+        if (now - lastTypingTime > TYPING_TIMEOUT) {
+            sendRouteTypingSignal(true);
+        }
+        lastTypingTime = now;
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(stopTyping, TYPING_TIMEOUT);
+    }
+}
+
+function stopTyping() {
+    sendRouteTypingSignal(false);
+    lastTypingTime = 0;
+}
+
+function sendRouteTypingSignal(isTyping) {
+    if (!isConnected) return;
+    
+    try {
+        routeChatSocket.send(JSON.stringify({
+            'type': isTyping ? 'user_typing' : 'user_stop_typing',
+            'user_id': currentUserId,
+            'username': currentUsername
+        }));
+    } catch (error) {
+        console.error('Error sending typing signal:', error);
+    }
+}
+
+// Загрузка сообщений роут-чата
+function loadRouteMessages() {
+    showLoading(true);
+    
+    fetch(`/chat/get_route_messages/${routeId}/`)
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            renderRouteMessages(data.messages);
+        } else {
+            throw new Error(data.error || 'Неизвестная ошибка');
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка загрузки сообщений:', error);
+        showError('Ошибка загрузки сообщений: ' + error.message);
+    })
+    .finally(() => {
+        showLoading(false);
+    });
+}
+
+// Отображение сообщений роут-чата
+function renderRouteMessages(messages) {
+    const messagesContainer = document.querySelector('#chat-messages');
+    messagesContainer.innerHTML = '';
+    
+    if (messages.length === 0) {
+        showEmptyRouteChatMessage();
+        return;
+    }
+    
+    messages.forEach(messageData => {
+        addRouteMessageToChat(messageData, false);
+    });
+    
+    scrollToBottom();
+    updateMessagesCount();
+}
+
+// Добавление сообщения в роут-чат
+function addRouteMessageToChat(messageData, isNew = true) {
+    const messagesContainer = document.querySelector('#chat-messages');
+    
+    const emptyMessage = messagesContainer.querySelector('#empty-chat-message');
+    if (emptyMessage) {
+        emptyMessage.remove();
+    }
+    
+    // Удаляем временное сообщение
+    if (messageData.id && !messageData.id.startsWith('temp-')) {
+        const tempMessages = document.querySelectorAll('[data-message-id^="temp-"]');
+        tempMessages.forEach(tempMsg => {
+            const tempContent = tempMsg.querySelector('.message-body').textContent.trim();
+            if (tempContent === messageData.content) {
+                tempMsg.remove();
+            }
+        });
+    }
+    
+    const existingMessage = messagesContainer.querySelector(`[data-message-id="${messageData.id}"]`);
+    if (existingMessage && !messageData.id.startsWith('temp-')) {
+        return;
+    }
+
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message mb-3';
+    messageDiv.dataset.messageId = messageData.id;
+    
+    const isOwn = messageData.sender_id == currentUserId;
+    if (isOwn) {
+        messageDiv.classList.add('message-own');
+    }
+
+    const isAuthor = messageData.sender === routeAuthor;
+    const senderName = isOwn ? 'Вы' : messageData.sender;
+
+    messageDiv.innerHTML = `
+        <div class="message-header d-flex justify-content-between align-items-center mb-1">
+            <div class="d-flex align-items-center">
+                <strong>${escapeHtml(senderName)}</strong>
+                ${isAuthor ? '<span class="badge bg-primary ms-2">Автор</span>' : ''}
+            </div>
+            <small class="text-muted">${messageData.created_at}</small>
+        </div>
+        <div class="message-body ${isOwn ? 'bg-primary text-white' : 'bg-white'} rounded p-3 border">
+            ${escapeHtml(messageData.content).replace(/\n/g, '<br>')}
+        </div>
+    `;
+
+    if (isNew) {
+        messageDiv.style.animation = 'fadeIn 0.2s ease-in';
+        if (!isOwn) {
+            playMessageSound();
+        }
+    }
+    
+    messagesContainer.appendChild(messageDiv);
+    
+    if (isNew) {
+        scrollToBottom();
+    }
+}
+
+// Вспомогательные функции
+function showTypingIndicator(username) {
+    const typingIndicator = document.getElementById('typing-indicator');
+    const typingUser = document.getElementById('typing-user');
+    if (typingIndicator && typingUser) {
+        typingUser.textContent = username;
+        typingIndicator.style.display = 'block';
+    }
+}
+
+function hideTypingIndicator() {
+    const typingIndicator = document.getElementById('typing-indicator');
+    if (typingIndicator) {
+        typingIndicator.style.display = 'none';
+    }
+}
+
+function updateCharCounter() {
+    const input = document.querySelector('#chat-message-input');
+    const counter = document.querySelector('#char-counter');
+    const length = input.value.length;
+    counter.textContent = `${length}/1000 символов`;
+    
+    if (length > 950) counter.className = 'text-danger';
+    else if (length > 800) counter.className = 'text-warning';
+    else if (length > 0) counter.className = 'text-success';
+    else counter.className = 'text-muted';
+}
+
+function updateConnectionStatus(status, message) {
+    const statusElement = document.getElementById('connection-status');
+    if (statusElement) {
+        statusElement.textContent = message;
+        statusElement.className = status === 'connected' ? 'text-success' : 
+                                status === 'disconnected' ? 'text-warning' : 'text-danger';
+    }
+}
+
+function updateMessagesCount() {
+    const messages = document.querySelectorAll('#chat-messages .message');
+    const countElement = document.getElementById('messages-count');
+    if (countElement) {
+        countElement.textContent = messages.length;
+    }
+}
+
+function showEmptyRouteChatMessage() {
+    const messagesContainer = document.querySelector('#chat-messages');
+    messagesContainer.innerHTML = `
+        <div class="text-center text-muted py-5" id="empty-chat-message">
+            <i class="fas fa-route fa-3x mb-3"></i>
+            <h5>Нет сообщений в чате</h5>
+            <p>Начните обсуждение маршрута {{ route.name }}</p>
+        </div>
+    `;
+}
+
+function scrollToBottom() {
+    const messagesContainer = document.querySelector('#chat-messages');
+    if (messagesContainer) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+}
+
+function removeTempMessage(tempId) {
+    const tempMessage = document.querySelector(`[data-message-id="${tempId}"]`);
+    if (tempMessage) {
+        tempMessage.remove();
+    }
+}
+
+function playMessageSound() {
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        oscillator.frequency.value = 600;
+        oscillator.type = 'sine';
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.2);
+    } catch (error) {
+        console.log('Audio play failed:', error);
+    }
+}
+
+function getCurrentTime() {
+    return new Date().toLocaleTimeString('ru-RU', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+    });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Уведомления
+function showError(message) { showNotification(message, 'danger'); }
+function showSuccess(message) { showNotification(message, 'success'); }
+function showWarning(message) { showNotification(message, 'warning'); }
+function showInfo(message) { showNotification(message, 'info'); }
+
+function showNotification(message, type = 'info') {
+    const notifications = document.getElementById('notifications');
+    const notificationId = 'notification-' + Date.now();
+    
+    const alertClass = {
+        'success': 'alert-success', 'danger': 'alert-danger',
+        'warning': 'alert-warning', 'info': 'alert-info'
+    }[type] || 'alert-info';
+    
+    const iconClass = {
+        'success': 'fa-check-circle', 'danger': 'fa-exclamation-circle',
+        'warning': 'fa-exclamation-triangle', 'info': 'fa-info-circle'
+    }[type] || 'fa-info-circle';
+    
+    const notification = document.createElement('div');
+    notification.id = notificationId;
+    notification.className = `alert ${alertClass} alert-dismissible fade show mb-2`;
+    notification.innerHTML = `
+        <i class="fas ${iconClass} me-2"></i>
+        ${escapeHtml(message)}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    notifications.appendChild(notification);
+    
+    setTimeout(() => {
+        const alertElement = document.getElementById(notificationId);
+        if (alertElement) {
+            const alert = bootstrap.Alert.getOrCreateInstance(alertElement);
+            alert.close();
+        }
+    }, type === 'success' ? 3000 : 5000);
+}
+
+// Функции управления чатом
+function refreshChat() {
+    if (isConnected) {
+        routeChatSocket.send(JSON.stringify({'type': 'get_history'}));
+        showInfo('Чат маршрута обновлен');
+    } else {
+        loadRouteMessages();
+    }
+}
+
+function showParticipants() {
+    showInfo(`Участники чата: {{ route.author.username }} (автор) {% for user in route.shared_with.all %}, {{ user.username }}{% endfor %}`);
+}
+
+function showLoading(show) {
+    const loadingElement = document.querySelector('#chat-loading');
+    if (loadingElement) {
+        loadingElement.style.display = show ? 'block' : 'none';
+    }
+}
+
+// Обработка перед закрытием страницы
+window.addEventListener('beforeunload', function() {
+    if (routeChatSocket) {
+        routeChatSocket.close();
+    }
+    if (ajaxPollingInterval) {
+        clearInterval(ajaxPollingInterval);
+    }
+});
+
+// Пинг соединения
+setInterval(() => {
+    if (routeChatSocket && routeChatSocket.readyState === WebSocket.OPEN) {
+        routeChatSocket.send(JSON.stringify({type: 'ping'}));
+    }
+}, 25000);
+</script>
+{% endblock %}

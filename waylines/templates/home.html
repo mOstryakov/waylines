@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Главная - Waylines{% endblock %}
+
+{% block content %}
+<!-- Герой секция -->
+<div class="hero-section text-white py-5 mb-5">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <h1 class="display-4 fw-bold mb-4">Откройте мир заново</h1>
+                <p class="lead mb-4">Создавайте, делитесь и исследуйте уникальные маршруты с Waylines. Откройте для себя новые места и поделитесь своими открытиями с другими.</p>
+                {% if user.is_authenticated %}
+                <a href="{% url 'create_route' %}" class="btn btn-light btn-lg me-3">
+                    <i class="fas fa-plus"></i> Создать маршрут
+                </a>
+                <a href="{% url 'all_routes' %}" class="btn btn-outline-light btn-lg">
+                    <i class="fas fa-compass"></i> Исследовать
+                </a>
+                {% else %}
+                <a href="{% url 'register' %}" class="btn btn-light btn-lg me-3">
+                    <i class="fas fa-user-plus"></i> Присоединиться
+                </a>
+                <a href="{% url 'all_routes' %}" class="btn btn-outline-light btn-lg">
+                    <i class="fas fa-eye"></i> Посмотреть маршруты
+                </a>
+                {% endif %}
+            </div>
+            <div class="col-md-6 text-center">
+                <img src="{% static 'images/hero-route.svg' %}" alt="Путешествия" class="img-fluid" style="max-height: 300px;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Популярные маршруты -->
+    <section class="mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold">Популярные маршруты</h2>
+            <a href="{% url 'all_routes' %}" class="btn btn-outline-primary">Все маршруты <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <div class="row">
+            {% for route in popular_routes %}
+            <div class="col-xl-4 col-lg-6 mb-4">
+                <div class="card route-card h-100">
+                    {% if route.photos.first %}
+                    <img src="{{ route.photos.first.image.url }}" class="card-img-top route-image" alt="{{ route.name }}">
+                    {% else %}
+                    <div class="card-img-top route-image bg-light d-flex align-items-center justify-content-center">
+                        <i class="fas fa-route fa-3x text-muted"></i>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="card-title">{{ route.name }}</h5>
+                            <span class="badge bg-{% if route.route_type == 'walking' %}success{% elif route.route_type == 'driving' %}primary{% else %}warning{% endif %}">
+                                {{ route.get_route_type_display }}
+                            </span>
+                        </div>
+                        
+                        <p class="card-text text-muted flex-grow-1">
+                            {{ route.short_description|default:route.description|truncatewords:20 }}
+                        </p>
+                        
+                        <div class="mb-2">
+                            <span class="rating-stars">
+                                {% with rating=route.get_average_rating %}
+                                {% for i in "12345" %}
+                                    {% if forloop.counter <= rating %}
+                                    <i class="fas fa-star"></i>
+                                    {% else %}
+                                    <i class="far fa-star"></i>
+                                    {% endif %}
+                                {% endfor %}
+                                {% endwith %}
+                            </span>
+                            <small class="text-muted">({{ route.ratings.count }})</small>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center mt-auto">
+                            <div>
+                                <small class="text-muted">
+                                    <i class="fas fa-user"></i> {{ route.author.username }}
+                                </small>
+                                <small class="text-muted ms-2">
+                                    <i class="fas fa-route"></i> {{ route.total_distance|floatformat:1 }} км
+                                </small>
+                            </div>
+                            <a href="{% url 'route_detail' route.id %}" class="btn btn-primary btn-sm">Подробнее</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12">
+                <div class="text-center text-muted py-5">
+                    <i class="fas fa-route fa-3x mb-3"></i>
+                    <h4>Пока нет маршрутов</h4>
+                    <p>Будьте первым, кто создаст маршрут!</p>
+                    {% if user.is_authenticated %}
+                    <a href="{% url 'create_route' %}" class="btn btn-primary">Создать первый маршрут</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- Категории -->
+    <section class="mb-5">
+        <h2 class="fw-bold mb-4">Исследуйте по категориям</h2>
+        <div class="row g-4">
+            <div class="col-md-3 col-6">
+                <div class="card text-center h-100 border-0 shadow-sm">
+                    <div class="card-body py-4">
+                        <i class="fas fa-hiking fa-2x text-success mb-3"></i>
+                        <h5 class="card-title">Пешие</h5>
+                        <p class="card-text text-muted">{{ walking_count }} маршрутов</p>
+                        <a href="{% url 'all_routes' %}?type=walking" class="btn btn-outline-success btn-sm">Смотреть</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="card text-center h-100 border-0 shadow-sm">
+                    <div class="card-body py-4">
+                        <i class="fas fa-car fa-2x text-primary mb-3"></i>
+                        <h5 class="card-title">Автомобильные</h5>
+                        <p class="card-text text-muted">{{ driving_count }} маршрутов</p>
+                        <a href="{% url 'all_routes' %}?type=driving" class="btn btn-outline-primary btn-sm">Смотреть</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="card text-center h-100 border-0 shadow-sm">
+                    <div class="card-body py-4">
+                        <i class="fas fa-bicycle fa-2x text-warning mb-3"></i>
+                        <h5 class="card-title">Велосипедные</h5>
+                        <p class="card-text text-muted">{{ cycling_count }} маршрутов</p>
+                        <a href="{% url 'all_routes' %}?type=cycling" class="btn btn-outline-warning btn-sm">Смотреть</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="card text-center h-100 border-0 shadow-sm">
+                    <div class="card-body py-4">
+                        <i class="fas fa-mountain fa-2x text-danger mb-3"></i>
+                        <h5 class="card-title">Приключенческие</h5>
+                        <p class="card-text text-muted">{{ adventure_count }} маршрутов</p>
+                        <a href="{% url 'all_routes' %}?mood=adventure" class="btn btn-outline-danger btn-sm">Смотреть</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Преимущества -->
+    <section class="mb-5">
+        <div class="row">
+            <div class="col-md-4 text-center mb-4">
+                <i class="fas fa-map-marked-alt fa-3x text-primary mb-3"></i>
+                <h4>Создавайте маршруты</h4>
+                <p class="text-muted">Отмечайте точки на карте, добавляйте описание и фото</p>
+            </div>
+            <div class="col-md-4 text-center mb-4">
+                <i class="fas fa-share-alt fa-3x text-success mb-3"></i>
+                <h4>Делитесь с другими</h4>
+                <p class="text-muted">Публикуйте маршруты или делитесь с друзьями</p>
+            </div>
+            <div class="col-md-4 text-center mb-4">
+                <i class="fas fa-compass fa-3x text-warning mb-3"></i>
+                <h4>Открывайте новое</h4>
+                <p class="text-muted">Находите интересные места созданные сообществом</p>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .hero-section {
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    }
+</style>
+{% endblock %}
