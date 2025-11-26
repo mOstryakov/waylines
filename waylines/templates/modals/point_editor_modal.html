@@ -1,0 +1,98 @@
+<!-- templates/routes/modals/point_editor_modal.html -->
+<div class="modal fade" id="point-editor-modal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Редактирование точки</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="point-form">
+                    <input type="hidden" id="edit-point-index">
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Название точки *</label>
+                                <input type="text" id="point-name" class="form-control" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Категория</label>
+                                <select id="point-category" class="form-select">
+                                    <option value="">Выберите категорию</option>
+                                    <option value="attraction">Изюминка</option>
+                                    <option value="nature">Естественная</option>
+                                    <option value="forest">Лес</option>
+                                    <option value="bus_stop">Автобусная остановка</option>
+                                    <option value="viewpoint">Смотровая площадка</option>
+                                    <option value="restaurant">Ресторан</option>
+                                    <option value="hotel">Отель</option>
+                                    <option value="museum">Музей</option>
+                                    <option value="park">Парк</option>
+                                    <option value="monument">Памятник</option>
+                                    <option value="church">Храм</option>
+                                    <option value="beach">Пляж</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Адрес</label>
+                                <input type="text" id="point-address" class="form-control">
+                                <div class="form-text">Если адрес не определился автоматически, введите его вручную</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Координаты</label>
+                                <div class="input-group mb-1">
+                                    <span class="input-group-text">Широта</span>
+                                    <input type="text" id="point-lat" class="form-control" readonly>
+                                </div>
+                                <div class="input-group">
+                                    <span class="input-group-text">Долгота</span>
+                                    <input type="text" id="point-lng" class="form-control" readonly>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Автор подсказки</label>
+                                <input type="text" id="point-hint-author" class="form-control" placeholder="Имя автора подсказки">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Описание</label>
+                        <textarea id="point-description" class="form-control" rows="3" placeholder="Расскажите об этом месте..."></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Теги</label>
+                        <input type="text" id="point-tags" class="form-control" placeholder="тег1, тег2, тег3...">
+                        <div class="form-text">Введите теги через запятую</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Фотографии</label>
+                        <div class="photo-upload-area border rounded p-4 text-center" onclick="document.getElementById('point-photo-upload').click()">
+                            <i class="fas fa-camera fa-2x text-muted mb-2"></i>
+                            <div class="text-muted">Нажмите для загрузки фото</div>
+                            <small class="text-muted">Можно загрузить несколько файлов</small>
+                        </div>
+                        <input type="file" id="point-photo-upload" multiple accept="image/*" style="display: none;">
+                        
+                        <div class="photo-preview-container mt-2" id="point-photo-preview">
+                            <!-- Преviews будут добавляться здесь -->
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" id="save-point-btn" class="btn btn-primary">Сохранить точку</button>
+            </div>
+        </div>
+    </div>
+</div>

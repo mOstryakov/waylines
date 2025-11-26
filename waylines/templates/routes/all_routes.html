@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+
+{% block title %}Все маршруты - Waylines{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-3">
+            <!-- Фильтры -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Фильтры</h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" id="filter-form">
+                        <!-- Поиск -->
+                        <div class="mb-3">
+                            <label class="form-label">Поиск</label>
+                            <input type="text" name="q" class="form-control" value="{{ request.GET.q }}" 
+                                   placeholder="Название, описание...">
+                        </div>
+
+                        <!-- Тип маршрута -->
+                        <div class="mb-3">
+                            <label class="form-label">Тип маршрута</label>
+                            <select name="type" class="form-select">
+                                <option value="">Все типы</option>
+                                {% for value, label in route_types %}
+                                <option value="{{ value }}" {% if request.GET.type == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Настроение -->
+                        <div class="mb-3">
+                            <label class="form-label">Настроение</label>
+                            <select name="mood" class="form-select">
+                                <option value="">Любое настроение</option>
+                                {% for value, label in moods %}
+                                <option value="{{ value }}" {% if request.GET.mood == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Тема -->
+                        <div class="mb-3">
+                            <label class="form-label">Тема</label>
+                            <select name="theme" class="form-select">
+                                <option value="">Любая тема</option>
+                                {% for value, label in themes %}
+                                <option value="{{ value }}" {% if request.GET.theme == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">Применить</button>
+                        <a href="{% url 'all_routes' %}" class="btn btn-outline-secondary w-100 mt-2">Сбросить</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-9">
+            <!-- Заголовок и сортировка -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-1">Все маршруты</h1>
+                    <p class="text-muted mb-0">Найдено {{ page_obj.paginator.count }} маршрутов</p>
+                </div>
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        Сортировка
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}sort=newest">Сначала новые</a></li>
+                        <li><a class="dropdown-item" href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}sort=popular">По популярности</a></li>
+                        <li><a class="dropdown-item" href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}sort=rating">По рейтингу</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Список маршрутов -->
+            <div class="row">
+                {% for route in page_obj %}
+                <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="card route-card h-100">
+                        {% if route.photos.first %}
+                        <img src="{{ route.photos.first.image.url }}" class="card-img-top route-image" alt="{{ route.name }}">
+                        {% else %}
+                        <div class="card-img-top route-image bg-light d-flex align-items-center justify-content-center">
+                            <i class="fas fa-route fa-2x text-muted"></i>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="card-body d-flex flex-column">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h5 class="card-title">{{ route.name|truncatewords:4 }}</h5>
+                                <span class="badge bg-{% if route.route_type == 'walking' %}success{% elif route.route_type == 'driving' %}primary{% else %}warning{% endif %}">
+                                    {{ route.get_route_type_display }}
+                                </span>
+                            </div>
+                            
+                            <p class="card-text text-muted small flex-grow-1">
+                                {{ route.short_description|default:route.description|truncatewords:15 }}
+                            </p>
+                            
+                            <div class="mb-2">
+                                <span class="rating-stars">
+                                    {% with rating=route.avg_rating|default:0 %}
+                                    {% for i in "12345" %}
+                                        {% if forloop.counter <= rating %}
+                                        <i class="fas fa-star"></i>
+                                        {% else %}
+                                        <i class="far fa-star"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% endwith %}
+                                </span>
+                                <small class="text-muted">({{ route.rating_count }})</small>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between align-items-center mt-auto">
+                                <small class="text-muted">
+                                    <i class="fas fa-user"></i> {{ route.author.username }}
+                                </small>
+                                <a href="{% url 'route_detail' route.id %}" class="btn btn-primary btn-sm">Смотреть</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12">
+                    <div class="text-center py-5">
+                        <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                        <h4>Маршруты не найдены</h4>
+                        <p class="text-muted">Попробуйте изменить параметры поиска</p>
+                        <a href="{% url 'all_routes' %}" class="btn btn-primary">Сбросить фильтры</a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Пагинация -->
+            {% if page_obj.paginator.num_pages > 1 %}
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Назад</a>
+                    </li>
+                    {% endif %}
+
+                    {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                    {% else %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Вперед</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

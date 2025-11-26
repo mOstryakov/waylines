@@ -1,0 +1,283 @@
+{% extends 'base.html' %}
+
+{% block title %}Сохраненные места - Waylines{% endblock %}
+
+{% block content %}
+<div class="container-fluid h-100 p-0">
+    <div class="row g-0 h-100">
+        <!-- Карта -->
+        <div class="col-md-8">
+            <div id="map" class="h-100"></div>
+        </div>
+
+        <!-- Сайдбар -->
+        <div class="col-md-4">
+            <div class="sidebar h-100 bg-white border-start">
+                <div class="p-3 border-bottom">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Сохраненные места</h5>
+                        <button class="btn btn-primary btn-sm" onclick="showAddPlaceModal()">
+                            <i class="fas fa-plus"></i> Добавить
+                        </button>
+                    </div>
+                </div>
+
+                <div class="p-3" style="max-height: calc(100vh - 120px); overflow-y: auto;">
+                    {% if places %}
+                    <div class="places-list">
+                        {% for place in places %}
+                        <div class="place-item card mb-2" data-lat="{{ place.latitude }}" data-lng="{{ place.longitude }}">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">{{ place.name }}</h6>
+                                        <p class="text-muted small mb-1">{{ place.address }}</p>
+                                        <span class="badge bg-light text-dark">{{ place.get_category_display }}</span>
+                                    </div>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-secondary border-0" data-bs-toggle="dropdown">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li>
+                                                <a class="dropdown-item" href="#" onclick="showOnMap({{ place.latitude }}, {{ place.longitude }})">
+                                                    <i class="fas fa-map-marker-alt"></i> Показать на карте
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="#" onclick="addToRoute({{ place.latitude }}, {{ place.longitude }}, '{{ place.name }}')">
+                                                    <i class="fas fa-route"></i> Добавить в маршрут
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <a class="dropdown-item text-danger" href="#">
+                                                    <i class="fas fa-trash"></i> Удалить
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                {% if place.notes %}
+                                <p class="small text-muted mt-1 mb-0">{{ place.notes }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-map-marker-alt fa-3x text-muted mb-3"></i>
+                        <h5>Нет сохраненных мест</h5>
+                        <p class="text-muted">Добавьте места которые хотите сохранить</p>
+                        <button class="btn btn-primary" onclick="showAddPlaceModal()">
+                            <i class="fas fa-plus"></i> Добавить первое место
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно добавления места -->
+<div class="modal fade" id="add-place-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добавить место</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="add-place-form">
+                    <div class="mb-3">
+                        <label class="form-label">Название места *</label>
+                        <input type="text" id="place-name" class="form-control" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Категория</label>
+                        <select id="place-category" class="form-select">
+                            <option value="favorite">⭐ Избранное</option>
+                            <option value="home">🏠 Дом</option>
+                            <option value="work">💼 Работа</option>
+                            <option value="restaurant">🍴 Ресторан</option>
+                            <option value="park">🌳 Парк</option>
+                            <option value="shop">🛍️ Магазин</option>
+                            <option value="hotel">🏨 Отель</option>
+                            <option value="other">🔹 Другое</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Адрес</label>
+                        <input type="text" id="place-address" class="form-control" readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Координаты</label>
+                        <div class="input-group">
+                            <span class="input-group-text">Широта</span>
+                            <input type="text" id="place-lat" class="form-control" readonly>
+                            <span class="input-group-text">Долгота</span>
+                            <input type="text" id="place-lng" class="form-control" readonly>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Заметки</label>
+                        <textarea id="place-notes" class="form-control" rows="3" placeholder="Дополнительные заметки..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="savePlace()">Сохранить место</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let map;
+    let currentMarker = null;
+
+    function initMap() {
+        map = L.map('map').setView([55.7558, 37.6176], 10);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Добавляем сохраненные места на карту
+        {% for place in places %}
+        const marker = L.marker([{{ place.latitude }}, {{ place.longitude }}]).addTo(map);
+        marker.bindPopup(`
+            <div>
+                <strong>{{ place.name }}</strong><br>
+                <small>{{ place.address }}</small><br>
+                <span class="badge bg-light text-dark">{{ place.get_category_display }}</span>
+            </div>
+        `);
+        {% endfor %}
+
+        // Обработчик клика по карте для добавления нового места
+        map.on('click', function(e) {
+            if (currentMarker) {
+                map.removeLayer(currentMarker);
+            }
+            
+            currentMarker = L.marker(e.latlng).addTo(map);
+            
+            // Заполняем форму координатами
+            document.getElementById('place-lat').value = e.latlng.lat.toFixed(6);
+            document.getElementById('place-lng').value = e.latlng.lng.toFixed(6);
+            
+            // Получаем адрес по координатам
+            getAddressFromCoordinates(e.latlng.lat, e.latlng.lng);
+            
+            // Показываем модальное окно
+            $('#add-place-modal').modal('show');
+        });
+    }
+
+    function showAddPlaceModal() {
+        // Сбрасываем форму
+        document.getElementById('add-place-form').reset();
+        
+        // Если есть текущая позиция на карте, используем ее
+        if (!currentMarker) {
+            const center = map.getCenter();
+            document.getElementById('place-lat').value = center.lat.toFixed(6);
+            document.getElementById('place-lng').value = center.lng.toFixed(6);
+            getAddressFromCoordinates(center.lat, center.lng);
+        }
+        
+        $('#add-place-modal').modal('show');
+    }
+
+    function getAddressFromCoordinates(lat, lng) {
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.display_name) {
+                    document.getElementById('place-address').value = data.display_name;
+                }
+            })
+            .catch(() => {
+                document.getElementById('place-address').value = 'Адрес не определен';
+            });
+    }
+
+    function savePlace() {
+        const formData = {
+            name: document.getElementById('place-name').value,
+            category: document.getElementById('place-category').value,
+            address: document.getElementById('place-address').value,
+            lat: parseFloat(document.getElementById('place-lat').value),
+            lng: parseFloat(document.getElementById('place-lng').value),
+            notes: document.getElementById('place-notes').value
+        };
+
+        if (!formData.name) {
+            alert('Введите название места');
+            return;
+        }
+
+        fetch('{% url "add_saved_place" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Ошибка при сохранении: ' + data.error);
+            }
+        });
+    }
+
+    function showOnMap(lat, lng) {
+        map.setView([lat, lng], 15);
+    }
+
+    function addToRoute(lat, lng, name) {
+    // Добавляем точку в текущий маршрут (если он создается)
+    if (window.currentRoute) {
+        window.currentRoute.addWaypoint(lat, lng, name);
+        showToast(`Место "${name}" добавлено в маршрут`);
+    } else {
+        // Если маршрут не создается, предлагаем создать новый
+        if (confirm(`Добавить "${name}" в новый маршрут?`)) {
+            window.location.href = '{% url "create_route" %}?lat=' + lat + '&lng=' + lng;
+        }
+    }
+}
+
+function showToast(message) {
+    // Создаем и показываем toast-уведомление
+    const toast = document.createElement('div');
+    toast.className = 'position-fixed bottom-0 end-0 p-3';
+    toast.innerHTML = `
+        <div class="toast show" role="alert">
+            <div class="toast-body">
+                ${message}
+            </div>
+        </div>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+
+// Инициализация при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    initMap();
+});
