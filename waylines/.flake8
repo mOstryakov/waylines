@@ -1,0 +1,6 @@
+[flake8]
+inline-quotes = double
+extend-ignore = E203, W503, I202, E3
+extend-select = E301, E302, E303, E304  
+exclude = .git,__pycache__,venv,env,migrations,.cache,*.sqlite3,*.pyc,__init__.py,.venv
+import-order-style = pep8
