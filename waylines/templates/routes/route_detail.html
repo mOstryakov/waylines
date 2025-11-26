@@ -30,10 +30,13 @@
         <div class="col-md-4 text-end">
             <div class="btn-group">
                 {% if user.is_authenticated %}
-                <button class="btn btn-outline-primary" id="favorite-btn" data-route-id="{{ route.id }}">
-                    <i class="{% if is_favorite %}fas{% else %}far{% endif %} fa-heart"></i>
-                    <span id="favorite-text">{% if is_favorite %}В избранном{% else %}В избранное{% endif %}</span>
-                </button>
+                <form method="post" action="{% url 'interactions:toggle_favorite' route.id %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="{% if route.id in user_favorites_ids %}fas{% else %}far{% endif %} fa-heart"></i>
+                        {% if route.id in user_favorites_ids %}В избранном{% else %}В избранное{% endif %}
+                    </button>
+                </form>
                 <button class="btn btn-outline-secondary" onclick="shareRoute()">
                     <i class="fas fa-share-alt"></i> Поделиться
                 </button>
@@ -185,7 +188,7 @@
                 </div>
                 <div class="card-body">
                     {% if user.is_authenticated %}
-                    <form method="post" action="{% url 'add_route_comment' route.id %}" class="mb-4">
+                    <form method="post" action="{% url 'interactions:add_comment' route.id %}" class="mb-4">
                         {% csrf_token %}
                         <div class="mb-3">
                             <textarea name="text" class="form-control" rows="3" placeholder="Оставьте ваш комментарий..." required></textarea>
@@ -303,16 +306,16 @@
                             {% with rating=route.get_average_rating %}
                             {% for i in "12345" %}
                                 {% if forloop.counter <= rating %}
-                                <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
                                 {% else %}
-                                <i class="far fa-star"></i>
+                                    <i class="far fa-star"></i>
                                 {% endif %}
                             {% endfor %}
                             {% endwith %}
                         </div>
                         <small class="text-muted">на основе {{ route.ratings.count }} оценок</small>
                     </div>
-                    
+
                     {% if user.is_authenticated and route.author != user %}
                     <div class="rating-form">
                         <p class="small mb-2">Ваша оценка:</p>
@@ -465,7 +468,8 @@
         const favoriteText = document.getElementById('favorite-text');
         const heartIcon = this.querySelector('i');
         
-        fetch(`/routes/${routeId}/favorite/`, {
+        fetch(`/interactions/favorite/${routeId}/`, {
+
             method: 'POST',
             headers: {
                 'X-CSRFToken': '{{ csrf_token }}',
@@ -490,26 +494,31 @@
     
     // Рейтинг
     document.querySelectorAll('.star-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', function(event) {
+            event.preventDefault();  // Предотвращаем отправку формы, если есть
             const rating = this.dataset.rating;
-            
-            fetch(`/routes/{{ route.id }}/rate/`, {
+
+            fetch(`{% url 'interactions:add_rating' route.id %}`, {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': '{{ csrf_token }}',
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({rating: parseInt(rating)})
+                body: JSON.stringify({rating: parseInt(rating)}),
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    location.reload();
+                    location.reload();  // Обновляем страницу после успешной оценки
                 }
+            })
+            .catch(error => {
+                console.error('Ошибка при выставлении оценки:', error);
             });
         });
     });
-    
+
+
     // Поделиться
     function shareRoute() {
         if (navigator.share) {

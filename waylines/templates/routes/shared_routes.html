@@ -3,70 +3,44 @@
 {% block title %}Доступные мне маршруты - Waylines{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h3 mb-1">Доступные мне маршруты</h1>
-            <p class="text-muted mb-0">Маршруты, которыми поделились другие пользователи</p>
-        </div>
-    </div>
+<div class="container mt-4">
+    <h1>Маршруты друзей и общие</h1>
 
     {% if routes %}
-    <div class="row">
         {% for route in routes %}
-        <div class="col-lg-4 col-md-6 mb-4">
-            <div class="card route-card h-100">
-                {% if route.photos.first %}
-                <img src="{{ route.photos.first.image.url }}" class="card-img-top route-image" alt="{{ route.name }}">
-                {% else %}
-                <div class="card-img-top route-image bg-light d-flex align-items-center justify-content-center">
-                    <i class="fas fa-route fa-2x text-muted"></i>
-                </div>
-                {% endif %}
-                
-                <div class="card-body d-flex flex-column">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <h5 class="card-title">{{ route.name }}</h5>
-                        <span class="badge bg-secondary">Доступен</span>
-                    </div>
-                    
-                    <p class="card-text text-muted small flex-grow-1">
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <a href="{% url 'route_detail' route.id %}">
+                            {{ route.name }}
+                        </a>
+                    </h5>
+                    <p class="card-text">
                         {{ route.short_description|default:route.description|truncatewords:15 }}
                     </p>
-                    
-                    <div class="mb-2">
-                        <span class="rating-stars">
-                            {% with rating=route.get_average_rating %}
-                            {% for i in "12345" %}
-                                {% if forloop.counter <= rating %}
-                                <i class="fas fa-star"></i>
-                                {% else %}
-                                <i class="far fa-star"></i>
-                                {% endif %}
-                            {% endfor %}
-                            {% endwith %}
-                        </span>
-                        <small class="text-muted">({{ route.ratings.count }})</small>
-                    </div>
-                    
-                    <div class="d-flex justify-content-between align-items-center mt-auto">
+
+                    <p class="card-text mb-1">
                         <small class="text-muted">
-                            <i class="fas fa-user"></i> {{ route.author.username }}
+                            Автор: {{ route.owner.username }} ·
+                            Приватность: {{ route.get_privacy_display }}
                         </small>
-                        <a href="{% url 'route_detail' route.id %}" class="btn btn-primary btn-sm">Смотреть</a>
+                    </p>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <a href="{% url 'route_detail' route.id %}" class="btn btn-sm btn-outline-secondary">
+                            Открыть
+                        </a>
+                        {% if user.is_authenticated %}
+                            {% with route=route %}
+                                {% include 'interactions/favorite_button.html' %}
+                            {% endwith %}
+                        {% endif %}
                     </div>
                 </div>
             </div>
-        </div>
         {% endfor %}
-    </div>
     {% else %}
-    <div class="text-center py-5">
-        <i class="fas fa-share-alt fa-3x text-muted mb-3"></i>
-        <h4>Нет доступных маршрутов</h4>
-        <p class="text-muted">Вам еще не предоставили доступ к приватным маршрутам</p>
-        <a href="{% url 'all_routes' %}" class="btn btn-primary">Смотреть публичные маршруты</a>
-    </div>
+        <p class="text-muted">Нет маршрутов, которыми с вами поделились.</p>
     {% endif %}
 </div>
 {% endblock %}

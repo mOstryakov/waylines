@@ -15,7 +15,16 @@ import json
 import math
 from .models import *
 from .forms import UserRegistrationForm, UserProfileForm
-from .models import Route, Friendship, RoutePoint, UserProfile, RouteFavorite, User, RouteRating, SavedPlace
+from .models import (
+    Route,
+    Friendship,
+    RoutePoint,
+    UserProfile,
+    RouteFavorite,
+    User,
+    RouteRating,
+    SavedPlace,
+)
 
 
 def home(request):
@@ -23,7 +32,9 @@ def home(request):
     # Популярные маршруты (по оценкам)
     popular_routes = (
         Route.objects.filter(privacy="public", is_active=True)
-        .annotate(avg_rating=Avg("ratings__rating"), rating_count=Count("ratings"))
+        .annotate(
+            avg_rating=Avg("ratings__rating"), rating_count=Count("ratings")
+        )
         .filter(avg_rating__isnull=False)
         .order_by("-avg_rating", "-rating_count")[:6]
     )
@@ -195,13 +206,23 @@ def create_route(request):
     if request.method == "POST":
         try:
             data = json.loads(request.body)
-            
+
             # Валидация обязательных полей
-            if not data.get('name'):
-                return JsonResponse({"success": False, "error": "Название маршрута обязательно"})
-            
-            if not data.get('points'):
-                return JsonResponse({"success": False, "error": "Добавьте хотя бы одну точку маршрута"})
+            if not data.get("name"):
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "error": "Название маршрута обязательно",
+                    }
+                )
+
+            if not data.get("points"):
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "error": "Добавьте хотя бы одну точку маршрута",
+                    }
+                )
 
             route = Route.objects.create(
                 author=request.user,
@@ -235,13 +256,22 @@ def create_route(request):
                 )
 
             return JsonResponse({"success": True, "route_id": route.id})
-            
+
         except json.JSONDecodeError:
-            return JsonResponse({"success": False, "error": "Неверный формат JSON"})
+            return JsonResponse(
+                {"success": False, "error": "Неверный формат JSON"}
+            )
         except KeyError as e:
-            return JsonResponse({"success": False, "error": f"Отсутствует обязательное поле: {str(e)}"})
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": f"Отсутствует обязательное поле: {str(e)}",
+                }
+            )
         except Exception as e:
-            return JsonResponse({"success": False, "error": f"Ошибка сервера: {str(e)}"})
+            return JsonResponse(
+                {"success": False, "error": f"Ошибка сервера: {str(e)}"}
+            )
 
     # GET запрос - показать форму
     context = {
@@ -277,8 +307,12 @@ def edit_route(request, route_id):
             route.duration_minutes = data.get(
                 "duration_minutes", route.duration_minutes
             )
-            route.total_distance = data.get("total_distance", route.total_distance)
-            route.has_audio_guide = data.get("has_audio_guide", route.has_audio_guide)
+            route.total_distance = data.get(
+                "total_distance", route.total_distance
+            )
+            route.has_audio_guide = data.get(
+                "has_audio_guide", route.has_audio_guide
+            )
             route.is_elderly_friendly = data.get(
                 "is_elderly_friendly", route.is_elderly_friendly
             )
@@ -421,7 +455,9 @@ def add_route_comment(request, route_id):
     if request.method == "POST":
         text = request.POST.get("text")
         if text:
-            RouteComment.objects.create(route=route, user=request.user, text=text)
+            RouteComment.objects.create(
+                route=route, user=request.user, text=text
+            )
             messages.success(request, "Комментарий добавлен")
 
     return redirect("route_detail", route_id=route_id)
@@ -435,7 +471,9 @@ def add_point_comment(request, point_id):
     if request.method == "POST":
         text = request.POST.get("text")
         if text:
-            PointComment.objects.create(point=point, user=request.user, text=text)
+            PointComment.objects.create(
+                point=point, user=request.user, text=text
+            )
             messages.success(request, "Комментарий добавлен")
 
     return redirect("route_detail", route_id=point.route.id)
@@ -535,7 +573,9 @@ def send_friend_request(request, user_id):
 @login_required
 def accept_friend_request(request, request_id):
     """Принятие запроса в друзья"""
-    friend_request = get_object_or_404(Friendship, id=request_id, to_user=request.user)
+    friend_request = get_object_or_404(
+        Friendship, id=request_id, to_user=request.user
+    )
     friend_request.status = "accepted"
     friend_request.save()
 
@@ -549,7 +589,9 @@ def accept_friend_request(request, request_id):
 @login_required
 def reject_friend_request(request, request_id):
     """Отклонение запроса в друзья"""
-    friend_request = get_object_or_404(Friendship, id=request_id, to_user=request.user)
+    friend_request = get_object_or_404(
+        Friendship, id=request_id, to_user=request.user
+    )
     friend_request.status = "rejected"
     friend_request.save()
 
@@ -597,7 +639,9 @@ def profile(request):
 def user_profile(request, username):
     """Публичный профиль пользователя"""
     user = get_object_or_404(User, username=username)
-    public_routes = Route.objects.filter(author=user, privacy="public", is_active=True)
+    public_routes = Route.objects.filter(
+        author=user, privacy="public", is_active=True
+    )
 
     context = {
         "profile_user": user,
@@ -619,7 +663,9 @@ def user_profile(request, username):
 @login_required
 def saved_places(request):
     """Управление сохраненными местами"""
-    places = SavedPlace.objects.filter(user=request.user).order_by("-created_at")
+    places = SavedPlace.objects.filter(user=request.user).order_by(
+        "-created_at"
+    )
 
     context = {
         "places": places,
@@ -658,33 +704,41 @@ def add_saved_place(request):
 
 # Карта всех точек
 def map_view(request):
-    routes = Route.objects.filter(privacy="public", is_active=True).prefetch_related('points')
-    routes_json = json.dumps([
-        {
-            "id": r.id,
-            "title": r.name,
-            "short_description": r.short_description,
-            "description": r.description,
-            "distance": r.total_distance,
-            "rating": r.get_average_rating() or 0,
-            "has_audio": r.has_audio_guide,
-            "difficulty": r.route_type,  # или отдельное поле
-            "category": {"name": r.theme} if r.theme else None,
-            "points": [
-                {
-                    "lat": p.latitude,
-                    "lng": p.longitude,
-                    "name": p.name,
-                    "address": p.address,
-                    "description": p.description,
-                    "order": p.order,
-                }
-                for p in r.points.all()
-            ]
-        }
-        for r in routes
-    ])
-    return render(request, "map/map_view.html", {"routes_json": routes_json, "routes": routes})
+    routes = Route.objects.filter(
+        privacy="public", is_active=True
+    ).prefetch_related("points")
+    routes_json = json.dumps(
+        [
+            {
+                "id": r.id,
+                "title": r.name,
+                "short_description": r.short_description,
+                "description": r.description,
+                "distance": r.total_distance,
+                "rating": r.get_average_rating() or 0,
+                "has_audio": r.has_audio_guide,
+                "difficulty": r.route_type,  # или отдельное поле
+                "category": {"name": r.theme} if r.theme else None,
+                "points": [
+                    {
+                        "lat": p.latitude,
+                        "lng": p.longitude,
+                        "name": p.name,
+                        "address": p.address,
+                        "description": p.description,
+                        "order": p.order,
+                    }
+                    for p in r.points.all()
+                ],
+            }
+            for r in routes
+        ]
+    )
+    return render(
+        request,
+        "map/map_view.html",
+        {"routes_json": routes_json, "routes": routes},
+    )
 
 
 # Вспомогательные функции
@@ -766,5 +820,3 @@ def logout_view(request):
     logout(request)
     messages.info(request, "Вы вышли из системы")
     return redirect("home")
-
-

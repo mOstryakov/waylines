@@ -112,7 +112,9 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "total_distance",
-                    models.FloatField(default=0, verbose_name="Общее расстояние (км)"),
+                    models.FloatField(
+                        default=0, verbose_name="Общее расстояние (км)"
+                    ),
                 ),
                 (
                     "is_active",
@@ -120,19 +122,27 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "has_audio_guide",
-                    models.BooleanField(default=False, verbose_name="Есть аудиогид"),
+                    models.BooleanField(
+                        default=False, verbose_name="Есть аудиогид"
+                    ),
                 ),
                 (
                     "is_elderly_friendly",
-                    models.BooleanField(default=False, verbose_name="Для пожилых"),
+                    models.BooleanField(
+                        default=False, verbose_name="Для пожилых"
+                    ),
                 ),
                 (
                     "created_at",
-                    models.DateTimeField(auto_now_add=True, verbose_name="Создан"),
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Создан"
+                    ),
                 ),
                 (
                     "updated_at",
-                    models.DateTimeField(auto_now=True, verbose_name="Обновлён"),
+                    models.DateTimeField(
+                        auto_now=True, verbose_name="Обновлён"
+                    ),
                 ),
                 (
                     "last_status_update",
@@ -181,11 +191,15 @@ class Migration(migrations.Migration):
                 ("text", models.TextField(verbose_name="Текст комментария")),
                 (
                     "created_at",
-                    models.DateTimeField(auto_now_add=True, verbose_name="Создан"),
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Создан"
+                    ),
                 ),
                 (
                     "updated_at",
-                    models.DateTimeField(auto_now=True, verbose_name="Обновлён"),
+                    models.DateTimeField(
+                        auto_now=True, verbose_name="Обновлён"
+                    ),
                 ),
                 (
                     "route",
@@ -225,7 +239,9 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "image",
-                    models.ImageField(upload_to="route_photos/", verbose_name="Фото"),
+                    models.ImageField(
+                        upload_to="route_photos/", verbose_name="Фото"
+                    ),
                 ),
                 (
                     "caption",
@@ -235,11 +251,15 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "order",
-                    models.PositiveIntegerField(default=0, verbose_name="Порядок"),
+                    models.PositiveIntegerField(
+                        default=0, verbose_name="Порядок"
+                    ),
                 ),
                 (
                     "created_at",
-                    models.DateTimeField(auto_now_add=True, verbose_name="Создано"),
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Создано"
+                    ),
                 ),
                 (
                     "route",
@@ -303,7 +323,9 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "elevation",
-                    models.FloatField(blank=True, null=True, verbose_name="Высота"),
+                    models.FloatField(
+                        blank=True, null=True, verbose_name="Высота"
+                    ),
                 ),
                 (
                     "category",
@@ -337,15 +359,21 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "tags",
-                    models.JSONField(blank=True, default=list, verbose_name="Теги"),
+                    models.JSONField(
+                        blank=True, default=list, verbose_name="Теги"
+                    ),
                 ),
                 (
                     "order",
-                    models.PositiveIntegerField(default=0, verbose_name="Порядок"),
+                    models.PositiveIntegerField(
+                        default=0, verbose_name="Порядок"
+                    ),
                 ),
                 (
                     "has_panorama",
-                    models.BooleanField(default=False, verbose_name="Есть панорама"),
+                    models.BooleanField(
+                        default=False, verbose_name="Есть панорама"
+                    ),
                 ),
                 (
                     "audio_guide",
@@ -358,7 +386,9 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "created_at",
-                    models.DateTimeField(auto_now_add=True, verbose_name="Создано"),
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Создано"
+                    ),
                 ),
                 (
                     "route",
@@ -390,7 +420,9 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "image",
-                    models.ImageField(upload_to="point_photos/", verbose_name="Фото"),
+                    models.ImageField(
+                        upload_to="point_photos/", verbose_name="Фото"
+                    ),
                 ),
                 (
                     "caption",
@@ -400,11 +432,15 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "order",
-                    models.PositiveIntegerField(default=0, verbose_name="Порядок"),
+                    models.PositiveIntegerField(
+                        default=0, verbose_name="Порядок"
+                    ),
                 ),
                 (
                     "created_at",
-                    models.DateTimeField(auto_now_add=True, verbose_name="Создано"),
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Создано"
+                    ),
                 ),
                 (
                     "point",
@@ -437,11 +473,15 @@ class Migration(migrations.Migration):
                 ("text", models.TextField(verbose_name="Текст комментария")),
                 (
                     "created_at",
-                    models.DateTimeField(auto_now_add=True, verbose_name="Создан"),
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Создан"
+                    ),
                 ),
                 (
                     "updated_at",
-                    models.DateTimeField(auto_now=True, verbose_name="Обновлён"),
+                    models.DateTimeField(
+                        auto_now=True, verbose_name="Обновлён"
+                    ),
                 ),
                 (
                     "user",
@@ -528,7 +568,9 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "created_at",
-                    models.DateTimeField(auto_now_add=True, verbose_name="Создано"),
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Создано"
+                    ),
                 ),
                 (
                     "user",
@@ -579,11 +621,15 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "created_at",
-                    models.DateTimeField(auto_now_add=True, verbose_name="Создан"),
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Создан"
+                    ),
                 ),
                 (
                     "updated_at",
-                    models.DateTimeField(auto_now=True, verbose_name="Обновлён"),
+                    models.DateTimeField(
+                        auto_now=True, verbose_name="Обновлён"
+                    ),
                 ),
                 (
                     "user",
@@ -662,7 +708,9 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "created_at",
-                    models.DateTimeField(auto_now_add=True, verbose_name="Добавлено"),
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Добавлено"
+                    ),
                 ),
                 (
                     "route",
@@ -716,7 +764,9 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "created_at",
-                    models.DateTimeField(auto_now_add=True, verbose_name="Создано"),
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Создано"
+                    ),
                 ),
                 (
                     "route",
@@ -756,7 +806,9 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "visited_at",
-                    models.DateTimeField(auto_now_add=True, verbose_name="Посещено"),
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Посещено"
+                    ),
                 ),
                 (
                     "point",

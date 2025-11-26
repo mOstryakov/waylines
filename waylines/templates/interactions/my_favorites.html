@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Мои избранные маршруты</h1>
+
+{% if favorites %}
+    {% for favorite in favorites %}
+        <div class="route-card">
+            <h3><a href="{% url 'route_detail' favorite.route.id %}">{{ favorite.route.name }}</a></h3>
+            <p>Добавлено: {{ favorite.created_at|date:"d.m.Y H:i" }}</p>
+        </div>
+    {% endfor %}
+{% else %}
+    <p>У вас пока нет избранных маршрутов</p>
+{% endif %}
+{% endblock %}
