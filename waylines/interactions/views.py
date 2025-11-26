@@ -19,7 +19,11 @@ def toggle_favorite(request, route_id):
     else:
         messages.success(request, "Добавлено в избранное")
 
-    return redirect(request.META.get("HTTP_REFERER", reverse("route_detail", args=[route_id])))
+    return redirect(
+        request.META.get(
+            "HTTP_REFERER", reverse("route_detail", args=[route_id])
+        )
+    )
 
 
 @login_required
@@ -34,7 +38,11 @@ def add_rating(request, route_id):
             )
             messages.success(request, f"Вы поставили оценку {score}")
 
-    return redirect(request.META.get("HTTP_REFERER", reverse("route_detail", args=[route_id])))
+    return redirect(
+        request.META.get(
+            "HTTP_REFERER", reverse("route_detail", args=[route_id])
+        )
+    )
 
 
 @login_required
@@ -57,7 +65,11 @@ def add_comment(request, route_id):
         else:
             messages.error(request, "Комментарий не может быть пустым")
 
-    return redirect(request.META.get("HTTP_REFERER", reverse("route_detail", args=[route_id])))
+    return redirect(
+        request.META.get(
+            "HTTP_REFERER", reverse("route_detail", args=[route_id])
+        )
+    )
 
 
 @login_required
@@ -66,4 +78,8 @@ def delete_comment(request, comment_id):
     route_id = comment.route.id
     comment.delete()
     messages.success(request, "Комментарий удален")
-    return redirect(request.META.get("HTTP_REFERER", reverse("route_detail", args=[route_id])))
+    return redirect(
+        request.META.get(
+            "HTTP_REFERER", reverse("route_detail", args=[route_id])
+        )
+    )

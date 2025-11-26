@@ -44,7 +44,7 @@ class Rating(models.Model):
         verbose_name="Маршрут",
     )
     score = models.PositiveIntegerField(
-        choices=[(i, f'{i}') for i in range(1, 6)], verbose_name="Оценка"
+        choices=[(i, f"{i}") for i in range(1, 6)], verbose_name="Оценка"
     )
     created_at = models.DateTimeField(
         auto_now_add=True, verbose_name="Дата создания"
