@@ -3,6 +3,7 @@ from django.dispatch import receiver
 from routes.models import Route
 from .models import RouteChat
 
+
 @receiver(post_save, sender=Route)
 def create_route_chat(sender, instance, created, **kwargs):
     """Автоматически создаем чат при создании маршрута"""

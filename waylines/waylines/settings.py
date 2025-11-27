@@ -20,7 +20,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-r0#y!8!8l2+hqss+926&ke408+6n=xp=zir+0xz31ig6lq9fjp"
+SECRET_KEY = (
+    "django-insecure-r0#y!8!8l2+hqss+926&ke408+6n=xp=zir+0xz31ig6lq9fjp"
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -40,6 +42,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "routes.apps.RoutesConfig",
     "chat.apps.ChatConfig",
+    "interactions.apps.InteractionsConfig",
 ]
 
 MIDDLEWARE = [
@@ -71,11 +74,11 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "waylines.wsgi.application"
-ASGI_APPLICATION = 'waylines.asgi.application'
+ASGI_APPLICATION = "waylines.asgi.application"
 
 CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
     },
 }
 

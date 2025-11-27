@@ -1,0 +1,31 @@
+<div class="comments-section">
+    <h3>Комментарии ({{ route.interaction_comments.count }})</h3>
+    
+    {% if user.is_authenticated %}
+    <form method="post" action="{% url 'interactions:add_comment' route.id %}" class="comment-form">
+        {% csrf_token %}
+        <textarea name="text" rows="3" placeholder="Напишите комментарий..." required></textarea>
+        <button type="submit" class="btn-comment">Отправить</button>
+    </form>
+    {% endif %}
+    
+    <div class="comments-list">
+        {% for comment in route.interaction_comments.all %}
+        <div class="comment">
+            <div class="comment-header">
+                <strong>{{ comment.user.username }}</strong>
+                <span class="comment-date">{{ comment.created_at|date:"d.m.Y H:i" }}</span>
+            </div>
+            <p class="comment-text">{{ comment.text }}</p>
+            {% if comment.user == request.user %}
+            <form method="post" action="{% url 'interactions:delete_comment' comment.id %}" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn-delete-comment">Удалить</button>
+            </form>
+            {% endif %}
+        </div>
+        {% empty %}
+        <p class="no-comments">Комментариев пока нет</p>
+        {% endfor %}
+    </div>
+</div>

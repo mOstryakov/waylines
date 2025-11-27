@@ -21,7 +21,9 @@ class Friendship(models.Model):
         related_name="friendship_requests_received",
         on_delete=models.CASCADE,
     )
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default="pending"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -32,7 +34,9 @@ class Friendship(models.Model):
 
 
 class UserProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name="profile"
+    )
     bio = models.TextField("О себе", blank=True)
     avatar = models.ImageField("Аватар", upload_to="avatars/", blank=True)
     location = models.CharField("Местоположение", max_length=100, blank=True)
@@ -90,7 +94,9 @@ class Route(models.Model):
     )
     name = models.CharField("Название", max_length=200)
     description = models.TextField("Описание", blank=True)
-    short_description = models.TextField("Краткое описание", max_length=300, blank=True)
+    short_description = models.TextField(
+        "Краткое описание", max_length=300, blank=True
+    )
     privacy = models.CharField(
         "Приватность", max_length=20, choices=PRIVACY_CHOICES, default="public"
     )
@@ -103,8 +109,12 @@ class Route(models.Model):
     mood = models.CharField(
         "Настроение", max_length=20, choices=MOOD_CHOICES, blank=True
     )
-    theme = models.CharField("Тема", max_length=20, choices=THEME_CHOICES, blank=True)
-    duration_minutes = models.IntegerField("Продолжительность (минут)", default=0)
+    theme = models.CharField(
+        "Тема", max_length=20, choices=THEME_CHOICES, blank=True
+    )
+    duration_minutes = models.IntegerField(
+        "Продолжительность (минут)", default=0
+    )
     total_distance = models.FloatField("Общее расстояние (км)", default=0)
     is_active = models.BooleanField("Актуален", default=True)
     has_audio_guide = models.BooleanField("Есть аудиогид", default=False)
@@ -240,7 +250,9 @@ class RoutePoint(models.Model):
     category = models.CharField(
         "Категория", max_length=20, choices=CATEGORY_CHOICES, blank=True
     )
-    hint_author = models.CharField("Автор подсказки", max_length=100, blank=True)
+    hint_author = models.CharField(
+        "Автор подсказки", max_length=100, blank=True
+    )
     tags = models.JSONField("Теги", default=list, blank=True)
     order = models.PositiveIntegerField("Порядок", default=0)
     has_panorama = models.BooleanField("Есть панорама", default=False)
