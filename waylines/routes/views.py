@@ -24,7 +24,6 @@ def home(request):
         .order_by("-avg_rating", "-rating_count")[:6]
     )
 
-    # Статистика по категориям
     context = {
         "popular_routes": popular_routes,
         "walking_count": Route.objects.filter(
