@@ -7,4 +7,4 @@ class ChatConfig(AppConfig):
     verbose_name = "Чат"
 
     def ready(self):
-        import chat.signals
+        pass

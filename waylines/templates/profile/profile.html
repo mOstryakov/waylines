@@ -12,30 +12,30 @@
                 <div class="card-body text-center">
                     <!-- Аватар -->
                     <div class="mb-3">
-                        {% if user.profile.avatar %}
-                        <img src="{{ user.profile.avatar.url }}" class="rounded-circle" 
+                        {% if profile.avatar %}  <!-- ИЗМЕНИТЬ ЗДЕСЬ -->
+                        <img src="{{ profile.avatar.url }}" class="rounded-circle"
                              style="width: 120px; height: 120px; object-fit: cover;" alt="{{ user.username }}">
                         {% else %}
-                        <div class="rounded-circle bg-light d-flex align-items-center justify-content-center mx-auto" 
+                        <div class="rounded-circle bg-light d-flex align-items-center justify-content-center mx-auto"
                              style="width: 120px; height: 120px;">
                             <i class="fas fa-user fa-3x text-muted"></i>
                         </div>
                         {% endif %}
                     </div>
-                    
+
                     <h4 class="card-title">{{ user.username }}</h4>
-                    
-                    {% if user.profile.bio %}
-                    <p class="card-text text-muted">{{ user.profile.bio }}</p>
+
+                    {% if profile.bio %}  <!-- ИЗМЕНИТЬ ЗДЕСЬ -->
+                    <p class="card-text text-muted">{{ profile.bio }}</p>  <!-- ИЗМЕНИТЬ ЗДЕСЬ -->
                     {% endif %}
-                    
-                    {% if user.profile.location %}
+
+                    {% if profile.location %}  <!-- ИЗМЕНИТЬ ЗДЕСЬ -->
                     <p class="card-text">
-                        <i class="fas fa-map-marker-alt text-muted"></i> 
-                        {{ user.profile.location }}
+                        <i class="fas fa-map-marker-alt text-muted"></i>
+                        {{ profile.location }}  <!-- ИЗМЕНИТЬ ЗДЕСЬ -->
                     </p>
                     {% endif %}
-                    
+
                     <div class="d-flex justify-content-center gap-3 mb-3">
                         <div class="text-center">
                             <div class="h5 mb-0">{{ user.routes.count }}</div>
@@ -50,7 +50,7 @@
                             <small class="text-muted">Км пройдено</small>
                         </div>
                     </div>
-                    
+
                     <div class="d-grid gap-2">
                         <a href="{% url 'user_profile' user.username %}" class="btn btn-outline-primary">
                             <i class="fas fa-eye"></i> Публичный профиль
@@ -94,7 +94,7 @@
                 <div class="card-body">
                     <form method="post" enctype="multipart/form-data">
                         {% csrf_token %}
-                        
+
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
@@ -114,7 +114,7 @@
                         <div class="mb-3">
                             <label class="form-label">Аватар</label>
                             <input type="file" class="form-control" name="avatar" accept="image/*">
-                            {% if user.profile.avatar %}
+                            {% if profile.avatar %}  <!-- ИЗМЕНИТЬ ЗДЕСЬ -->
                             <div class="form-text">
                                 <a href="#" onclick="document.querySelector('input[name=avatar]').value=''; return false;">
                                     Удалить текущий аватар
@@ -125,23 +125,23 @@
 
                         <div class="mb-3">
                             <label class="form-label">О себе</label>
-                            <textarea name="bio" class="form-control" rows="4" 
-                                      placeholder="Расскажите о себе...">{{ user.profile.bio }}</textarea>
+                            <textarea name="bio" class="form-control" rows="4"
+                                      placeholder="Расскажите о себе...">{{ profile.bio }}</textarea>  <!-- ИЗМЕНИТЬ ЗДЕСЬ -->
                         </div>
 
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label class="form-label">Местоположение</label>
-                                    <input type="text" name="location" class="form-control" 
-                                           value="{{ user.profile.location }}" placeholder="Город, страна">
+                                    <input type="text" name="location" class="form-control"
+                                           value="{{ profile.location }}" placeholder="Город, страна">  <!-- ИЗМЕНИТЬ ЗДЕСЬ -->
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label class="form-label">Веб-сайт</label>
-                                    <input type="url" name="website" class="form-control" 
-                                           value="{{ user.profile.website }}" placeholder="https://...">
+                                    <input type="url" name="website" class="form-control"
+                                           value="{{ profile.website }}" placeholder="https://...">  <!-- ИЗМЕНИТЬ ЗДЕСЬ -->
                                 </div>
                             </div>
                         </div>

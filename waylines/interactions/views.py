@@ -1,9 +1,10 @@
-from django.shortcuts import get_object_or_404, redirect, render
-from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from routes.models import Route
+
 from interactions.models import Comment, Favorite, Rating
+from routes.models import Route
 
 
 @login_required

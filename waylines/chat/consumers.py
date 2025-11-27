@@ -1,11 +1,12 @@
 import json
-import asyncio
-from channels.generic.websocket import AsyncWebsocketConsumer
+
 from channels.db import database_sync_to_async
+from channels.generic.websocket import AsyncWebsocketConsumer
 from django.contrib.auth.models import AnonymousUser
-from .models import Conversation, PrivateMessage, RouteChat, RouteChatMessage
-from routes.models import Route
 from django.utils import timezone
+
+from routes.models import Route
+from .models import Conversation, PrivateMessage, RouteChat, RouteChatMessage
 
 
 class PrivateChatConsumer(AsyncWebsocketConsumer):

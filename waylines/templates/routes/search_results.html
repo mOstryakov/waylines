@@ -1,0 +1,825 @@
+{% extends 'base.html' %}
+
+{% block title %}Результаты поиска - Waylines{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Заголовок и управление -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <h1 class="h3 fw-bold text-dark mb-2">Результаты поиска</h1>
+                    <p class="text-muted">
+                        {% if query %}
+                            По запросу "{{ query }}"
+                        {% else %}
+                            Все маршруты
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <!-- Сортировка -->
+                    <div class="sort-container">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-light border-0 text-muted">
+                                <i class="fas fa-sort"></i>
+                            </span>
+                            <select class="form-select form-select-sm border-0 bg-light" id="sort-select" style="width: 160px;">
+                                <option value="newest">Сначала новые</option>
+                                <option value="oldest">Сначала старые</option>
+                                <option value="distance_asc">Дистанция ↑</option>
+                                <option value="distance_desc">Дистанция ↓</option>
+                                <option value="name_asc">Название А-Я</option>
+                                <option value="name_desc">Название Я-А</option>
+                                <option value="rating_desc">По рейтингу</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Счетчик -->
+                    <div class="routes-counter">
+                        <span class="counter-badge" id="routes-count">
+                            {{ routes|length }} маршрут{{ routes|length|pluralize:"ов" }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="filters-container">
+                <div class="filters-header">
+                    <div class="d-flex align-items-center gap-3 w-100">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-filter text-muted me-2"></i>
+                            <span class="text-muted small fw-semibold">Фильтры:</span>
+                        </div>
+
+                        <!-- Кнопка сброса внутри заголовка -->
+                        <button class="btn-clear-filters ms-auto" onclick="clearFilters()">
+                            <i class="fas fa-undo-alt me-1"></i>
+                            <span>Сбросить</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="filters-group">
+                    <!-- Тип маршрута -->
+                    <div class="filter-section">
+                        <div class="filter-label">Тип маршрута</div>
+                        <div class="filter-options">
+                            <input type="radio" class="btn-check" name="route_type" id="type-all" value="" checked>
+                            <label class="filter-option" for="type-all">
+                                <span>Все</span>
+                            </label>
+
+                            <input type="radio" class="btn-check" name="route_type" id="type-walking" value="walking">
+                            <label class="filter-option type-walking" for="type-walking">
+                                <i class="fas fa-walking me-1"></i>
+                                <span>Пешие</span>
+                            </label>
+
+                            <input type="radio" class="btn-check" name="route_type" id="type-driving" value="driving">
+                            <label class="filter-option type-driving" for="type-driving">
+                                <i class="fas fa-car me-1"></i>
+                                <span>Авто</span>
+                            </label>
+
+                            <input type="radio" class="btn-check" name="route_type" id="type-cycling" value="cycling">
+                            <label class="filter-option type-cycling" for="type-cycling">
+                                <i class="fas fa-bicycle me-1"></i>
+                                <span>Вело</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Сложность -->
+                    <div class="filter-section">
+                        <div class="filter-label">Сложность</div>
+                        <div class="filter-options">
+                            <input type="radio" class="btn-check" name="difficulty" id="difficulty-all" value="" checked>
+                            <label class="filter-option" for="difficulty-all">
+                                <span>Все</span>
+                            </label>
+
+                            <input type="radio" class="btn-check" name="difficulty" id="difficulty-easy" value="easy">
+                            <label class="filter-option difficulty-easy" for="difficulty-easy">
+                                <i class="fas fa-walking me-1"></i>
+                                <span>Лёгкие</span>
+                            </label>
+
+                            <input type="radio" class="btn-check" name="difficulty" id="difficulty-medium" value="medium">
+                            <label class="filter-option difficulty-medium" for="difficulty-medium">
+                                <i class="fas fa-hiking me-1"></i>
+                                <span>Средние</span>
+                            </label>
+
+                            <input type="radio" class="btn-check" name="difficulty" id="difficulty-hard" value="hard">
+                            <label class="filter-option difficulty-hard" for="difficulty-hard">
+                                <i class="fas fa-mountain me-1"></i>
+                                <span>Сложные</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Дистанция -->
+                    <div class="filter-section">
+                        <div class="filter-label">Дистанция</div>
+                        <div class="filter-options">
+                            <input type="radio" class="btn-check" name="distance" id="distance-all" value="" checked>
+                            <label class="filter-option" for="distance-all">
+                                <span>Любая</span>
+                            </label>
+
+                            <input type="radio" class="btn-check" name="distance" id="distance-short" value="short">
+                            <label class="filter-option distance-short" for="distance-short">
+                                <span>до 5км</span>
+                            </label>
+
+                            <input type="radio" class="btn-check" name="distance" id="distance-medium" value="medium">
+                            <label class="filter-option distance-medium" for="distance-medium">
+                                <span>5-15км</span>
+                            </label>
+
+                            <input type="radio" class="btn-check" name="distance" id="distance-long" value="long">
+                            <label class="filter-option distance-long" for="distance-long">
+                                <span>15+ км</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Настроение -->
+                    <div class="filter-section">
+                        <div class="filter-label">Настроение</div>
+                        <div class="filter-options">
+                            <input type="radio" class="btn-check" name="mood" id="mood-all" value="" checked>
+                            <label class="filter-option" for="mood-all">
+                                <span>Все</span>
+                            </label>
+
+                            <input type="radio" class="btn-check" name="mood" id="mood-adventure" value="adventure">
+                            <label class="filter-option mood-adventure" for="mood-adventure">
+                                <i class="fas fa-compass me-1"></i>
+                                <span>Приключение</span>
+                            </label>
+
+                            <input type="radio" class="btn-check" name="mood" id="mood-relax" value="relax">
+                            <label class="filter-option mood-relax" for="mood-relax">
+                                <i class="fas fa-spa me-1"></i>
+                                <span>Отдых</span>
+                            </label>
+
+                            <input type="radio" class="btn-check" name="mood" id="mood-romantic" value="romantic">
+                            <label class="filter-option mood-romantic" for="mood-romantic">
+                                <i class="fas fa-heart me-1"></i>
+                                <span>Романтика</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if routes %}
+    <!-- Сетка маршрутов -->
+    <div class="row g-3" id="routes-container">
+        {% for route in routes %}
+        <div class="col-12 col-md-6 col-lg-4 route-item"
+             data-difficulty="{{ route.difficulty_level|default:'easy'|lower }}"
+             data-distance="{{ route.total_distance|default:0 }}"
+             data-route_type="{{ route.route_type|lower }}"
+             data-mood="{{ route.mood|default:''|lower }}"
+             data-rating="{{ route.get_average_rating|default:0 }}"
+             data-created="{{ route.created_at|date:'U' }}"
+             data-name="{{ route.name|lower }}">
+            <div class="card route-card h-100 border-0 shadow-sm">
+                <!-- Бейдж типа маршрута -->
+                <div class="position-absolute top-0 start-0 m-2">
+                    <span class="badge {% if route.route_type == 'walking' %}bg-primary{% elif route.route_type == 'driving' %}bg-success{% elif route.route_type == 'cycling' %}bg-warning{% else %}bg-secondary{% endif %} bg-opacity-10 text-{% if route.route_type == 'walking' %}primary{% elif route.route_type == 'driving' %}success{% elif route.route_type == 'cycling' %}warning{% else %}secondary{% endif %} border-0 small">
+                        {{ route.get_route_type_display }}
+                    </span>
+                </div>
+
+                <!-- Рейтинг -->
+                <div class="position-absolute top-0 end-0 m-2">
+                    {% if route.get_average_rating %}
+                    <span class="badge bg-warning bg-opacity-10 text-warning border-0 small">
+                        <i class="fas fa-star me-1"></i>{{ route.get_average_rating|floatformat:1 }}
+                    </span>
+                    {% endif %}
+                </div>
+
+                <!-- Картинка маршрута -->
+                <div class="card-img-top-container position-relative">
+                    {% if route.image %}
+                    <img src="{{ route.image.url }}" class="card-img-top route-image" alt="{{ route.name }}" style="height: 200px; object-fit: cover;">
+                    {% else %}
+                    <div class="card-img-top route-image-placeholder d-flex align-items-center justify-content-center bg-light" style="height: 200px;">
+                        <i class="fas fa-route fa-2x text-muted"></i>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Контент карточки -->
+                <div class="card-body">
+                    <h6 class="card-title fw-bold mb-2">{{ route.name }}</h6>
+
+                    <p class="card-text text-muted small mb-3">
+                        {{ route.short_description|default:route.description|truncatewords:15 }}
+                    </p>
+
+                    <!-- Статистика маршрута -->
+                    <div class="route-stats mb-3">
+                        <div class="row g-2 text-center small">
+                            {% if route.total_distance %}
+                            <div class="col-4">
+                                <div class="text-dark fw-semibold">{{ route.total_distance }} км</div>
+                                <div class="text-muted">Дистанция</div>
+                            </div>
+                            {% endif %}
+
+                            {% if route.duration_minutes %}
+                            <div class="col-4">
+                                <div class="text-dark fw-semibold">{{ route.duration_minutes|divisibleby:60|yesno:route.duration_minutes|add:"0 мин" }}</div>
+                                <div class="text-muted">Время</div>
+                            </div>
+                            {% endif %}
+
+                            <div class="col-4">
+                                <div class="text-dark fw-semibold">{{ route.difficulty_level|default:"Лёгкий" }}</div>
+                                <div class="text-muted">Сложность</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Автор и дата -->
+                    <div class="d-flex align-items-center justify-content-between text-muted small">
+                        <span>@{{ route.author.username }}</span>
+                        <span>{{ route.created_at|date:"d.m.Y" }}</span>
+                    </div>
+
+                    <!-- Действия -->
+                    <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+                        <a href="{% url 'route_detail' route.id %}" class="btn btn-outline-primary btn-sm">
+                            Открыть
+                        </a>
+                        <div class="d-flex align-items-center gap-1">
+                            {% if user.is_authenticated %}
+                                {% with route=route %}
+                                    {% include 'interactions/favorite_button.html' %}
+                                {% endwith %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <!-- Состояние пустого списка -->
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-6 text-center py-5">
+            <div class="text-muted mb-4">
+                <i class="fas fa-search fa-3x mb-3"></i>
+            </div>
+            <h5 class="fw-bold text-dark mb-3">Маршруты не найдены</h5>
+            <p class="text-muted mb-4">
+                {% if query %}
+                    По вашему запросу "{{ query }}" ничего не найдено. Попробуйте изменить критерии поиска.
+                {% else %}
+                    Не найдено маршрутов, соответствующих выбранным фильтрам.
+                {% endif %}
+            </p>
+            <div class="d-flex gap-2 justify-content-center">
+                <a href="{% url 'all_routes' %}" class="btn btn-primary btn-sm">
+                    Все маршруты
+                </a>
+                <a href="{% url 'create_route' %}" class="btn btn-outline-secondary btn-sm">
+                    Создать маршрут
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Основные стили карточек */
+.route-card {
+    transition: all 0.2s ease;
+    border-radius: 12px;
+}
+
+.route-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+.card-img-top-container {
+    border-radius: 12px 12px 0 0;
+    overflow: hidden;
+}
+
+.route-image {
+    transition: transform 0.3s ease;
+}
+
+.route-card:hover .route-image {
+    transform: scale(1.05);
+}
+
+.route-stats {
+    border-top: 1px solid #f8f9fa;
+    border-bottom: 1px solid #f8f9fa;
+    padding: 12px 0;
+}
+
+.route-item {
+    transition: all 0.3s ease;
+}
+
+.route-item.hidden {
+    display: none;
+}
+
+/* Стили для сортировки */
+.sort-container {
+    position: relative;
+}
+
+.sort-container .input-group {
+    border-radius: 10px;
+    background: #f8f9fa;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.sort-container .input-group:focus-within {
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+}
+
+.sort-container .input-group-text {
+    border-radius: 10px 0 0 10px;
+    background: transparent;
+}
+
+.sort-container .form-select {
+    border-radius: 0 10px 10px 0;
+    background: transparent;
+    border: none;
+    box-shadow: none !important;
+}
+
+/* Счетчик */
+.routes-counter {
+    display: flex;
+    align-items: center;
+}
+
+.counter-badge {
+    background: #f8f9fa;
+    color: #6c757d;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: 1px solid #dee2e6;
+}
+
+/* Контейнер фильтров */
+.filters-container {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 16px 20px;
+    border: 1px solid #e9ecef;
+}
+
+.filters-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.filters-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+}
+
+.filter-section {
+    flex: 1;
+    min-width: 200px;
+}
+
+.filter-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #6c757d;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.filter-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.filter-option {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 12px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #6c757d;
+}
+
+.filter-option:hover {
+    border-color: #007bff;
+    color: #007bff;
+    transform: translateY(-1px);
+}
+
+.btn-check:checked + .filter-option {
+    background: #007bff;
+    border-color: #007bff;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+}
+
+/* Специфичные стили для фильтров типа маршрута */
+.type-walking:hover,
+.btn-check:checked + .type-walking {
+    background: #007bff;
+    border-color: #007bff;
+    color: white;
+}
+
+.type-driving:hover,
+.btn-check:checked + .type-driving {
+    background: #28a745;
+    border-color: #28a745;
+    color: white;
+}
+
+.type-cycling:hover,
+.btn-check:checked + .type-cycling {
+    background: #ffc107;
+    border-color: #ffc107;
+    color: #212529;
+}
+
+/* Специфичные стили для фильтров сложности */
+.difficulty-easy:hover,
+.btn-check:checked + .difficulty-easy {
+    background: #28a745;
+    border-color: #28a745;
+    color: white;
+}
+
+.difficulty-medium:hover,
+.btn-check:checked + .difficulty-medium {
+    background: #fd7e14;
+    border-color: #fd7e14;
+    color: white;
+}
+
+.difficulty-hard:hover,
+.btn-check:checked + .difficulty-hard {
+    background: #dc3545;
+    border-color: #dc3545;
+    color: white;
+}
+
+/* Стили для фильтров дистанции */
+.distance-short:hover,
+.btn-check:checked + .distance-short {
+    background: #6f42c1;
+    border-color: #6f42c1;
+    color: white;
+}
+
+.distance-medium:hover,
+.btn-check:checked + .distance-medium {
+    background: #e83e8c;
+    border-color: #e83e8c;
+    color: white;
+}
+
+.distance-long:hover,
+.btn-check:checked + .distance-long {
+    background: #20c997;
+    border-color: #20c997;
+    color: white;
+}
+
+/* Стили для фильтров настроения */
+.mood-adventure:hover,
+.btn-check:checked + .mood-adventure {
+    background: #dc3545;
+    border-color: #dc3545;
+    color: white;
+}
+
+.mood-relax:hover,
+.btn-check:checked + .mood-relax {
+    background: #17a2b8;
+    border-color: #17a2b8;
+    color: white;
+}
+
+.mood-romantic:hover,
+.btn-check:checked + .mood-romantic {
+    background: #e83e8c;
+    border-color: #e83e8c;
+    color: white;
+}
+
+/* Кнопка сброса */
+.btn-clear-filters {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    background: transparent;
+    border: 1px solid #6c757d;
+    border-radius: 6px;
+    color: #6c757d;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.btn-clear-filters:hover {
+    background: #6c757d;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(108, 117, 125, 0.3);
+}
+
+/* Анимации */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.route-item {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .container-fluid {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .route-card {
+        margin-bottom: 1rem;
+    }
+
+    .filters-group {
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .filter-section {
+        min-width: 100%;
+    }
+
+    .filter-options {
+        justify-content: flex-start;
+    }
+
+    .filters-container {
+        padding: 12px 16px;
+    }
+
+    .sort-container {
+        width: 100%;
+        margin-bottom: 1rem;
+    }
+
+    .sort-container .input-group {
+        width: 100%;
+    }
+
+    .routes-counter {
+        justify-content: center;
+    }
+
+    .filters-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .btn-clear-filters {
+        align-self: flex-end;
+        margin-top: -8px;
+    }
+}
+
+@media (max-width: 576px) {
+    .filter-option {
+        flex: 1;
+        min-width: 80px;
+        justify-content: center;
+    }
+
+    .filters-header {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .btn-clear-filters {
+        margin-top: 0;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+class RouteFilter {
+    constructor() {
+        this.filters = {
+            route_type: '',
+            difficulty: '',
+            distance: '',
+            mood: ''
+        };
+        this.sortBy = 'newest';
+        this.init();
+    }
+
+    init() {
+        document.querySelectorAll('input[name="route_type"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                this.filters.route_type = e.target.value;
+                this.applyFilters();
+            });
+        });
+
+        document.querySelectorAll('input[name="difficulty"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                this.filters.difficulty = e.target.value;
+                this.applyFilters();
+            });
+        });
+
+        document.querySelectorAll('input[name="distance"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                this.filters.distance = e.target.value;
+                this.applyFilters();
+            });
+        });
+
+        document.querySelectorAll('input[name="mood"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                this.filters.mood = e.target.value;
+                this.applyFilters();
+            });
+        });
+
+        document.getElementById('sort-select').addEventListener('change', (e) => {
+            this.sortBy = e.target.value;
+            this.applyFilters();
+        });
+    }
+
+    applyFilters() {
+        const routes = document.querySelectorAll('.route-item');
+        let visibleCount = 0;
+
+        routes.forEach(route => {
+            const route_type = route.dataset.route_type;
+            const difficulty = route.dataset.difficulty;
+            const distance = parseFloat(route.dataset.distance) || 0;
+            const mood = route.dataset.mood;
+
+            const routeTypeMatch = !this.filters.route_type ||
+                route_type === this.filters.route_type;
+
+            const difficultyMatch = !this.filters.difficulty ||
+                this.getDifficultyLevel(difficulty) === this.filters.difficulty;
+
+            const distanceMatch = !this.filters.distance ||
+                this.checkDistanceFilter(distance, this.filters.distance);
+
+            const moodMatch = !this.filters.mood ||
+                mood === this.filters.mood;
+
+            if (routeTypeMatch && difficultyMatch && distanceMatch && moodMatch) {
+                route.classList.remove('hidden');
+                visibleCount++;
+            } else {
+                route.classList.add('hidden');
+            }
+        });
+
+        this.sortRoutes();
+        this.updateRoutesCount(visibleCount);
+    }
+
+    getDifficultyLevel(difficulty) {
+        const levels = {
+            'легкий': 'easy',
+            'средний': 'medium',
+            'сложный': 'hard',
+            'easy': 'easy',
+            'medium': 'medium',
+            'hard': 'hard'
+        };
+        return levels[difficulty] || 'easy';
+    }
+
+    checkDistanceFilter(distance, filter) {
+        switch(filter) {
+            case 'short': return distance <= 5;
+            case 'medium': return distance > 5 && distance <= 15;
+            case 'long': return distance > 15;
+            default: return true;
+        }
+    }
+
+    sortRoutes() {
+        const container = document.getElementById('routes-container');
+        const routes = Array.from(container.querySelectorAll('.route-item:not(.hidden)'));
+
+        routes.sort((a, b) => {
+            switch(this.sortBy) {
+                case 'newest':
+                    return parseInt(b.dataset.created) - parseInt(a.dataset.created);
+                case 'oldest':
+                    return parseInt(a.dataset.created) - parseInt(b.dataset.created);
+                case 'distance_asc':
+                    return (parseFloat(a.dataset.distance) || 0) - (parseFloat(b.dataset.distance) || 0);
+                case 'distance_desc':
+                    return (parseFloat(b.dataset.distance) || 0) - (parseFloat(a.dataset.distance) || 0);
+                case 'name_asc':
+                    return a.dataset.name.localeCompare(b.dataset.name);
+                case 'name_desc':
+                    return b.dataset.name.localeCompare(a.dataset.name);
+                case 'rating_desc':
+                    return (parseFloat(b.dataset.rating) || 0) - (parseFloat(a.dataset.rating) || 0);
+                default:
+                    return 0;
+            }
+        });
+
+        routes.forEach(route => container.appendChild(route));
+    }
+
+    updateRoutesCount(count) {
+        const counter = document.getElementById('routes-count');
+        const plural = count === 1 ? '' : 'ов';
+        counter.textContent = `${count} маршрут${plural}`;
+    }
+}
+
+function clearFilters() {
+    document.querySelectorAll('input[type="radio"]').forEach(radio => {
+        if (radio.id.includes('all')) {
+            radio.checked = true;
+        }
+    });
+
+    document.getElementById('sort-select').value = 'newest';
+
+    routeFilter.filters = {
+        route_type: '',
+        difficulty: '',
+        distance: '',
+        mood: ''
+    };
+    routeFilter.sortBy = 'newest';
+    routeFilter.applyFilters();
+}
+
+let routeFilter;
+document.addEventListener('DOMContentLoaded', function() {
+    routeFilter = new RouteFilter();
+});
+</script>
+{% endblock %}

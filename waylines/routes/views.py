@@ -1,20 +1,20 @@
 __all__ = ()
 
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.http import JsonResponse
-from django.db.models import Q, Count, Avg
-from django.core.paginator import Paginator
-from django.views.decorators.csrf import csrf_exempt
-from django.utils import timezone
-from django.views import View
-from django.contrib.auth.mixins import LoginRequiredMixin
 import json
 import math
 
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.paginator import Paginator
+from django.db.models import Q, Count, Avg
+from django.http import JsonResponse
+from django.shortcuts import render, get_object_or_404, redirect
+from django.utils import timezone
+from django.views import View
+from django.views.decorators.csrf import csrf_exempt
+
 from routes.models import Route, RoutePoint, RouteFavorite, RouteRating, SavedPlace, RouteComment, PointComment, User
-from chat.models import RouteChatMessage
 from users.models import Friendship
 
 
@@ -72,7 +72,6 @@ def all_routes(request):
             | Q(short_description__icontains=search_query)
             | Q(points__name__icontains=search_query)
             | Q(points__description__icontains=search_query)
-            | Q(tags__icontains=search_query)
         ).distinct()
 
     # Аннотируем средний рейтинг
@@ -608,27 +607,6 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return R * c
 
-
-def login_view(request):
-    """Вход"""
-    if request.method == "POST":
-        form = AuthenticationForm(request, data=request.POST)
-        if form.is_valid():
-            user = form.get_user()
-            login(request, user)
-            messages.success(request, f"Добро пожаловать, {user.username}!")
-            return redirect("home")
-    else:
-        form = AuthenticationForm()
-
-    return render(request, "auth/login.html", {"form": form})
-
-
-def logout_view(request):
-    """Выход"""
-    logout(request)
-    messages.info(request, "Вы вышли из системы")
-    return redirect("home")
 
 def walking_routes(request):
     """Страница с пешими маршрутами"""

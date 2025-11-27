@@ -1,12 +1,14 @@
-from django.shortcuts import render, get_object_or_404, redirect
+import json
+
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
-from django.db.models import Q, Count
 from django.contrib.auth.models import User
+from django.db.models import Q, Count
+from django.http import JsonResponse
+from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
+
 from routes.models import Route
 from .models import Conversation, PrivateMessage, RouteChat, RouteChatMessage
-import json
 
 
 @login_required

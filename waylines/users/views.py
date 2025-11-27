@@ -1,5 +1,5 @@
 from django.contrib import messages
-from django.contrib.auth import get_user_model, login, logout
+from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm
 from django.db.models import Q
@@ -7,18 +7,12 @@ from django.shortcuts import render, get_object_or_404, redirect
 
 from routes.models import Route, RouteFavorite
 from users.forms import UserProfileForm, UserRegistrationForm
-from users.models import Friendship, UserProfile
-
-User = get_user_model()
-
-# Create your views here.
+from users.models import Friendship, UserProfile, User
 
 
-# Функции для друзей
 @login_required
 def friends(request):
     """Страница друзей"""
-    # Получаем принятые запросы дружбы
     friendships = Friendship.objects.filter(
         Q(from_user=request.user) | Q(to_user=request.user), status="accepted"
     )
@@ -154,9 +148,15 @@ def profile(request):
 
     context = {
         "form": form,
+        "profile": profile,
         "routes_count": user_routes.count(),
         "favorites_count": user_favorites.count(),
         "total_distance": sum(route.total_distance for route in user_routes),
+        "recent_routes": user_routes.order_by('-created_at')[:5],  # Добавьте это для недавних маршрутов
+        "friends_count": Friendship.objects.filter(  # Добавьте это для счетчика друзей
+            Q(from_user=request.user) | Q(to_user=request.user),
+            status="accepted"
+        ).count(),
         "pending_friend_requests": Friendship.objects.filter(
             to_user=request.user, status="pending"
         )[:5],
@@ -189,7 +189,6 @@ def user_profile(request, username):
 
 
 
-
 # Аутентификация
 def register(request):
     """Регистрация"""
@@ -203,7 +202,7 @@ def register(request):
     else:
         form = UserRegistrationForm()
 
-    return render(request, "auth/register.html", {"form": form})
+    return render(request, "registration/register.html", {"form": form})
 
 
 def login_view(request):
@@ -218,7 +217,7 @@ def login_view(request):
     else:
         form = AuthenticationForm()
 
-    return render(request, "auth/login.html", {"form": form})
+    return render(request, "registration/login.html", {"form": form})
 
 
 def logout_view(request):
