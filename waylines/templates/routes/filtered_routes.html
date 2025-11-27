@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }} - Waylines{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Заголовок страницы -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'home' %}">Главная</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'all_routes' %}">Маршруты</a></li>
+                    <li class="breadcrumb-item active">{{ page_title }}</li>
+                </ol>
+            </nav>
+            
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="display-5 fw-bold mb-2">{{ page_title }}</h1>
+                    <p class="lead text-muted mb-0">Найдено {{ total_count }} маршрутов</p>
+                </div>
+                <a href="{% url 'all_routes' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left me-2"></i>Все маршруты
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Сетка маршрутов -->
+    <div class="row g-4">
+        {% for route in routes %}
+        <div class="col-xl-4 col-lg-6">
+            <div class="card route-card h-100 border-0 shadow-sm hover-lift rounded-4">
+                <div class="card-image position-relative overflow-hidden rounded-top-4">
+                    {% if route.photos.first and route.photos.first.image %}
+                    <img src="{{ route.photos.first.image.url }}" class="card-img-top route-image" alt="{{ route.name }}" style="height: 200px; object-fit: cover;">
+                    {% else %}
+                    <div class="card-img-top route-image bg-gradient-nature d-flex align-items-center justify-content-center" style="height: 200px;">
+                        <i class="fas fa-route fa-3x text-white opacity-70"></i>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Бейдж типа маршрута -->
+                    <div class="position-absolute top-3 start-3">
+                        <span class="badge bg-white text-dark px-3 py-2 rounded-pill border shadow-sm">
+                            <i class="fas fa-{% if route.route_type == 'walking' %}hiking{% elif route.route_type == 'driving' %}car{% else %}bicycle{% endif %} me-1"></i>
+                            {{ route.get_route_type_display }}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="card-body d-flex flex-column p-4">
+                    <h5 class="card-title fw-bold mb-2 text-dark">{{ route.name }}</h5>
+                    
+                    <p class="card-text text-muted flex-grow-1 mb-3">
+                        {{ route.description|truncatechars:120 }}
+                    </p>
+                    
+                    <!-- Рейтинг и метрики -->
+                    <div class="route-meta mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="rating-section">
+                                <span class="rating-stars text-warning me-2">
+                                    {% with rating=route.get_average_rating %}
+                                    {% for i in "12345" %}
+                                        {% if forloop.counter <= rating %}
+                                        <i class="fas fa-star"></i>
+                                        {% else %}
+                                        <i class="far fa-star"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% endwith %}
+                                </span>
+                                <small class="text-muted">({{ route.ratings.count }})</small>
+                            </div>
+                            
+                            <div class="route-length">
+                                <small class="text-muted">
+                                    <i class="fas fa-route me-1"></i>{{ route.total_distance|floatformat:1 }}км
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Автор и кнопка -->
+                    <div class="card-footer bg-transparent border-0 px-0 pb-0 pt-3 mt-auto">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-sm me-3">
+                                    <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white fw-bold" style="width: 40px; height: 40px;">
+                                        {{ route.author.username|first|upper }}
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="fw-medium small text-dark">{{ route.author.username }}</div>
+                                    <small class="text-muted">{{ route.created_at|date:"d M Y" }}</small>
+                                </div>
+                            </div>
+                            <a href="{% url 'route_detail' route.id %}" class="btn btn-primary btn-sm rounded-pill px-4 hover-scale">
+                                Исследовать
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="text-center text-muted py-5">
+                <i class="fas fa-route fa-4x mb-4 opacity-25"></i>
+                <h4 class="fw-bold mb-3">Маршрутов пока нет</h4>
+                <p class="mb-4">Будьте первым, кто создаст маршрут в этой категории!</p>
+                {% if user.is_authenticated %}
+                <a href="{% url 'create_route' %}" class="btn btn-primary btn-lg rounded-3 px-5 py-3">
+                    <i class="fas fa-plus me-2"></i>Создать маршрут
+                </a>
+                {% else %}
+                <a href="{% url 'register' %}" class="btn btn-primary btn-lg rounded-3 px-5 py-3">
+                    <i class="fas fa-user-plus me-2"></i>Присоединиться
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

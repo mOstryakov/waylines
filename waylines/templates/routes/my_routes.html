@@ -3,151 +3,124 @@
 {% block title %}Мои маршруты - Waylines{% endblock %}
 
 {% block content %}
-<div class="container">
+<div class="container py-4">
+    <!-- Заголовок и действия -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1 class="h3 mb-1">Мои маршруты</h1>
-            <p class="text-muted mb-0">Управляйте созданными вами маршрутами</p>
+            <h1 class="h3 fw-bold mb-1">Мои маршруты</h1>
+            <p class="text-muted mb-0">{{ routes.count }} маршрут{{ routes.count|pluralize:"ов" }}</p>
         </div>
-        <a href="{% url 'create_route' %}" class="btn btn-primary">
-            <i class="fas fa-plus"></i> Создать маршрут
+        <a href="{% url 'create_route' %}" class="btn btn-primary btn-sm">
+            <i class="fas fa-plus me-1"></i>Новый маршрут
         </a>
     </div>
 
-    <!-- Статистика -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card bg-primary text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="mb-0">{{ routes.count }}</h4>
-                            <small>Всего маршрутов</small>
-                        </div>
-                        <i class="fas fa-route fa-2x opacity-50"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-success text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="mb-0">{{ active_routes.count }}</h4>
-                            <small>Активных</small>
-                        </div>
-                        <i class="fas fa-check-circle fa-2x opacity-50"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-warning text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="mb-0">{{ inactive_routes.count }}</h4>
-                            <small>Неактивных</small>
-                        </div>
-                        <i class="fas fa-pause-circle fa-2x opacity-50"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-info text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="mb-0">{{ total_distance|floatformat:0 }} км</h4>
-                            <small>Общее расстояние</small>
-                        </div>
-                        <i class="fas fa-road fa-2x opacity-50"></i>
-                    </div>
-                </div>
-            </div>
+    <!-- Навигация -->
+    <div class="mb-4">
+        <div class="nav nav-pills nav-pills-custom">
+            <a class="nav-link active" href="#active" data-bs-toggle="tab">
+                Активные
+            </a>
+            <a class="nav-link" href="#inactive" data-bs-toggle="tab">
+                Неактивные
+            </a>
         </div>
     </div>
 
-    <!-- Список маршрутов -->
-    <div class="card">
-        <div class="card-header">
-            <ul class="nav nav-tabs card-header-tabs">
-                <li class="nav-item">
-                    <a class="nav-link active" href="#active" data-bs-toggle="tab">Активные</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#inactive" data-bs-toggle="tab">Неактивные</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#all" data-bs-toggle="tab">Все</a>
-                </li>
-            </ul>
+    <!-- Контент -->
+    <div class="tab-content">
+        <!-- Активные маршруты -->
+        <div class="tab-pane fade show active" id="active">
+            {% if active_routes %}
+            <div class="row g-3">
+                {% for route in active_routes %}
+                <div class="col-md-6 col-lg-4">
+                    {% include 'routes/partials/route_card.html' with route=route %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-route fa-2x text-muted mb-3"></i>
+                <p class="text-muted mb-3">Нет активных маршрутов</p>
+                <a href="{% url 'create_route' %}" class="btn btn-outline-primary btn-sm">Создать маршрут</a>
+            </div>
+            {% endif %}
         </div>
         
-        <div class="card-body">
-            <div class="tab-content">
-                <!-- Активные маршруты -->
-                <div class="tab-pane fade show active" id="active">
-                    {% if active_routes %}
-                    <div class="row">
-                        {% for route in active_routes %}
-                        <div class="col-lg-6 mb-4">
-                            {% include 'routes/partials/route_card.html' with route=route %}
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <div class="text-center py-5">
-                        <i class="fas fa-route fa-3x text-muted mb-3"></i>
-                        <h4>Нет активных маршрутов</h4>
-                        <p class="text-muted">Создайте свой первый маршрут!</p>
-                        <a href="{% url 'create_route' %}" class="btn btn-primary">Создать маршрут</a>
-                    </div>
-                    {% endif %}
+        <!-- Неактивные маршруты -->
+        <div class="tab-pane fade" id="inactive">
+            {% if inactive_routes %}
+            <div class="row g-3">
+                {% for route in inactive_routes %}
+                <div class="col-md-6 col-lg-4">
+                    {% include 'routes/partials/route_card.html' with route=route %}
                 </div>
-                
-                <!-- Неактивные маршруты -->
-                <div class="tab-pane fade" id="inactive">
-                    {% if inactive_routes %}
-                    <div class="row">
-                        {% for route in inactive_routes %}
-                        <div class="col-lg-6 mb-4">
-                            {% include 'routes/partials/route_card.html' with route=route %}
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <div class="text-center py-5">
-                        <i class="fas fa-pause-circle fa-3x text-muted mb-3"></i>
-                        <h4>Нет неактивных маршрутов</h4>
-                        <p class="text-muted">Все ваши маршруты активны</p>
-                    </div>
-                    {% endif %}
-                </div>
-                
-                <!-- Все маршруты -->
-                <div class="tab-pane fade" id="all">
-                    {% if routes %}
-                    <div class="row">
-                        {% for route in routes %}
-                        <div class="col-lg-6 mb-4">
-                            {% include 'routes/partials/route_card.html' with route=route %}
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <div class="text-center py-5">
-                        <i class="fas fa-route fa-3x text-muted mb-3"></i>
-                        <h4>У вас пока нет маршрутов</h4>
-                        <p class="text-muted">Создайте свой первый маршрут!</p>
-                        <a href="{% url 'create_route' %}" class="btn btn-primary">Создать маршрут</a>
-                    </div>
-                    {% endif %}
-                </div>
+                {% endfor %}
             </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-pause-circle fa-2x text-muted mb-3"></i>
+                <p class="text-muted">Нет неактивных маршрутов</p>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.nav-pills-custom {
+    background: white;
+    padding: 4px;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.nav-pills-custom .nav-link {
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    color: #6c757d;
+    transition: all 0.2s ease;
+}
+
+.nav-pills-custom .nav-link:hover {
+    color: #495057;
+    background: #f8f9fa;
+}
+
+.nav-pills-custom .nav-link.active {
+    background: #007bff;
+    color: white;
+    box-shadow: 0 1px 3px rgba(0,123,255,0.3);
+}
+
+.tab-pane {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+    
+    .d-flex {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .btn {
+        width: 100%;
+    }
+}
+</style>
 {% endblock %}

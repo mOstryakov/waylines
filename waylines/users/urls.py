@@ -1,7 +1,7 @@
 from django.urls import path
+from . import views
 
-urlpatterns =
-[
+urlpatterns = [
     path("friends/", views.friends, name="friends"),
     path("friends/find/", views.find_friends, name="find_friends"),
     path(

@@ -1,7 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.contrib.auth.models import User
 from django.utils import timezone
 from routes.models import Route
@@ -20,29 +20,33 @@ def chat_dashboard(request):
     for conversation in conversations:
         other_user = conversation.get_other_participant(request.user)
         if other_user:
-            conversations_data.append(
-                {
-                    "conversation": conversation,
-                    "other_user": other_user,
-                    "unread_count": conversation.get_unread_count(
-                        request.user
-                    ),
-                    "last_message": conversation.get_last_message(),
-                }
-            )
+            conversations_data.append({
+                "conversation": conversation,
+                "other_user": other_user,
+                "unread_count": conversation.get_unread_count(request.user),
+                "last_message": conversation.get_last_message(),
+            })
 
-    # Чаты маршрутов пользователя
-    user_routes_chats = RouteChat.objects.filter(route__author=request.user)
+    # Чаты маршрутов с ОПТИМИЗИРОВАННЫМ подсчетом сообщений
+    user_routes_chats = RouteChat.objects.filter(
+        route__author=request.user
+    ).annotate(
+        messages_count=Count('messages')
+    )
 
     # Чаты маршрутов, где пользователь участник
     participant_chats = RouteChat.objects.filter(
         route__privacy="personal", route__shared_with=request.user
+    ).annotate(
+        messages_count=Count('messages')
     )
 
     # Публичные маршруты с чатами
     public_chats = RouteChat.objects.filter(
         route__privacy="public", route__is_active=True
-    ).exclude(route__author=request.user)[:10]
+    ).exclude(route__author=request.user).annotate(
+        messages_count=Count('messages')
+    )[:10]
 
     # Друзья для быстрого начала диалога
     friends = User.objects.filter(
@@ -65,6 +69,7 @@ def chat_dashboard(request):
     }
 
     return render(request, "chat/dashboard.html", context)
+
 
 
 @login_required

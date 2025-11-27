@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Чат с {{ other_user.username }} - Waylines{% endblock %}
+{% block title %}Чат маршрута "{{ route.title }}" - Waylines{% endblock %}
 
 {% block content %}
 <!-- Уведомления -->
@@ -10,28 +10,33 @@
 <div class="container-fluid h-100 p-0">
     <div class="row g-0 h-100">
         <!-- Чат -->
-        <div class="col-md-9">
+        <div class="col-12" id="chat-main-col">
             <div class="chat-container h-100 d-flex flex-column bg-light">
-                <!-- Заголовок чата -->
+                <!-- Заголовок чата маршрута -->
                 <div class="chat-header bg-white border-bottom p-4 shadow-sm">
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center">
                             <a href="{% url 'chat:chat_dashboard' %}" class="btn btn-sm btn-outline-secondary me-3">
                                 <i class="fas fa-arrow-left"></i>
                             </a>
+                            <button class="btn btn-sm btn-outline-info me-3 d-md-none" onclick="toggleRouteInfo()">
+                                <i class="fas fa-info-circle"></i>
+                            </button>
                             <div class="position-relative me-3">
-                                <div class="avatar bg-gradient-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
-                                     style="width: 50px; height: 50px; font-size: 18px; font-weight: 600;">
-                                    {{ other_user.username|first|upper }}
+                                <div class="avatar bg-gradient-success text-white rounded-circle d-flex align-items-center justify-content-center" 
+                                     style="width: 50px; height: 50px; font-size: 18px;">
+                                    <i class="fas fa-route"></i>
                                 </div>
-                                <div class="position-absolute bottom-0 end-0 bg-success rounded-circle border border-2 border-white"
-                                     style="width: 12px; height: 12px;"></div>
                             </div>
                             <div>
-                                <h5 class="mb-1 fw-bold">{{ other_user.username }}</h5>
-                                <small class="text-muted" id="last-activity">
-                                    <i class="fas fa-circle text-success me-1" style="font-size: 8px;"></i>
-                                    В сети
+                                <h5 class="mb-1 fw-bold">{{ route.title }}</h5>
+                                <small class="text-muted" id="route-info">
+                                    <i class="fas fa-user me-1"></i>
+                                    Автор: 
+                                    <a href="{% url 'user_profile' route.author.username %}" class="text-decoration-none">
+                                        {{ route.author.username }}
+                                    </a>
+                                    • {{ route.get_privacy_display }}
                                 </small>
                             </div>
                         </div>
@@ -41,11 +46,14 @@
                                 <i class="fas fa-ellipsis-v text-muted"></i>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end shadow border-0">
-                                <li><a class="dropdown-item" href="{% url 'user_profile' other_user.username %}">
-                                    <i class="fas fa-user me-2"></i> Профиль
+                                <li><a class="dropdown-item" href="#" onclick="toggleRouteInfo()">
+                                    <i class="fas fa-info-circle me-2"></i> Информация о маршруте
                                 </a></li>
-                                <li><a class="dropdown-item" href="#" onclick="blockUser()">
-                                    <i class="fas fa-ban me-2"></i> Заблокировать
+                                <li><a class="dropdown-item" href="{% url 'route_detail' route.id %}">
+                                    <i class="fas fa-map me-2"></i> Детали маршрута
+                                </a></li>
+                                <li><a class="dropdown-item" href="{% url 'user_profile' route.author.username %}">
+                                    <i class="fas fa-user me-2"></i> Профиль автора
                                 </a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="#" onclick="refreshChat()">
@@ -59,16 +67,44 @@
                     </div>
                 </div>
 
-                <!-- Сообщения -->
+                <!-- Сообщения чата маршрута -->
                 <div class="chat-messages flex-grow-1 p-4" id="chat-messages" 
                      style="overflow-y: auto; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
+                    {% for message in chat_messages %}
+                    <div class="message-wrapper mb-4 {% if message.user == request.user %}own-message{% endif %}" 
+                         data-message-id="{{ message.id }}">
+                        <div class="message-bubble {% if message.user == request.user %}own-bubble{% else %}other-bubble{% endif %}">
+                            {% if message.user != request.user %}
+                            <div class="message-sender mb-1">
+                                <small class="text-primary fw-bold">
+                                    <a href="{% url 'user_profile' message.user.username %}" class="text-decoration-none">
+                                        {{ message.user.username }}
+                                    </a>
+                                </small>
+                            </div>
+                            {% endif %}
+                            <div class="message-content">
+                                {{ message.message|linebreaks }}
+                            </div>
+                            <div class="message-time text-end mt-1">
+                                <small class="{% if message.user == request.user %}text-light{% else %}text-muted{% endif %}">
+                                    {{ message.timestamp|date:"H:i" }}
+                                </small>
+                                {% if message.user == request.user %}
+                                <i class="fas fa-check-double {% if message.user == request.user %}text-light{% else %}text-primary{% endif %} ms-1" style="font-size: 10px;"></i>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
                     <div class="text-center text-muted py-5" id="empty-chat-message">
                         <div class="empty-state-icon mb-4">
                             <i class="fas fa-comments fa-4x text-light"></i>
                         </div>
-                        <h4 class="fw-light">Начните диалог</h4>
-                        <p class="text-muted">Отправьте первое сообщение {{ other_user.username }}</p>
+                        <h4 class="fw-light">Начните обсуждение маршрута</h4>
+                        <p class="text-muted">Отправьте первое сообщение в чат маршрута</p>
                     </div>
+                    {% endfor %}
                 </div>
 
                 <!-- Индикатор загрузки -->
@@ -84,7 +120,7 @@
                     <div class="typing-dots">
                         <small class="text-muted">
                             <i class="fas fa-pencil-alt me-2"></i>
-                            <span id="typing-user">{{ other_user.username }}</span> печатает
+                            <span id="typing-user">Кто-то</span> печатает
                             <span class="typing-animation"></span>
                         </small>
                     </div>
@@ -94,105 +130,132 @@
                 <div class="chat-input bg-white border-top p-3 shadow-sm">
                     <form id="chat-form" class="d-flex align-items-end gap-2">
                         {% csrf_token %}
+                        <input type="hidden" name="route_id" value="{{ route.id }}">
+                        
                         <div class="flex-grow-1 position-relative">
                             <div class="input-group">
+                                <!-- Текстовый ввод -->
                                 <input type="text" 
                                        class="form-control border-end-0" 
                                        id="chat-message-input" 
-                                       placeholder="Напишите сообщение..." 
+                                       name="message"
+                                       placeholder="Напишите сообщение в чат маршрута..." 
                                        maxlength="1000"
                                        autocomplete="off"
                                        style="border-radius: 25px; padding: 12px 20px; border: 1px solid #e0e0e0;">
+                                
                                 <button type="button" class="btn btn-outline-secondary border-start-0" 
                                         style="border-radius: 0 25px 25px 0; border: 1px solid #e0e0e0;">
                                     <i class="fas fa-smile"></i>
                                 </button>
                             </div>
                         </div>
+                        
+                        <!-- Кнопка отправки сообщения -->
                         <button type="submit" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center" 
                                 id="chat-message-submit"
                                 style="width: 50px; height: 50px;">
                             <i class="fas fa-paper-plane"></i>
                         </button>
                     </form>
+                    
                     <div class="mt-2 d-flex justify-content-between align-items-center px-2">
                         <small class="text-muted" id="char-counter">0/1000</small>
                         <small class="text-muted">
-                            <i class="fas fa-bolt me-1 text-success"></i>
-                            <span id="connection-status">Подключение...</span>
+                            <i class="fas fa-users me-1 text-success"></i>
+                            Чат маршрута • {{ route.get_privacy_display }}
                         </small>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
+</div>
 
-        <!-- Информация о пользователе -->
-        <div class="col-md-3">
-            <div class="user-info-sidebar h-100 bg-white border-start p-4">
-                <div class="text-center mb-4">
-                    <div class="position-relative mx-auto mb-3">
-                        <div class="avatar bg-gradient-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto" 
-                             style="width: 100px; height: 100px; font-size: 32px; font-weight: 600;">
-                            {{ other_user.username|first|upper }}
-                        </div>
-                        <div class="position-absolute bottom-0 end-0 bg-success rounded-circle border border-3 border-white"
-                             style="width: 20px; height: 20px;"></div>
-                    </div>
-                    <h5 class="fw-bold">{{ other_user.username }}</h5>
-                    <p class="text-muted mb-3">Участник Waylines</p>
-                    <div class="online-status">
-                        <span class="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill" id="online-status">
-                            <i class="fas fa-circle me-1" style="font-size: 8px;"></i>В сети
-                        </span>
+<!-- Сайдбар информации о маршруте -->
+<div class="route-info-sidebar-overlay" id="route-info-overlay" style="display: none;"></div>
+<div class="route-info-sidebar" id="route-info-sidebar">
+    <div class="route-info-content">
+        <div class="route-info-header">
+            <h5 class="fw-bold mb-0">Информация о маршруте</h5>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleRouteInfo()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="route-info-body">
+            <div class="text-center mb-4">
+                <div class="position-relative mx-auto mb-3">
+                    <div class="avatar bg-gradient-success text-white rounded-circle d-flex align-items-center justify-content-center mx-auto" 
+                         style="width: 100px; height: 100px; font-size: 32px;">
+                        <i class="fas fa-route"></i>
                     </div>
                 </div>
+                <h5 class="fw-bold">{{ route.title }}</h5>
+                <p class="text-muted mb-3">{{ route.description|default:"Описание отсутствует"|truncatewords:20 }}</p>
+                <div class="route-status">
+                    <span class="badge {% if route.is_active %}bg-success{% else %}bg-secondary{% endif %} bg-opacity-10 {% if route.is_active %}text-success{% else %}text-secondary{% endif %} px-3 py-2 rounded-pill">
+                        <i class="fas fa-circle me-1" style="font-size: 8px;"></i>
+                        {% if route.is_active %}Активный{% else %}Неактивный{% endif %}
+                    </span>
+                </div>
+            </div>
 
-                <div class="mb-4">
-                    <h6 class="fw-semibold text-uppercase small mb-3">Общая информация</h6>
-                    <div class="info-grid">
-                        <div class="info-item d-flex justify-content-between align-items-center py-2 border-bottom">
-                            <span class="text-muted">Маршруты</span>
-                            <strong class="text-primary">{{ other_user.routes.count }}</strong>
-                        </div>
-                        <div class="info-item d-flex justify-content-between align-items-center py-2 border-bottom">
-                            <span class="text-muted">Друзья</span>
-                            <strong class="text-primary">{{ accepted_friends_count }}</strong>
-                        </div>
-                        <div class="info-item d-flex justify-content-between align-items-center py-2 border-bottom">
-                            <span class="text-muted">Статус</span>
-                            <strong class="text-success" id="last-seen">В сети</strong>
-                        </div>
-                        <div class="info-item d-flex justify-content-between align-items-center py-2">
-                            <span class="text-muted">В чате с</span>
-                            <strong>{{ conversation.created_at|date:"d.m.Y" }}</strong>
-                        </div>
+            <div class="mb-4">
+                <h6 class="fw-semibold text-uppercase small mb-3">Детали маршрута</h6>
+                <div class="info-grid">
+                    <div class="info-item d-flex justify-content-between align-items-center py-2 border-bottom">
+                        <span class="text-muted">Автор</span>
+                        <strong class="text-primary">
+                            <a href="{% url 'user_profile' route.author.username %}" class="text-decoration-none">
+                                {{ route.author.username }}
+                            </a>
+                        </strong>
+                    </div>
+                    <div class="info-item d-flex justify-content-between align-items-center py-2 border-bottom">
+                        <span class="text-muted">Дистанция</span>
+                        <strong class="text-success">{{ route.total_distance|default:"0" }} км</strong>
+                    </div>
+                    <div class="info-item d-flex justify-content-between align-items-center py-2 border-bottom">
+                        <span class="text-muted">Сложность</span>
+                        <strong class="text-warning">{{ route.get_difficulty_display|default:"Не указана" }}</strong>
+                    </div>
+                    <div class="info-item d-flex justify-content-between align-items-center py-2 border-bottom">
+                        <span class="text-muted">Приватность</span>
+                        <strong class="text-info">{{ route.get_privacy_display }}</strong>
+                    </div>
+                    <div class="info-item d-flex justify-content-between align-items-center py-2">
+                        <span class="text-muted">Создан</span>
+                        <strong>{{ route.created_at|date:"d.m.Y" }}</strong>
                     </div>
                 </div>
+            </div>
 
-                <div class="mb-4">
-                    <h6 class="fw-semibold text-uppercase small mb-3">Действия</h6>
-                    <div class="d-grid gap-2">
-                        <a href="{% url 'user_profile' other_user.username %}" class="btn btn-outline-primary btn-sm py-2">
-                            <i class="fas fa-user me-2"></i> Профиль
-                        </a>
-                        <a href="{% url 'all_routes' %}?author={{ other_user.username }}" class="btn btn-outline-success btn-sm py-2">
-                            <i class="fas fa-route me-2"></i> Маршруты
-                        </a>
-                        <button class="btn btn-outline-info btn-sm py-2" onclick="startRouteChat()">
-                            <i class="fas fa-map-marked-alt me-2"></i> Общий маршрут
-                        </button>
-                    </div>
+            <div class="mb-4">
+                <h6 class="fw-semibold text-uppercase small mb-3">Действия</h6>
+                <div class="d-grid gap-2">
+                    <a href="{% url 'route_detail' route.id %}" class="btn btn-outline-primary btn-sm py-2">
+                        <i class="fas fa-map me-2"></i> Детали маршрута
+                    </a>
+                    <a href="{% url 'user_profile' route.author.username %}" class="btn btn-outline-success btn-sm py-2">
+                        <i class="fas fa-user me-2"></i> Профиль автора
+                    </a>
+                    {% if request.user == route.author %}
+                    <a href="{% url 'edit_route' route.id %}" class="btn btn-outline-warning btn-sm py-2">
+                        <i class="fas fa-edit me-2"></i> Редактировать
+                    </a>
+                    {% endif %}
                 </div>
+            </div>
 
-                <div class="mt-auto">
-                    <div class="d-grid gap-2">
-                        <button class="btn btn-warning btn-sm py-2" onclick="refreshChat()">
-                            <i class="fas fa-sync-alt me-2"></i> Обновить чат
-                        </button>
-                        <a href="{% url 'chat:chat_dashboard' %}" class="btn btn-outline-secondary btn-sm py-2">
-                            <i class="fas fa-comments me-2"></i> Все чаты
-                        </a>
-                    </div>
+            <div class="mt-auto">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-warning btn-sm py-2" onclick="refreshChat()">
+                        <i class="fas fa-sync-alt me-2"></i> Обновить чат
+                    </button>
+                    <a href="{% url 'chat:chat_dashboard' %}" class="btn btn-outline-secondary btn-sm py-2">
+                        <i class="fas fa-comments me-2"></i> Все чаты
+                    </a>
                 </div>
             </div>
         </div>
@@ -205,6 +268,7 @@
 /* Основные стили чата */
 .chat-container {
     background: #f8f9fa;
+    transition: all 0.3s ease;
 }
 
 .chat-messages {
@@ -264,6 +328,15 @@
     font-weight: 600;
 }
 
+.message-sender a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.message-sender a:hover {
+    text-decoration: underline;
+}
+
 /* Анимации */
 @keyframes messageSlideIn {
     from {
@@ -274,11 +347,6 @@
         opacity: 1;
         transform: translateY(0) scale(1);
     }
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
 }
 
 /* Анимация печати */
@@ -298,8 +366,8 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
-.bg-gradient-primary {
-    background: linear-gradient(135deg, #007bff, #6610f2) !important;
+.bg-gradient-success {
+    background: linear-gradient(135deg, #28a745, #20c997) !important;
 }
 
 /* Стили для пустого состояния */
@@ -380,9 +448,54 @@
     color: #1e3a8a;
 }
 
-/* Стили для сайдбара */
-.user-info-sidebar {
-    background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+/* Стили для сайдбара информации о маршруте */
+.route-info-sidebar {
+    position: fixed;
+    top: 0;
+    right: -400px;
+    width: 350px;
+    height: 100vh;
+    background: white;
+    box-shadow: -5px 0 15px rgba(0,0,0,0.1);
+    z-index: 1040;
+    transition: right 0.3s ease;
+    overflow-y: auto;
+}
+
+.route-info-sidebar.active {
+    right: 0;
+}
+
+.route-info-sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1039;
+    display: none;
+}
+
+.route-info-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.route-info-header {
+    padding: 20px;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.route-info-body {
+    padding: 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 .info-grid .info-item {
@@ -396,13 +509,6 @@
 
 /* Адаптивность */
 @media (max-width: 768px) {
-    .col-md-3 {
-        display: none;
-    }
-    .col-md-9 {
-        flex: 0 0 100%;
-        max-width: 100%;
-    }
     .chat-messages {
         max-height: calc(100vh - 200px);
         padding: 16px;
@@ -414,6 +520,11 @@
         right: 10px;
         left: 10px;
         max-width: none;
+    }
+    
+    .route-info-sidebar {
+        width: 100%;
+        right: -100%;
     }
 }
 
@@ -427,78 +538,34 @@
     transform: translateY(-1px);
     transition: all 0.2s ease;
 }
+
+/* Сдвиг чата при открытом сайдбаре */
+body.sidebar-open #chat-main-col {
+    margin-right: 350px;
+    transition: margin-right 0.3s ease;
+}
+
+@media (max-width: 768px) {
+    body.sidebar-open #chat-main-col {
+        margin-right: 0;
+    }
+}
 </style>
 {% endblock %}
 
 {% block extra_js %}
-<!-- Firebase SDK (compat mode для legacy API) -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-
 <script>
-  // 🔑 Твой конфиг Firebase (из сообщения)
-  const firebaseConfig = {
-    apiKey: "AIzaSyDwAp4Qe5kIlOSewu7FLMj7IHDi4ofQI7E",
-    authDomain: "project-e123e.firebaseapp.com",
-    databaseURL: "https://project-e123e-default-rtdb.firebaseio.com",
-    projectId: "project-e123e",
-    storageBucket: "project-e123e.firebasestorage.app",
-    messagingSenderId: "849440145534",
-    appId: "1:849440145534:web:9873b2bc94bf0db959982f",
-    measurementId: "G-WG5K1M2D1V"
-  };
-
-  // Initialize Firebase
-  firebase.initializeApp(firebaseConfig);
-</script>
-
-<script>
-// Глобальные переменные
-const conversationId = {{ conversation.id }};
+// Глобальные переменные для чата маршрута
+const routeId = {{ route.id }};
 const currentUserId = {{ request.user.id }};
 const currentUsername = "{{ request.user.username }}";
-const otherUserId = {{ other_user.id }};
-const otherUsername = "{{ other_user.username }}";
 let isSending = false;
 let firebaseChat;
 
-// Утилиты
-function escapeHtml(text) {
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return String(text).replace(/[&<>"']/g, (s) => map[s]);
-}
-
-function formatTime(timestamp) {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-}
-
-function playMessageSound() {
-    try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = ctx.createOscillator();
-        const gainNode = ctx.createGain();
-        oscillator.connect(gainNode);
-        gainNode.connect(ctx.destination);
-        oscillator.frequency.value = 600;
-        gainNode.gain.value = 0.05;
-        oscillator.start();
-        setTimeout(() => {
-            oscillator.stop();
-        }, 100);
-    } catch (e) {
-        // Silent fail
-    }
-}
-
-// Инициализация
+// Инициализация чата при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Инициализация чата маршрута...');
+    
     const chatForm = document.querySelector('#chat-form');
     if (chatForm) {
         chatForm.addEventListener('submit', function(e) {
@@ -506,38 +573,39 @@ document.addEventListener('DOMContentLoaded', function() {
             handleMessageSubmit(e);
         });
     }
-
+    
     initializeFirebaseChat();
     setupEventListeners();
     updateCharCounter();
     document.querySelector('#chat-message-input').focus();
 });
 
+// Инициализация Firebase чата для маршрута
 function initializeFirebaseChat() {
     try {
-        if (typeof firebase === 'undefined') throw new Error('Firebase не загружен');
-        firebaseChat = new FirebaseChat(conversationId, {
+        firebaseChat = new FirebaseRouteChat(routeId, {
             id: currentUserId,
             username: currentUsername
         });
+        console.log('✅ Чат маршрута инициализирован');
         updateConnectionStatus('connected', 'Подключено');
-        showSuccess('Чат подключен');
     } catch (error) {
-        console.error('❌ Ошибка инициализации Firebase:', error);
-        updateConnectionStatus('error', 'Ошибка');
-        showError('Не удалось подключиться к чату. Попробуйте позже.');
+        console.error('❌ Ошибка инициализации:', error);
+        updateConnectionStatus('error', 'Ошибка подключения');
+        showError('Ошибка подключения к чату маршрута');
     }
 }
 
-class FirebaseChat {
-    constructor(conversationId, currentUser) {
-        this.conversationId = conversationId;
+// Класс для работы с Firebase для чата маршрута
+class FirebaseRouteChat {
+    constructor(routeId, currentUser) {
+        this.routeId = routeId;
         this.currentUser = currentUser;
         this.database = firebase.database();
-        this.messagesRef = this.database.ref(`chats/${conversationId}/messages`);
-        this.typingRef = this.database.ref(`chats/${conversationId}/typing`);
-        this.usersRef = this.database.ref(`chats/${conversationId}/users`);
+        this.messagesRef = this.database.ref(`route_chats/${routeId}/messages`);
+        this.typingRef = this.database.ref(`route_chats/${routeId}/typing`);
         this.connectedRef = this.database.ref('.info/connected');
+        
         this.init();
     }
 
@@ -545,14 +613,16 @@ class FirebaseChat {
         await this.setupConnectionMonitoring();
         await this.setupMessagesListener();
         await this.setupTypingListener();
-        await this.setUserOnline();
         await this.loadMessageHistory();
     }
 
     async setupConnectionMonitoring() {
         this.connectedRef.on('value', (snap) => {
-            updateConnectionStatus(snap.val() ? 'connected' : 'disconnected', 
-                snap.val() ? 'Подключено' : 'Переподключение...');
+            if (snap.val() === true) {
+                updateConnectionStatus('connected', 'Подключено');
+            } else {
+                updateConnectionStatus('disconnected', 'Переподключение...');
+            }
         });
     }
 
@@ -566,26 +636,10 @@ class FirebaseChat {
     async setupTypingListener() {
         this.typingRef.on('child_changed', (snapshot) => {
             const typingData = snapshot.val();
-            if (typingData?.isTyping && typingData.userId !== this.currentUser.id) {
+            if (typingData && typingData.isTyping && typingData.userId !== this.currentUser.id) {
                 showTypingIndicator(typingData.username);
             } else {
                 hideTypingIndicator();
-            }
-        });
-    }
-
-    async setUserOnline() {
-        this.usersRef.child(this.currentUser.id).set({
-            userId: this.currentUser.id,
-            username: this.currentUser.username,
-            lastSeen: Date.now(),
-            isOnline: true
-        });
-
-        this.usersRef.on('child_changed', (snapshot) => {
-            const userData = snapshot.val();
-            if (userData?.userId === otherUserId) {
-                updateUserStatus(userData.userId, userData.isOnline);
             }
         });
     }
@@ -594,45 +648,67 @@ class FirebaseChat {
         try {
             const snapshot = await this.messagesRef.orderByChild('timestamp').limitToLast(50).once('value');
             const messages = [];
-            snapshot.forEach((child) => messages.push(child.val()));
+            
+            snapshot.forEach((childSnapshot) => {
+                const message = childSnapshot.val();
+                messages.push(message);
+            });
+            
             messages.sort((a, b) => a.timestamp - b.timestamp);
             this.renderMessages(messages);
+            
         } catch (error) {
             console.error('Ошибка загрузки истории:', error);
-            showError('Не удалось загрузить историю чата.');
+            showError('Ошибка загрузки истории сообщений');
         }
     }
 
     async sendMessage(messageText) {
-        if (isSending || !messageText.trim()) return false;
+        if (isSending) {
+            showWarning('Сообщение отправляется...');
+            return false;
+        }
+        
         isSending = true;
-
         const messageInput = document.querySelector('#chat-message-input');
         const submitBtn = document.querySelector('#chat-message-submit');
+        
         messageInput.disabled = true;
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-
+        
         try {
             const messageId = Date.now().toString();
             const messageData = {
                 id: messageId,
-                content: messageText.trim(),
-                sender: this.currentUser.username,
-                sender_id: this.currentUser.id,
-                timestamp: Date.now()
+                message: messageText,
+                user: this.currentUser.username,
+                user_id: this.currentUser.id,
+                timestamp: Date.now(),
+                created_at: getCurrentTime()
             };
-
-            this.addMessageToChat({ ...messageData, is_own: true, is_temp: true });
+            
+            // Добавляем сообщение локально
+            this.addMessageToChat({
+                ...messageData,
+                is_own: true,
+                is_temp: true
+            });
+            
+            // Сохраняем в Firebase
             await this.messagesRef.child(messageId).set(messageData);
-            this.setTyping(false);
+            
+            console.log('✅ Сообщение отправлено в чат маршрута');
+            
             messageInput.value = '';
             updateCharCounter();
-            showSuccess('Сообщение отправлено');
+            this.setTyping(false);
+            
             return true;
+            
         } catch (error) {
-            console.error('Ошибка отправки:', error);
-            showError('Не удалось отправить сообщение.');
+            console.error('❌ Ошибка отправки:', error);
+            showError('Ошибка отправки сообщения');
             return false;
         } finally {
             isSending = false;
@@ -656,236 +732,281 @@ class FirebaseChat {
     }
 
     renderMessages(messages) {
-        const container = document.querySelector('#chat-messages');
-        container.innerHTML = '';
+        const messagesContainer = document.querySelector('#chat-messages');
+        messagesContainer.innerHTML = '';
+        
         if (messages.length === 0) {
-            this.showEmptyChat();
+            this.showEmptyChatMessage();
             return;
         }
-        messages.forEach(msg => this.addMessageToChat(msg));
-        scrollToBottom();
+        
+        messages.forEach(messageData => {
+            this.addMessageToChat(messageData);
+        });
     }
 
     addMessageToChat(messageData) {
-        const container = document.querySelector('#chat-messages');
-        const emptyMsg = container.querySelector('#empty-chat-message');
-        if (emptyMsg) emptyMsg.remove();
-
-        const existing = container.querySelector(`[data-message-id="${messageData.id}"]`);
-        if (existing && !messageData.is_temp) {
-            existing.remove();
-        } else if (existing) {
-            return;
+        const messagesContainer = document.querySelector('#chat-messages');
+        
+        const emptyMessage = messagesContainer.querySelector('#empty-chat-message');
+        if (emptyMessage) {
+            emptyMessage.remove();
+        }
+        
+        const existingMessage = messagesContainer.querySelector(`[data-message-id="${messageData.id}"]`);
+        if (existingMessage) {
+            if (messageData.is_temp) {
+                existingMessage.remove();
+            } else {
+                return;
+            }
         }
 
-        const isOwn = messageData.is_own || messageData.sender_id == currentUserId;
-        const content = escapeHtml(messageData.content).replace(/\n/g, '<br>');
-        const timeStr = formatTime(messageData.timestamp);
+        const isOwn = messageData.is_own || messageData.user_id == currentUserId;
 
-        const wrapper = document.createElement('div');
-        wrapper.className = `message-wrapper mb-4 ${isOwn ? 'own-message' : 'other-message'}`;
-        wrapper.dataset.messageId = messageData.id;
-        wrapper.innerHTML = `
+        const messageWrapper = document.createElement('div');
+        messageWrapper.className = `message-wrapper mb-4 ${isOwn ? 'own-message' : 'other-message'}`;
+        messageWrapper.dataset.messageId = messageData.id;
+        
+        messageWrapper.innerHTML = `
             <div class="message-bubble ${isOwn ? 'own-bubble' : 'other-bubble'}">
-                ${!isOwn ? `<div class="message-sender mb-1"><small class="text-primary fw-bold">${escapeHtml(messageData.sender)}</small></div>` : ''}
-                <div class="message-content">${content}</div>
+                ${!isOwn ? `
+                    <div class="message-sender mb-1">
+                        <small class="text-primary fw-bold">
+                            <a href="/users/profile/${messageData.user}/" class="text-decoration-none">
+                                ${escapeHtml(messageData.user)}
+                            </a>
+                        </small>
+                    </div>
+                ` : ''}
+                <div class="message-content">
+                    ${escapeHtml(messageData.message).replace(/\n/g, '<br>')}
+                </div>
                 <div class="message-time text-end mt-1">
-                    <small class="${isOwn ? 'text-light' : 'text-muted'}">${timeStr}</small>
+                    <small class="${isOwn ? 'text-light' : 'text-muted'}">${messageData.created_at}</small>
                     ${isOwn ? '<i class="fas fa-check-double text-light ms-1" style="font-size: 10px;"></i>' : ''}
                 </div>
             </div>
         `;
-        container.appendChild(wrapper);
-        scrollToBottom();
 
-        if (!isOwn && !messageData.is_temp) {
-            playMessageSound();
+        if (!messageData.is_temp || messageData.is_own) {
+            messageWrapper.style.animation = 'messageSlideIn 0.3s ease-out';
         }
+        
+        messagesContainer.appendChild(messageWrapper);
+        scrollToBottom();
     }
 
-    showEmptyChat() {
-        const container = document.querySelector('#chat-messages');
-        container.innerHTML = `
+    showEmptyChatMessage() {
+        const messagesContainer = document.querySelector('#chat-messages');
+        messagesContainer.innerHTML = `
             <div class="text-center text-muted py-5" id="empty-chat-message">
                 <div class="empty-state-icon mb-4">
                     <i class="fas fa-comments fa-4x text-light"></i>
                 </div>
-                <h4 class="fw-light">Начните диалог</h4>
-                <p class="text-muted">Отправьте первое сообщение ${escapeHtml(otherUsername)}</p>
+                <h4 class="fw-light">Начните обсуждение маршрута</h4>
+                <p class="text-muted">Отправьте первое сообщение в чат маршрута</p>
             </div>
         `;
     }
 
     destroy() {
-        ['messagesRef', 'typingRef', 'usersRef', 'connectedRef'].forEach(ref => {
-            if (this[ref]) this[ref].off();
-        });
+        if (this.messagesRef) this.messagesRef.off();
+        if (this.typingRef) this.typingRef.off();
+        if (this.connectedRef) this.connectedRef.off();
     }
 }
 
-// Event Listeners
+// Настройка обработчиков событий
 function setupEventListeners() {
-    const input = document.querySelector('#chat-message-input');
+    const messageInput = document.querySelector('#chat-message-input');
+    
     let typingTimer;
-
-    input.addEventListener('input', () => {
-        const text = input.value.trim();
-        if (firebaseChat) {
-            firebaseChat.setTyping(text.length > 0);
+    messageInput.addEventListener('input', function() {
+        if (firebaseChat && messageInput.value.trim().length > 0) {
+            firebaseChat.setTyping(true);
             clearTimeout(typingTimer);
-            if (text.length > 0) {
-                typingTimer = setTimeout(() => firebaseChat.setTyping(false), 1000);
-            }
+            typingTimer = setTimeout(() => {
+                if (firebaseChat) {
+                    firebaseChat.setTyping(false);
+                }
+            }, 1000);
         }
         updateCharCounter();
     });
-
-    input.addEventListener('keypress', (e) => {
+    
+    messageInput.addEventListener('keypress', function(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             handleMessageSubmit(e);
         }
     });
-
+    
     window.addEventListener('resize', scrollToBottom);
 }
 
+// Обработка отправки сообщения
 async function handleMessageSubmit(e) {
-    const input = document.querySelector('#chat-message-input');
-    const message = input.value.trim();
-    if (!message) return;
-
-    if (!firebaseChat) {
-        showError('Чат не готов. Обновите страницу.');
+    e.preventDefault();
+    
+    const messageInput = document.querySelector('#chat-message-input');
+    const message = messageInput.value.trim();
+    
+    if (!message) {
+        showWarning('Введите сообщение');
+        messageInput.focus();
         return;
     }
-
+    
+    if (!firebaseChat) {
+        showError('Чат не инициализирован. Обновите страницу.');
+        return;
+    }
+    
     await firebaseChat.sendMessage(message);
 }
 
-// Утилиты UI
+// Функция для показа/скрытия информации о маршруте
+function toggleRouteInfo() {
+    const sidebar = document.getElementById('route-info-sidebar');
+    const overlay = document.getElementById('route-info-overlay');
+    const body = document.body;
+    
+    if (sidebar.classList.contains('active')) {
+        sidebar.classList.remove('active');
+        overlay.style.display = 'none';
+        body.classList.remove('sidebar-open');
+    } else {
+        sidebar.classList.add('active');
+        overlay.style.display = 'block';
+        body.classList.add('sidebar-open');
+        
+        overlay.onclick = function() {
+            toggleRouteInfo();
+        };
+    }
+}
+
+// Вспомогательные функции
 function showTypingIndicator(username) {
-    const el = document.getElementById('typing-indicator');
-    const userEl = document.getElementById('typing-user');
-    if (el && userEl) {
-        userEl.textContent = username;
-        el.style.display = 'block';
+    const typingIndicator = document.getElementById('typing-indicator');
+    const typingUser = document.getElementById('typing-user');
+    if (typingIndicator && typingUser) {
+        typingUser.textContent = username;
+        typingIndicator.style.display = 'block';
     }
 }
 
 function hideTypingIndicator() {
-    const el = document.getElementById('typing-indicator');
-    if (el) el.style.display = 'none';
+    const typingIndicator = document.getElementById('typing-indicator');
+    if (typingIndicator) {
+        typingIndicator.style.display = 'none';
+    }
 }
 
 function updateCharCounter() {
     const input = document.querySelector('#chat-message-input');
     const counter = document.querySelector('#char-counter');
-    const len = input.value.length;
-    counter.textContent = `${len}/1000`;
-    counter.className = len > 950 ? 'text-danger' : len > 800 ? 'text-warning' : len > 0 ? 'text-success' : 'text-muted';
+    const length = input.value.length;
+    counter.textContent = `${length}/1000`;
+    counter.className = length > 950 ? 'text-danger' : length > 800 ? 'text-warning' : length > 0 ? 'text-success' : 'text-muted';
 }
 
 function updateConnectionStatus(status, message) {
-    const el = document.getElementById('connection-status');
-    if (el) {
-        el.textContent = message;
-        el.className = 
-            status === 'connected' ? 'text-success' :
-            status === 'disconnected' ? 'text-warning' : 'text-danger';
+    const statusElement = document.getElementById('connection-status');
+    if (statusElement) {
+        statusElement.textContent = message;
+        statusElement.className = status === 'connected' ? 'text-success' : 
+                                status === 'disconnected' ? 'text-warning' : 'text-danger';
     }
 }
 
 function scrollToBottom() {
-    const container = document.querySelector('#chat-messages');
-    if (container) {
-        container.scrollTop = container.scrollHeight;
+    const messagesContainer = document.querySelector('#chat-messages');
+    if (messagesContainer) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 }
 
-function updateUserStatus(userId, isOnline) {
-    if (userId === otherUserId) {
-        const onlineBadge = document.getElementById('online-status');
-        const lastSeen = document.getElementById('last-seen');
-        if (isOnline) {
-            onlineBadge.className = 'badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill';
-            onlineBadge.innerHTML = '<i class="fas fa-circle me-1" style="font-size: 8px;"></i>В сети';
-            lastSeen.textContent = 'В сети';
-            lastSeen.className = 'text-success';
-        } else {
-            onlineBadge.className = 'badge bg-secondary bg-opacity-10 text-secondary px-3 py-2 rounded-pill';
-            onlineBadge.innerHTML = '<i class="fas fa-circle me-1" style="font-size: 8px;"></i>Не в сети';
-            lastSeen.textContent = 'Был недавно';
-            lastSeen.className = 'text-muted';
-        }
-    }
+function getCurrentTime() {
+    return new Date().toLocaleTimeString('ru-RU', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+    });
 }
 
-// Уведомления
-function showNotification(message, type = 'info') {
-    const container = document.getElementById('notifications');
-    const id = 'notification-' + Date.now();
-
-    const config = {
-        'success': { cls: 'notification-success', icon: 'fa-check-circle', dur: 3000 },
-        'error': { cls: 'notification-error', icon: 'fa-exclamation-circle', dur: 5000 },
-        'warning': { cls: 'notification-warning', icon: 'fa-exclamation-triangle', dur: 4000 },
-        'info': { cls: 'notification-info', icon: 'fa-info-circle', dur: 3000 }
-    }[type] || { cls: 'notification-info', icon: 'fa-info-circle', dur: 3000 };
-
-    const el = document.createElement('div');
-    el.id = id;
-    el.className = `notification ${config.cls}`;
-    el.innerHTML = `
-        <div class="notification-content d-flex align-items-start">
-            <i class="fas ${config.icon} me-2 mt-1"></i>
-            <div class="notification-message flex-grow-1">${escapeHtml(message)}</div>
-            <button type="button" class="btn-close btn-sm" onclick="closeNotification('${id}')"></button>
-        </div>
-        <div class="notification-progress mt-2" style="height: 3px; background: currentColor; opacity: 0.2;"></div>
-    `;
-    container.appendChild(el);
-    setTimeout(() => el.classList.add('show'), 10);
-    setTimeout(() => closeNotification(id), config.dur);
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
-function closeNotification(id) {
-    const el = document.getElementById(id);
-    if (el) {
-        el.classList.remove('show');
-        el.classList.add('hide');
-        setTimeout(() => el.remove(), 400);
-    }
-}
-
-function showError(msg) { showNotification(msg, 'error'); }
-function showSuccess(msg) { showNotification(msg, 'success'); }
-function showWarning(msg) { showNotification(msg, 'warning'); }
-function showInfo(msg) { showNotification(msg, 'info'); }
-
-// Функции действий
+// Функции управления чатом
 function refreshChat() {
+    console.log('🔄 Обновление чата маршрута');
     if (firebaseChat) {
         firebaseChat.loadMessageHistory();
-        showInfo('Чат обновлён');
+        showInfo('Чат обновлен');
     } else {
         showError('Чат не инициализирован');
     }
 }
 
-function blockUser() {
-    if (confirm(`Вы уверены, что хотите заблокировать ${otherUsername}?`)) {
-        showInfo('Функция блокировки временно недоступна');
+// Уведомления
+function showError(message) { showNotification(message, 'error'); }
+function showSuccess(message) { showNotification(message, 'success'); }
+function showWarning(message) { showNotification(message, 'warning'); }
+function showInfo(message) { showNotification(message, 'info'); }
+
+function showNotification(message, type = 'info') {
+    const notifications = document.getElementById('notifications');
+    const notificationId = 'notification-' + Date.now();
+    
+    const typeConfig = {
+        'success': { class: 'notification-success', icon: 'fa-check-circle', duration: 3000 },
+        'error': { class: 'notification-error', icon: 'fa-exclamation-circle', duration: 5000 },
+        'warning': { class: 'notification-warning', icon: 'fa-exclamation-triangle', duration: 4000 },
+        'info': { class: 'notification-info', icon: 'fa-info-circle', duration: 3000 }
+    };
+    
+    const config = typeConfig[type] || typeConfig.info;
+    
+    const notification = document.createElement('div');
+    notification.id = notificationId;
+    notification.className = `notification ${config.class}`;
+    notification.innerHTML = `
+        <div class="notification-content">
+            <div class="notification-icon"><i class="fas ${config.icon}"></i></div>
+            <div class="notification-message">${escapeHtml(message)}</div>
+            <button type="button" class="notification-close" onclick="closeNotification('${notificationId}')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="notification-progress"></div>
+    `;
+    
+    notifications.appendChild(notification);
+    setTimeout(() => notification.classList.add('show'), 10);
+    
+    setTimeout(() => closeNotification(notificationId), config.duration);
+}
+
+function closeNotification(notificationId) {
+    const notification = document.getElementById(notificationId);
+    if (notification) {
+        notification.classList.remove('show');
+        notification.classList.add('hide');
+        setTimeout(() => notification.remove(), 400);
     }
 }
 
-function startRouteChat() {
-    showInfo('Создание общего маршрута — в разработке');
-}
-
-// Cleanup
-window.addEventListener('beforeunload', () => {
-    if (firebaseChat) firebaseChat.destroy();
+// Обработка перед закрытием страницы
+window.addEventListener('beforeunload', function() {
+    if (firebaseChat) {
+        firebaseChat.destroy();
+    }
 });
+
+console.log('🎉 Чат маршрута инициализирован!');
 </script>
 {% endblock %}

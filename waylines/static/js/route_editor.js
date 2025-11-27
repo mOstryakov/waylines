@@ -900,6 +900,19 @@ class RouteEditor {
         modal.show();
     }
 
+    getWaypointsData() {
+        return this.points.map((point, index) => ({
+            name: point.name,
+            description: point.description || '',
+            address: point.address || '',
+            lat: point.lat,
+            lng: point.lng,
+            category: point.category || '',
+            hint_author: point.hint_author || '',
+            tags: point.tags || []
+        }));
+    }
+
     confirmDeletePoint() {
         const index = this.currentEditIndex;
         if (index !== null) {
@@ -1042,7 +1055,7 @@ class RouteEditor {
 
             // Определяем URL и метод
             const isEdit = window.routeData && window.routeData.id;
-            const url = isEdit ? `/routes/edit/${window.routeData.id}/` : '/routes/create/';
+            const url = isEdit ? `/routes/${window.routeData.id}/edit/` : '/routes/create/';
             const method = 'POST';
 
             console.log('URL:', url, 'Method:', method);

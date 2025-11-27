@@ -5,30 +5,108 @@
 
 {% block content %}
 <!-- Герой секция -->
-<div class="hero-section text-white py-5 mb-5">
-    <div class="container">
-        <div class="row align-items-center">
-            <div class="col-md-6">
-                <h1 class="display-4 fw-bold mb-4">Откройте мир заново</h1>
-                <p class="lead mb-4">Создавайте, делитесь и исследуйте уникальные маршруты с Waylines. Откройте для себя новые места и поделитесь своими открытиями с другими.</p>
-                {% if user.is_authenticated %}
-                <a href="{% url 'create_route' %}" class="btn btn-light btn-lg me-3">
-                    <i class="fas fa-plus"></i> Создать маршрут
-                </a>
-                <a href="{% url 'all_routes' %}" class="btn btn-outline-light btn-lg">
-                    <i class="fas fa-compass"></i> Исследовать
-                </a>
-                {% else %}
-                <a href="{% url 'register' %}" class="btn btn-light btn-lg me-3">
-                    <i class="fas fa-user-plus"></i> Присоединиться
-                </a>
-                <a href="{% url 'all_routes' %}" class="btn btn-outline-light btn-lg">
-                    <i class="fas fa-eye"></i> Посмотреть маршруты
-                </a>
-                {% endif %}
+<div class="hero-section text-dark position-relative overflow-hidden">
+    <!-- Анимированный фон -->
+    <div class="hero-bg-animation">
+        <div class="bg-grid"></div>
+        <div class="bg-glow"></div>
+    </div>
+    
+    <div class="container position-relative">
+        <div class="row align-items-center min-vh-90 py-5">
+            <div class="col-lg-6">
+                <div class="hero-content">
+                    <!-- Бейдж -->
+                    <div class="hero-badge mb-4">
+                        <span class="badge bg-primary-soft text-primary px-3 py-2 rounded-pill fw-medium">
+                            <i class="fas fa-compass me-2"></i>Исследуйте мир осознанно
+                        </span>
+                    </div>
+                    
+                    <h1 class="display-3 fw-black mb-4 hero-title">
+                        Откройте новые
+                        <span class="text-gradient-nature">маршруты</span>
+                        для ваших приключений
+                    </h1>
+                    
+                    <p class="lead mb-4 fs-5 text-muted hero-subtitle">
+                        Создавайте, сохраняйте и делитесь лучшими маршрутами с сообществом 
+                        путешественников. Находите вдохновение в каждом направлении.
+                    </p>
+                    
+                    <div class="hero-buttons d-flex flex-wrap gap-3">
+                        {% if user.is_authenticated %}
+                        <a href="{% url 'create_route' %}" class="btn btn-primary btn-lg px-5 py-3 rounded-3 fw-semibold hover-lift">
+                            <i class="fas fa-plus me-2"></i> Создать маршрут
+                        </a>
+                        <a href="{% url 'all_routes' %}" class="btn btn-outline-dark btn-lg px-5 py-3 rounded-3 border-2 fw-semibold hover-scale">
+                            <i class="fas fa-compass me-2"></i> Исследовать
+                        </a>
+                        {% else %}
+                        <a href="{% url 'register' %}" class="btn btn-primary btn-lg px-5 py-3 rounded-3 fw-semibold hover-lift">
+                            <i class="fas fa-user-plus me-2"></i> Начать бесплатно
+                        </a>
+                        <a href="{% url 'all_routes' %}" class="btn btn-outline-dark btn-lg px-5 py-3 rounded-3 border-2 fw-semibold hover-scale">
+                            <i class="fas fa-play-circle me-2"></i> Демо-тур
+                        </a>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Статистика -->
+                    <div class="hero-stats mt-5 pt-4">
+                        <div class="row g-4">
+                            <div class="col-4">
+                                <div class="stat-item">
+                                    <div class="stat-number h4 fw-black mb-1 text-primary">{{ total_routes }}+</div>
+                                    <div class="stat-label small text-muted">Маршрутов</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="stat-item">
+                                    <div class="stat-number h4 fw-black mb-1 text-success">{{ total_users }}+</div>
+                                    <div class="stat-label small text-muted">Путешественников</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="stat-item">
+                                    <div class="stat-number h4 fw-black mb-1 text-warning">{{ total_countries }}+</div>
+                                    <div class="stat-label small text-muted">Стран</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="col-md-6 text-center">
-                <img src="{% static 'images/hero-route.svg' %}" alt="Путешествия" class="img-fluid" style="max-height: 300px;">
+            
+            <div class="col-lg-6">
+                <div class="hero-visual position-relative">
+                    <!-- Основное изображение -->
+                    <div class="hero-main-card bg-white rounded-4 p-4 shadow-lg border">
+                        <img src="{% static 'images/hero-route.svg' %}" alt="Путешествия" class="img-fluid">
+                    </div>
+                    
+                    <!-- Плавающие карточки -->
+                    <div class="floating-card card-1">
+                        <div class="card-content bg-white rounded-3 p-3 shadow-sm border">
+                            <i class="fas fa-mountain text-success mb-2"></i>
+                            <small class="text-dark">Горные тропы</small>
+                        </div>
+                    </div>
+                    
+                    <div class="floating-card card-2">
+                        <div class="card-content bg-white rounded-3 p-3 shadow-sm border">
+                            <i class="fas fa-city text-primary mb-2"></i>
+                            <small class="text-dark">Городские маршруты</small>
+                        </div>
+                    </div>
+                    
+                    <div class="floating-card card-3">
+                        <div class="card-content bg-white rounded-3 p-3 shadow-sm border">
+                            <i class="fas fa-water text-info mb-2"></i>
+                            <small class="text-dark">Прибрежные пути</small>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -36,144 +114,241 @@
 
 <div class="container">
     <!-- Популярные маршруты -->
-    <section class="mb-5">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="fw-bold">Популярные маршруты</h2>
-            <a href="{% url 'all_routes' %}" class="btn btn-outline-primary">Все маршруты <i class="fas fa-arrow-right"></i></a>
+    <section class="py-6">
+        <div class="section-header text-center mb-6">
+            <div class="section-badge mb-3">
+                <span class="badge bg-primary-soft text-primary px-3 py-2 rounded-pill fw-medium">
+                    <i class="fas fa-fire me-2"></i>Популярное
+                </span>
+            </div>
+            <h2 class="fw-black display-4 mb-3">Исследуйте лучшие маршруты</h2>
+            <p class="lead text-muted fs-5">Самые сохраняемые и рекомендуемые маршруты сообщества</p>
         </div>
         
-        <div class="row">
+        <div class="row g-4">
             {% for route in popular_routes %}
-            <div class="col-xl-4 col-lg-6 mb-4">
-                <div class="card route-card h-100">
-                    {% if route.photos.first %}
-                    <img src="{{ route.photos.first.image.url }}" class="card-img-top route-image" alt="{{ route.name }}">
-                    {% else %}
-                    <div class="card-img-top route-image bg-light d-flex align-items-center justify-content-center">
-                        <i class="fas fa-route fa-3x text-muted"></i>
-                    </div>
-                    {% endif %}
-                    
-                    <div class="card-body d-flex flex-column">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h5 class="card-title">{{ route.name }}</h5>
-                            <span class="badge bg-{% if route.route_type == 'walking' %}success{% elif route.route_type == 'driving' %}primary{% else %}warning{% endif %}">
+            <div class="col-xl-4 col-lg-6">
+                <div class="card route-card h-100 border-0 shadow-sm hover-lift rounded-4">
+                    <div class="card-image position-relative overflow-hidden rounded-top-4">
+                        {% if route.photos.first %}
+                        <img src="{{ route.photos.first.image.url }}" class="card-img-top route-image" alt="{{ route.name }}">
+                        {% else %}
+                        <div class="card-img-top route-image bg-gradient-nature d-flex align-items-center justify-content-center">
+                            <i class="fas fa-route fa-3x text-white opacity-70"></i>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Действия на карточке -->
+                        <div class="card-actions position-absolute top-3 end-3">
+                            <button class="btn btn-sm btn-light rounded-pill opacity-80 hover-scale">
+                                <i class="far fa-bookmark"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Бейдж типа маршрута -->
+                        <div class="position-absolute bottom-3 start-3">
+                            <span class="badge bg-white text-dark px-3 py-2 rounded-pill border shadow-sm">
+                                <i class="fas fa-{% if route.route_type == 'walking' %}hiking{% elif route.route_type == 'driving' %}car{% else %}bicycle{% endif %} me-1"></i>
                                 {{ route.get_route_type_display }}
                             </span>
                         </div>
-                        
-                        <p class="card-text text-muted flex-grow-1">
-                            {{ route.short_description|default:route.description|truncatewords:20 }}
-                        </p>
-                        
-                        <div class="mb-2">
-                            <span class="rating-stars">
-                                {% with rating=route.get_average_rating %}
-                                {% for i in "12345" %}
-                                    {% if forloop.counter <= rating %}
-                                    <i class="fas fa-star"></i>
-                                    {% else %}
-                                    <i class="far fa-star"></i>
-                                    {% endif %}
-                                {% endfor %}
-                                {% endwith %}
-                            </span>
-                            <small class="text-muted">({{ route.ratings.count }})</small>
-                        </div>
-                        
-                        <div class="d-flex justify-content-between align-items-center mt-auto">
-                            <div>
+                    </div>
+                    
+                    <div class="card-body d-flex flex-column p-4">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="card-title fw-bold mb-0 text-dark">{{ route.name }}</h5>
+                            <div class="route-stats">
                                 <small class="text-muted">
-                                    <i class="fas fa-user"></i> {{ route.author.username }}
-                                </small>
-                                <small class="text-muted ms-2">
-                                    <i class="fas fa-route"></i> {{ route.total_distance|floatformat:1 }} км
+                                    <i class="fas fa-eye me-1"></i>{{ route.views }}
                                 </small>
                             </div>
-                            <a href="{% url 'route_detail' route.id %}" class="btn btn-primary btn-sm">Подробнее</a>
+                        </div>
+                        
+                        <p class="card-text text-muted flex-grow-1 mb-3">
+                            {{ route.short_description|default:route.description|truncatechars:120 }}
+                        </p>
+                        
+                        <!-- Рейтинг и метрики -->
+                        <div class="route-meta mb-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="rating-section">
+                                    <span class="rating-stars text-warning me-2">
+                                        {% with rating=route.get_average_rating %}
+                                        {% for i in "12345" %}
+                                            {% if forloop.counter <= rating %}
+                                            <i class="fas fa-star"></i>
+                                            {% else %}
+                                            <i class="far fa-star"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                        {% endwith %}
+                                    </span>
+                                    <small class="text-muted">({{ route.ratings.count }})</small>
+                                </div>
+                                
+                                <div class="route-length">
+                                    <small class="text-muted">
+                                        <i class="fas fa-route me-1"></i>{{ route.total_distance|floatformat:1 }}км
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Автор и кнопка -->
+                        <div class="card-footer bg-transparent border-0 px-0 pb-0 pt-3 mt-auto">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm me-3">
+                                        <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white fw-bold" style="width: 40px; height: 40px;">
+                                            {{ route.author.username|first|upper }}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="fw-medium small text-dark">{{ route.author.username }}</div>
+                                        <small class="text-muted">{{ route.created_at|date:"d M Y" }}</small>
+                                    </div>
+                                </div>
+                                <a href="{% url 'route_detail' route.id %}" class="btn btn-primary btn-sm rounded-pill px-4 hover-scale">
+                                    Исследовать
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
             {% empty %}
             <div class="col-12">
-                <div class="text-center text-muted py-5">
-                    <i class="fas fa-route fa-3x mb-3"></i>
-                    <h4>Пока нет маршрутов</h4>
-                    <p>Будьте первым, кто создаст маршрут!</p>
+                <div class="text-center text-muted py-6">
+                    <div class="empty-state-icon mb-4">
+                        <i class="fas fa-route fa-4x opacity-25"></i>
+                    </div>
+                    <h4 class="fw-bold mb-3 text-dark">Маршрутов пока нет</h4>
+                    <p class="mb-4 lead text-muted">Станьте первооткрывателем и создайте первый маршрут!</p>
                     {% if user.is_authenticated %}
-                    <a href="{% url 'create_route' %}" class="btn btn-primary">Создать первый маршрут</a>
+                    <a href="{% url 'create_route' %}" class="btn btn-primary btn-lg rounded-3 px-5 py-3">
+                        <i class="fas fa-plus me-2"></i>Создать маршрут
+                    </a>
                     {% endif %}
                 </div>
             </div>
             {% endfor %}
         </div>
+        
+        {% if popular_routes %}
+        <div class="text-center mt-6">
+            <a href="{% url 'all_routes' %}" class="btn btn-outline-primary btn-lg rounded-3 px-5 py-3 border-2 fw-semibold hover-scale">
+                Смотреть все маршруты <i class="fas fa-arrow-right ms-2"></i>
+            </a>
+        </div>
+        {% endif %}
     </section>
 
     <!-- Категории -->
-    <section class="mb-5">
-        <h2 class="fw-bold mb-4">Исследуйте по категориям</h2>
-        <div class="row g-4">
-            <div class="col-md-3 col-6">
-                <div class="card text-center h-100 border-0 shadow-sm">
-                    <div class="card-body py-4">
-                        <i class="fas fa-hiking fa-2x text-success mb-3"></i>
-                        <h5 class="card-title">Пешие</h5>
-                        <p class="card-text text-muted">{{ walking_count }} маршрутов</p>
-                        <a href="{% url 'all_routes' %}?type=walking" class="btn btn-outline-success btn-sm">Смотреть</a>
-                    </div>
-                </div>
+    <section class="py-6 bg-light-subtle rounded-4 my-4">
+        <div class="container">
+            <div class="section-header text-center mb-6">
+                <h2 class="fw-black display-4 mb-3">Выберите стиль путешествия</h2>
+                <p class="lead text-muted fs-5">Маршруты для любого настроения и активности</p>
             </div>
-            <div class="col-md-3 col-6">
-                <div class="card text-center h-100 border-0 shadow-sm">
-                    <div class="card-body py-4">
-                        <i class="fas fa-car fa-2x text-primary mb-3"></i>
-                        <h5 class="card-title">Автомобильные</h5>
-                        <p class="card-text text-muted">{{ driving_count }} маршрутов</p>
-                        <a href="{% url 'all_routes' %}?type=driving" class="btn btn-outline-primary btn-sm">Смотреть</a>
-                    </div>
+            
+            <div class="row g-4">
+                <div class="col-md-3 col-6">
+                    <a href="{% url 'walking_routes' %}" class="text-decoration-none">
+                        <div class="category-card card text-center h-100 border-0 bg-white shadow-sm hover-lift rounded-3">
+                            <div class="card-body py-5">
+                                <div class="category-icon mb-4">
+                                    <div class="icon-wrapper bg-success-soft rounded-3 mx-auto d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                                        <i class="fas fa-hiking fa-2x text-success"></i>
+                                    </div>
+                                </div>
+                                <h5 class="card-title fw-bold mb-2 text-dark">Пешие</h5>
+                                <p class="card-text text-muted mb-3">{{ walking_count }} маршрутов</p>
+                                <span class="btn btn-outline-success btn-sm rounded-pill px-4">Исследовать</span>
+                            </div>
+                        </div>
+                    </a>
                 </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="card text-center h-100 border-0 shadow-sm">
-                    <div class="card-body py-4">
-                        <i class="fas fa-bicycle fa-2x text-warning mb-3"></i>
-                        <h5 class="card-title">Велосипедные</h5>
-                        <p class="card-text text-muted">{{ cycling_count }} маршрутов</p>
-                        <a href="{% url 'all_routes' %}?type=cycling" class="btn btn-outline-warning btn-sm">Смотреть</a>
-                    </div>
+                
+                <div class="col-md-3 col-6">
+                    <a href="{% url 'driving_routes' %}" class="text-decoration-none">
+                        <div class="category-card card text-center h-100 border-0 bg-white shadow-sm hover-lift rounded-3">
+                            <div class="card-body py-5">
+                                <div class="category-icon mb-4">
+                                    <div class="icon-wrapper bg-primary-soft rounded-3 mx-auto d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                                        <i class="fas fa-car fa-2x text-primary"></i>
+                                    </div>
+                                </div>
+                                <h5 class="card-title fw-bold mb-2 text-dark">Авто</h5>
+                                <p class="card-text text-muted mb-3">{{ driving_count }} маршрутов</p>
+                                <span class="btn btn-outline-primary btn-sm rounded-pill px-4">Исследовать</span>
+                            </div>
+                        </div>
+                    </a>
                 </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="card text-center h-100 border-0 shadow-sm">
-                    <div class="card-body py-4">
-                        <i class="fas fa-mountain fa-2x text-danger mb-3"></i>
-                        <h5 class="card-title">Приключенческие</h5>
-                        <p class="card-text text-muted">{{ adventure_count }} маршрутов</p>
-                        <a href="{% url 'all_routes' %}?mood=adventure" class="btn btn-outline-danger btn-sm">Смотреть</a>
-                    </div>
+                
+                <div class="col-md-3 col-6">
+                    <a href="{% url 'cycling_routes' %}" class="text-decoration-none">
+                        <div class="category-card card text-center h-100 border-0 bg-white shadow-sm hover-lift rounded-3">
+                            <div class="card-body py-5">
+                                <div class="category-icon mb-4">
+                                    <div class="icon-wrapper bg-warning-soft rounded-3 mx-auto d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                                        <i class="fas fa-bicycle fa-2x text-warning"></i>
+                                    </div>
+                                </div>
+                                <h5 class="card-title fw-bold mb-2 text-dark">Велосипед</h5>
+                                <p class="card-text text-muted mb-3">{{ cycling_count }} маршрутов</p>
+                                <span class="btn btn-outline-warning btn-sm rounded-pill px-4">Исследовать</span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                
+                <div class="col-md-3 col-6">
+                    <a href="{% url 'adventure_routes' %}" class="text-decoration-none">
+                        <div class="category-card card text-center h-100 border-0 bg-white shadow-sm hover-lift rounded-3">
+                            <div class="card-body py-5">
+                                <div class="category-icon mb-4">
+                                    <div class="icon-wrapper bg-info-soft rounded-3 mx-auto d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                                        <i class="fas fa-mountain fa-2x text-info"></i>
+                                    </div>
+                                </div>
+                                <h5 class="card-title fw-bold mb-2 text-dark">Приключения</h5>
+                                <p class="card-text text-muted mb-3">{{ adventure_count }} маршрутов</p>
+                                <span class="btn btn-outline-info btn-sm rounded-pill px-4">Исследовать</span>
+                            </div>
+                        </div>
+                    </a>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Преимущества -->
-    <section class="mb-5">
-        <div class="row">
-            <div class="col-md-4 text-center mb-4">
-                <i class="fas fa-map-marked-alt fa-3x text-primary mb-3"></i>
-                <h4>Создавайте маршруты</h4>
-                <p class="text-muted">Отмечайте точки на карте, добавляйте описание и фото</p>
-            </div>
-            <div class="col-md-4 text-center mb-4">
-                <i class="fas fa-share-alt fa-3x text-success mb-3"></i>
-                <h4>Делитесь с другими</h4>
-                <p class="text-muted">Публикуйте маршруты или делитесь с друзьями</p>
-            </div>
-            <div class="col-md-4 text-center mb-4">
-                <i class="fas fa-compass fa-3x text-warning mb-3"></i>
-                <h4>Открывайте новое</h4>
-                <p class="text-muted">Находите интересные места созданные сообществом</p>
+    <!-- CTA секция -->
+    <section class="py-6 text-center">
+        <div class="cta-section bg-light-subtle rounded-4 p-6 position-relative overflow-hidden border">
+            <div class="position-relative">
+                <h2 class="fw-black display-5 text-dark mb-4">Начните своё путешествие</h2>
+                <p class="lead text-muted mb-5 fs-5">
+                    Присоединяйтесь к сообществу путешественников и откройте мир по-новому
+                </p>
+                
+                <div class="cta-buttons">
+                    {% if user.is_authenticated %}
+                    <a href="{% url 'create_route' %}" class="btn btn-primary btn-lg px-5 py-3 rounded-3 fw-semibold me-3 hover-lift">
+                        <i class="fas fa-plus me-2"></i>Создать маршрут
+                    </a>
+                    <a href="{% url 'all_routes' %}" class="btn btn-outline-dark btn-lg px-5 py-3 rounded-3 border-2 fw-semibold hover-scale">
+                        <i class="fas fa-compass me-2"></i>Найти вдохновение
+                    </a>
+                    {% else %}
+                    <a href="{% url 'register' %}" class="btn btn-primary btn-lg px-5 py-3 rounded-3 fw-semibold me-3 hover-lift">
+                        <i class="fas fa-user-plus me-2"></i>Присоединиться бесплатно
+                    </a>
+                    <a href="{% url 'all_routes' %}" class="btn btn-outline-dark btn-lg px-5 py-3 rounded-3 border-2 fw-semibold hover-scale">
+                        <i class="fas fa-play me-2"></i>Посмотреть демо
+                    </a>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </section>
@@ -182,8 +357,220 @@
 
 {% block extra_css %}
 <style>
+    :root {
+        --primary-color: #3b82f6;
+        --primary-soft: rgba(59, 130, 246, 0.1);
+        --success-soft: rgba(34, 197, 94, 0.1);
+        --warning-soft: rgba(245, 158, 11, 0.1);
+        --info-soft: rgba(14, 165, 233, 0.1);
+    }
+
     .hero-section {
-        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .min-vh-90 {
+        min-height: 90vh;
+    }
+
+    .hero-bg-animation {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+    }
+
+    .bg-grid {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background-image: 
+            linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
+        background-size: 50px 50px;
+        animation: gridMove 20s linear infinite;
+    }
+
+    .bg-glow {
+        position: absolute;
+        width: 400px;
+        height: 400px;
+        background: radial-gradient(circle, rgba(59, 130, 246, 0.05) 0%, transparent 70%);
+        animation: glowMove 20s ease-in-out infinite;
+    }
+
+    @keyframes gridMove {
+        0% { transform: translate(0, 0); }
+        100% { transform: translate(50px, 50px); }
+    }
+
+    @keyframes glowMove {
+        0%, 100% { transform: translate(0, 0) scale(1); }
+        50% { transform: translate(100px, -50px) scale(1.1); }
+    }
+
+    .hero-title {
+        font-size: 3.5rem;
+        line-height: 1.1;
+    }
+
+    .text-gradient-nature {
+        background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .hover-lift {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .hover-lift:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    }
+
+    .hover-scale {
+        transition: all 0.3s ease;
+    }
+
+    .hover-scale:hover {
+        transform: scale(1.05);
+    }
+
+    .hero-visual {
+        position: relative;
+        height: 500px;
+    }
+
+    .hero-main-card {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 80%;
+        z-index: 2;
+    }
+
+    .floating-card {
+        position: absolute;
+        z-index: 3;
+    }
+
+    .floating-card.card-1 {
+        top: 10%;
+        right: 5%;
+        animation: float 6s ease-in-out infinite;
+    }
+
+    .floating-card.card-2 {
+        bottom: 20%;
+        left: 0;
+        animation: float 4s ease-in-out infinite 1s;
+    }
+
+    .floating-card.card-3 {
+        top: 40%;
+        right: 0;
+        animation: float 5s ease-in-out infinite 2s;
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translateY(0px) rotate(0deg); }
+        50% { transform: translateY(-15px) rotate(3deg); }
+    }
+
+    .route-card .card-image {
+        height: 240px;
+        overflow: hidden;
+    }
+
+    .route-card .route-image {
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.5s ease;
+    }
+
+    .route-card:hover .route-image {
+        transform: scale(1.1);
+    }
+
+    .bg-gradient-nature {
+        background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%);
+    }
+
+    .bg-primary-soft {
+        background: var(--primary-soft);
+    }
+
+    .bg-success-soft {
+        background: var(--success-soft);
+    }
+
+    .bg-warning-soft {
+        background: var(--warning-soft);
+    }
+
+    .bg-info-soft {
+        background: var(--info-soft);
+    }
+
+    .bg-light-subtle {
+        background-color: #f8fafc;
+    }
+
+    .py-6 {
+        padding-top: 5rem;
+        padding-bottom: 5rem;
+    }
+
+    .mb-6 {
+        margin-bottom: 5rem;
+    }
+
+    .fw-black {
+        font-weight: 900;
+    }
+
+    .rounded-4 {
+        border-radius: 1.5rem !important;
+    }
+
+    /* Улучшенные тени */
+    .shadow-sm {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
+    }
+
+    .shadow-lg {
+        box-shadow: 0 10px 40px rgba(0,0,0,0.1) !important;
+    }
+
+    /* Адаптивность */
+    @media (max-width: 768px) {
+        .hero-title {
+            font-size: 2.5rem;
+        }
+        
+        .hero-visual {
+            height: 300px;
+            margin-top: 2rem;
+        }
+        
+        .floating-card {
+            display: none;
+        }
+        
+        .hero-buttons {
+            justify-content: center;
+        }
+        
+        .hero-buttons .btn {
+            width: 100%;
+            text-align: center;
+        }
     }
 </style>
 {% endblock %}

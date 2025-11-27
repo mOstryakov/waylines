@@ -5,9 +5,9 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.db.models import Q
 from django.shortcuts import render, get_object_or_404, redirect
 
-from waylines.routes.models import Route, RouteFavorite
-from waylines.users.forms import UserProfileForm, UserRegistrationForm
-from waylines.users.models import Friendship, UserProfile
+from routes.models import Route, RouteFavorite
+from users.forms import UserProfileForm, UserRegistrationForm
+from users.models import Friendship, UserProfile
 
 User = get_user_model()
 

@@ -12,62 +12,41 @@ from django.views import View
 from django.contrib.auth.mixins import LoginRequiredMixin
 import json
 import math
-<<<<<<< HEAD
-from .models import *
-from .forms import UserRegistrationForm, UserProfileForm
-from .models import (
-    Route,
-    Friendship,
-    RoutePoint,
-    UserProfile,
-    RouteFavorite,
-    User,
-    RouteRating,
-    SavedPlace,
-)
-=======
-from routes.models import Route, RoutePoint, RouteFavorite, RouteRating, SavedPlace, RouteComment, PointComment
+
+from routes.models import Route, RoutePoint, RouteFavorite, RouteRating, SavedPlace, RouteComment, PointComment, User
+from chat.models import RouteChatMessage
 from users.models import Friendship
->>>>>>> b9978dec6f885f7f1edad6b616c2b0c64d4cc5b8
 
 
 def home(request):
-    """Главная страница"""
-    # Популярные маршруты (по оценкам)
-    popular_routes = (
-        Route.objects.filter(privacy="public", is_active=True)
-        .annotate(
-            avg_rating=Avg("ratings__rating"), rating_count=Count("ratings")
-        )
-        .filter(avg_rating__isnull=False)
-        .order_by("-avg_rating", "-rating_count")[:6]
-    )
-
+    # Получаем реальную статистику
+    total_routes = Route.objects.filter(is_active=True).count()
+    total_users = User.objects.count()
+    
+    # Считаем уникальные страны
+    total_countries = Route.objects.filter(is_active=True).values('country').distinct().count()
+    
+    # Считаем маршруты по типам (только активные)
+    walking_count = Route.objects.filter(route_type='walking', is_active=True).count()
+    driving_count = Route.objects.filter(route_type='driving', is_active=True).count()
+    cycling_count = Route.objects.filter(route_type='cycling', is_active=True).count()
+    adventure_count = Route.objects.filter(mood='adventure', is_active=True).count()
+    
+    # Популярные маршруты
+    popular_routes = Route.objects.filter(is_active=True).order_by('-created_at')[:6]
+    
     context = {
-        "popular_routes": popular_routes,
-        "walking_count": Route.objects.filter(
-            route_type="walking", privacy="public", is_active=True
-        ).count(),
-        "driving_count": Route.objects.filter(
-            route_type="driving", privacy="public", is_active=True
-        ).count(),
-        "cycling_count": Route.objects.filter(
-            route_type="cycling", privacy="public", is_active=True
-        ).count(),
-        "adventure_count": Route.objects.filter(
-            mood="adventure", privacy="public", is_active=True
-        ).count(),
+        'popular_routes': popular_routes,
+        'walking_count': walking_count,
+        'driving_count': driving_count,
+        'cycling_count': cycling_count,
+        'adventure_count': adventure_count,
+        'total_routes': total_routes,
+        'total_users': total_users,
+        'total_countries': total_countries,
     }
-
-    if request.user.is_authenticated:
-        context["pending_friend_requests"] = Friendship.objects.filter(
-            to_user=request.user, status="pending"
-        )[:5]
-        context["pending_requests_count"] = Friendship.objects.filter(
-            to_user=request.user, status="pending"
-        ).count()
-
-    return render(request, "home.html", context)
+    
+    return render(request, 'home.html', context)
 
 
 def all_routes(request):
@@ -126,11 +105,17 @@ def all_routes(request):
 
 @login_required
 def my_routes(request):
-    """Маршруты пользователя"""
+    """Маршруты пользователя с разделением на активные/неактивные"""
     routes = Route.objects.filter(author=request.user).order_by("-created_at")
-
+    
+    # Разделяем маршруты на активные и неактивные
+    active_routes = routes.filter(is_active=True)
+    inactive_routes = routes.filter(is_active=False)
+    
     context = {
         "routes": routes,
+        "active_routes": active_routes,
+        "inactive_routes": inactive_routes,
         "pending_friend_requests": Friendship.objects.filter(
             to_user=request.user, status="pending"
         )[:5],
@@ -175,21 +160,38 @@ def route_detail(request, route_id):
     points = route.points.all().order_by("order")
     comments = route.comments.all().order_by("-created_at")[:10]
 
-    # Проверяем, добавлен ли в избранное
-    is_favorite = False
+    # Сообщения чата маршрута
+    route_chat_messages = []
+    if hasattr(route, 'chat'):
+        route_chat_messages = route.chat.messages.all().select_related('user').order_by('-timestamp')[:20]
+ 
+    user_favorites_ids = []
+    if request.user.is_authenticated:
+        user_favorites_ids = RouteFavorite.objects.filter(
+            user=request.user
+        ).values_list('route_id', flat=True)
+
     user_rating = None
     if request.user.is_authenticated:
-        is_favorite = RouteFavorite.objects.filter(
-            route=route, user=request.user
-        ).exists()
-        user_rating = get_user_rating(request.user, route)
+        try:
+            user_rating = RouteRating.objects.get(user=request.user, route=route).rating
+        except RouteRating.DoesNotExist:
+            pass
+
+    similar_routes = Route.objects.filter(
+        route_type=route.route_type,
+        privacy="public",
+        is_active=True
+    ).exclude(id=route.id)[:5]
 
     context = {
         "route": route,
         "points": points,
         "comments": comments,
-        "is_favorite": is_favorite,
+        "route_chat_messages": route_chat_messages,
+        "user_favorites_ids": list(user_favorites_ids),
         "user_rating": user_rating,
+        "similar_routes": similar_routes,
     }
 
     if request.user.is_authenticated:
@@ -482,181 +484,6 @@ def add_point_comment(request, point_id):
     return redirect("route_detail", route_id=point.route.id)
 
 
-
-<<<<<<< HEAD
-    friends = []
-    for friendship in friendships:
-        if friendship.from_user == request.user:
-            friends.append(friendship.to_user)
-        else:
-            friends.append(friendship.from_user)
-
-    context = {
-        "friends": friends,
-        "pending_friend_requests": Friendship.objects.filter(
-            to_user=request.user, status="pending"
-        ),
-        "pending_requests_count": Friendship.objects.filter(
-            to_user=request.user, status="pending"
-        ).count(),
-    }
-    return render(request, "friends/friends.html", context)
-
-
-@login_required
-def find_friends(request):
-    """Поиск друзей"""
-    search_query = request.GET.get("q", "")
-    users = User.objects.exclude(id=request.user.id)
-
-    if search_query:
-        users = users.filter(
-            Q(username__icontains=search_query)
-            | Q(first_name__icontains=search_query)
-            | Q(last_name__icontains=search_query)
-        )
-
-    # Помечаем существующие запросы дружбы
-    user_data = []
-    for user in users[:20]:  # Ограничиваем результаты
-        friendship = Friendship.objects.filter(
-            Q(from_user=request.user, to_user=user)
-            | Q(from_user=user, to_user=request.user)
-        ).first()
-
-        user_data.append(
-            {
-                "user": user,
-                "friendship_status": friendship.status if friendship else None,
-            }
-        )
-
-    context = {
-        "users": user_data,
-        "pending_friend_requests": Friendship.objects.filter(
-            to_user=request.user, status="pending"
-        )[:5],
-        "pending_requests_count": Friendship.objects.filter(
-            to_user=request.user, status="pending"
-        ).count(),
-    }
-    return render(request, "friends/find_friends.html", context)
-
-
-@login_required
-def send_friend_request(request, user_id):
-    """Отправка запроса в друзья"""
-    to_user = get_object_or_404(User, id=user_id)
-
-    # Проверяем, не существует ли уже запрос
-    existing_request = Friendship.objects.filter(
-        Q(from_user=request.user, to_user=to_user)
-        | Q(from_user=to_user, to_user=request.user)
-    ).first()
-
-    if existing_request:
-        messages.info(request, "Запрос в друзья уже существует")
-    else:
-        Friendship.objects.create(from_user=request.user, to_user=to_user)
-        messages.success(
-            request,
-            f"Запрос в друзья отправлен пользователю {to_user.username}",
-        )
-
-    return redirect("find_friends")
-
-
-@login_required
-def accept_friend_request(request, request_id):
-    """Принятие запроса в друзья"""
-    friend_request = get_object_or_404(
-        Friendship, id=request_id, to_user=request.user
-    )
-    friend_request.status = "accepted"
-    friend_request.save()
-
-    messages.success(
-        request,
-        f"Вы приняли запрос в друзья от {friend_request.from_user.username}",
-    )
-    return redirect("friends")
-
-
-@login_required
-def reject_friend_request(request, request_id):
-    """Отклонение запроса в друзья"""
-    friend_request = get_object_or_404(
-        Friendship, id=request_id, to_user=request.user
-    )
-    friend_request.status = "rejected"
-    friend_request.save()
-
-    messages.info(
-        request,
-        f"Вы отклонили запрос в друзья от {friend_request.from_user.username}",
-    )
-    return redirect("friends")
-
-
-# Профиль пользователя
-@login_required
-def profile(request):
-    """Профиль пользователя"""
-    profile, created = UserProfile.objects.get_or_create(user=request.user)
-
-    if request.method == "POST":
-        form = UserProfileForm(request.POST, request.FILES, instance=profile)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Профиль обновлен")
-            return redirect("profile")
-    else:
-        form = UserProfileForm(instance=profile)
-
-    # Статистика пользователя
-    user_routes = Route.objects.filter(author=request.user)
-    user_favorites = RouteFavorite.objects.filter(user=request.user)
-
-    context = {
-        "form": form,
-        "routes_count": user_routes.count(),
-        "favorites_count": user_favorites.count(),
-        "total_distance": sum(route.total_distance for route in user_routes),
-        "pending_friend_requests": Friendship.objects.filter(
-            to_user=request.user, status="pending"
-        )[:5],
-        "pending_requests_count": Friendship.objects.filter(
-            to_user=request.user, status="pending"
-        ).count(),
-    }
-    return render(request, "profile/profile.html", context)
-
-
-def user_profile(request, username):
-    """Публичный профиль пользователя"""
-    user = get_object_or_404(User, username=username)
-    public_routes = Route.objects.filter(
-        author=user, privacy="public", is_active=True
-    )
-
-    context = {
-        "profile_user": user,
-        "public_routes": public_routes,
-    }
-
-    if request.user.is_authenticated:
-        context["pending_friend_requests"] = Friendship.objects.filter(
-            to_user=request.user, status="pending"
-        )[:5]
-        context["pending_requests_count"] = Friendship.objects.filter(
-            to_user=request.user, status="pending"
-        ).count()
-
-    return render(request, "profile/user_profile.html", context)
-=======
->>>>>>> b9978dec6f885f7f1edad6b616c2b0c64d4cc5b8
-
-
 # Сохраненные места
 @login_required
 def saved_places(request):
@@ -782,9 +609,6 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     return R * c
 
 
-
-
-<<<<<<< HEAD
 def login_view(request):
     """Вход"""
     if request.method == "POST":
@@ -805,10 +629,85 @@ def logout_view(request):
     logout(request)
     messages.info(request, "Вы вышли из системы")
     return redirect("home")
-<<<<<<< HEAD
 
-=======
->>>>>>> b9978dec6f885f7f1edad6b616c2b0c64d4cc5b8
+def walking_routes(request):
+    """Страница с пешими маршрутами"""
+    routes = Route.objects.filter(route_type='walking', is_active=True)
+    
+    context = {
+        'routes': routes,
+        'page_title': 'Пешие маршруты',
+        'route_type': 'walking',
+        'total_count': routes.count()
+    }
+    return render(request, 'routes/filtered_routes.html', context)
+
+def driving_routes(request):
+    """Страница с автомобильными маршрутами"""
+    routes = Route.objects.filter(route_type='driving', is_active=True)
+    
+    context = {
+        'routes': routes,
+        'page_title': 'Автомобильные маршруты',
+        'route_type': 'driving',
+        'total_count': routes.count()
+    }
+    return render(request, 'routes/filtered_routes.html', context)
+
+def cycling_routes(request):
+    """Страница с велосипедными маршрутами"""
+    routes = Route.objects.filter(route_type='cycling', is_active=True)
+    
+    context = {
+        'routes': routes,
+        'page_title': 'Велосипедные маршруты',
+        'route_type': 'cycling',
+        'total_count': routes.count()
+    }
+    return render(request, 'routes/filtered_routes.html', context)
+
+def adventure_routes(request):
+    """Страница с приключенческими маршрутами"""
+    routes = Route.objects.filter(mood='adventure', is_active=True)
+    
+    context = {
+        'routes': routes,
+        'page_title': 'Приключенческие маршруты',
+        'mood_type': 'adventure',
+        'total_count': routes.count()
+    }
+    return render(request, 'routes/filtered_routes.html', context)
+
+def search_routes(request):
+    """Отдельная view для поиска"""
+    query = request.GET.get('q', '')
+    route_type = request.GET.get('type', '')
+    mood = request.GET.get('mood', '')
+    
+    routes = Route.objects.filter(is_active=True)
+    
+    if query:
+        routes = routes.filter(
+            Q(name__icontains=query) | 
+            Q(description__icontains=query) |
+            Q(country__icontains=query)
+        )
+    
+    if route_type:
+        routes = routes.filter(route_type=route_type)
+    
+    if mood:
+        routes = routes.filter(mood=mood)
+    
+    context = {
+        'routes': routes,
+        'query': query,
+        'route_type': route_type,
+        'mood': mood,
+        'total_count': routes.count()
+    }
+    return render(request, 'routes/search_results.html', context)
+
 
 class RouteCreateView(LoginRequiredMixin, View):
     def post(self, request):
@@ -907,5 +806,6 @@ class RouteUpdateView(LoginRequiredMixin, View):
             return JsonResponse({"success": False, "error": "Неверный формат JSON"})
         except Exception as e:
             return JsonResponse({"success": False, "error": f"Ошибка сервера: {str(e)}"})
-=======
->>>>>>> interactions
+        
+    def post(self, request, pk):
+        return self.put(request, pk)

@@ -21,6 +21,27 @@
 
     <style>
         /* Общие стили */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        main {
+            flex: 1 0 auto;
+        }
+
+        .footer {
+            flex-shrink: 0;
+            margin-top: auto;
+        }
+
         .navbar-brand {
             font-weight: bold;
             color: #2563eb !important;
@@ -150,13 +171,9 @@
         }
 
         /* Карта */
-        html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-        }
         body.map-page {
             overflow: hidden;
+            display: block; /* Отключаем flex для страницы с картой */
         }
         body.map-page nav.navbar {
             position: fixed;
@@ -355,7 +372,7 @@
 
     <!-- Футер -->
     {% block footer %}
-    <footer class="bg-dark text-white py-4 mt-5">
+    <footer class="footer bg-dark text-white py-4">
         <div class="container">
             <div class="row">
                 <div class="col-md-6">
