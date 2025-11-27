@@ -2,19 +2,17 @@ __all__ = ()
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth import login, logout, authenticate
-from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib import messages
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse
 from django.db.models import Q, Count, Avg
 from django.core.paginator import Paginator
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 from django.views import View
 from django.contrib.auth.mixins import LoginRequiredMixin
 import json
 import math
+<<<<<<< HEAD
 from .models import *
 from .forms import UserRegistrationForm, UserProfileForm
 from .models import (
@@ -27,6 +25,10 @@ from .models import (
     RouteRating,
     SavedPlace,
 )
+=======
+from routes.models import Route, RoutePoint, RouteFavorite, RouteRating, SavedPlace, RouteComment, PointComment
+from users.models import Friendship
+>>>>>>> b9978dec6f885f7f1edad6b616c2b0c64d4cc5b8
 
 
 def home(request):
@@ -41,7 +43,6 @@ def home(request):
         .order_by("-avg_rating", "-rating_count")[:6]
     )
 
-    # Статистика по категориям
     context = {
         "popular_routes": popular_routes,
         "walking_count": Route.objects.filter(
@@ -481,15 +482,8 @@ def add_point_comment(request, point_id):
     return redirect("route_detail", route_id=point.route.id)
 
 
-# Функции для друзей
-@login_required
-def friends(request):
-    """Страница друзей"""
-    # Получаем принятые запросы дружбы
-    friendships = Friendship.objects.filter(
-        Q(from_user=request.user) | Q(to_user=request.user), status="accepted"
-    )
 
+<<<<<<< HEAD
     friends = []
     for friendship in friendships:
         if friendship.from_user == request.user:
@@ -659,6 +653,8 @@ def user_profile(request, username):
         ).count()
 
     return render(request, "profile/user_profile.html", context)
+=======
+>>>>>>> b9978dec6f885f7f1edad6b616c2b0c64d4cc5b8
 
 
 # Сохраненные места
@@ -786,22 +782,9 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     return R * c
 
 
-# Аутентификация
-def register(request):
-    """Регистрация"""
-    if request.method == "POST":
-        form = UserRegistrationForm(request.POST)
-        if form.is_valid():
-            user = form.save()
-            login(request, user)
-            messages.success(request, "Регистрация прошла успешно!")
-            return redirect("home")
-    else:
-        form = UserRegistrationForm()
-
-    return render(request, "auth/register.html", {"form": form})
 
 
+<<<<<<< HEAD
 def login_view(request):
     """Вход"""
     if request.method == "POST":
@@ -824,6 +807,8 @@ def logout_view(request):
     return redirect("home")
 <<<<<<< HEAD
 
+=======
+>>>>>>> b9978dec6f885f7f1edad6b616c2b0c64d4cc5b8
 
 class RouteCreateView(LoginRequiredMixin, View):
     def post(self, request):

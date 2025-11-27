@@ -6,6 +6,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils.translation import gettext_lazy as _
 
 
+<<<<<<< HEAD
 class Friendship(models.Model):
     STATUS_CHOICES = [
         ("pending", "В ожидании"),
@@ -51,6 +52,8 @@ class UserProfile(models.Model):
     def __str__(self):
         return f"Профиль {self.user.username}"
 
+=======
+>>>>>>> b9978dec6f885f7f1edad6b616c2b0c64d4cc5b8
 
 class Route(models.Model):
     PRIVACY_CHOICES = [

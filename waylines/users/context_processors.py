@@ -1,7 +1,6 @@
 __all__ = ()
 
-from .models import Friendship
-
+from users.models import Friendship
 
 def navbar_context(request):
     context = {}
