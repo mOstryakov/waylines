@@ -72,12 +72,6 @@
                             <textarea id="description" class="form-control form-control-sm" rows="3" 
                                       placeholder="Подробное описание маршрута">{{ route.description|default:'' }}</textarea>
                         </div>
-    
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold">Продолжительность (мин)</label>
-                            <input type="number" id="duration_minutes" class="form-control form-control-sm" 
-                                value="{{ route.duration_minutes|default:0 }}" min="0">
-                        </div>
                     </div>
 
                     <!-- Настройки маршрута -->
@@ -88,18 +82,18 @@
                             <div class="col-6">
                                 <label class="form-label small fw-bold">Тип маршрута</label>
                                 <select id="route_type" class="form-select form-select-sm">
-                                    <option value="walking">Пеший</option>
-                                    <option value="driving">Автомобильный</option>
-                                    <option value="cycling">Велосипедный</option>
+                                    <option value="walking" {% if route.route_type == 'walking' %}selected{% endif %}>Пеший</option>
+                                    <option value="driving" {% if route.route_type == 'driving' %}selected{% endif %}>Автомобильный</option>
+                                    <option value="cycling" {% if route.route_type == 'cycling' %}selected{% endif %}>Велосипедный</option>
                                 </select>
                             </div>
                             <div class="col-6">
                                 <label class="form-label small fw-bold">Приватность</label>
                                 <select id="privacy" class="form-select form-select-sm">
-                                    <option value="public">Публичный</option>
-                                    <option value="private">Приватный</option>
-                                    <option value="link">По ссылке</option>
-                                    <option value="personal">Персональный</option>
+                                    <option value="public" {% if route.privacy == 'public' %}selected{% endif %}>Публичный</option>
+                                    <option value="private" {% if route.privacy == 'private' %}selected{% endif %}>Приватный</option>
+                                    <option value="link" {% if route.privacy == 'link' %}selected{% endif %}>По ссылке</option>
+                                    <option value="personal" {% if route.privacy == 'personal' %}selected{% endif %}>Персональный</option>
                                 </select>
                             </div>
                         </div>
@@ -109,22 +103,22 @@
                                 <label class="form-label small fw-bold">Настроение</label>
                                 <select id="mood" class="form-select form-select-sm">
                                     <option value="">Выберите настроение</option>
-                                    <option value="relaxed">Спокойный</option>
-                                    <option value="adventure">Приключенческий</option>
-                                    <option value="romantic">Романтический</option>
-                                    <option value="family">Семейный</option>
-                                    <option value="extreme">Экстремальный</option>
+                                    <option value="relaxed" {% if route.mood == 'relaxed' %}selected{% endif %}>Спокойный</option>
+                                    <option value="adventure" {% if route.mood == 'adventure' %}selected{% endif %}>Приключенческий</option>
+                                    <option value="romantic" {% if route.mood == 'romantic' %}selected{% endif %}>Романтический</option>
+                                    <option value="family" {% if route.mood == 'family' %}selected{% endif %}>Семейный</option>
+                                    <option value="extreme" {% if route.mood == 'extreme' %}selected{% endif %}>Экстремальный</option>
                                 </select>
                             </div>
                             <div class="col-6">
                                 <label class="form-label small fw-bold">Тема</label>
                                 <select id="theme" class="form-select form-select-sm">
                                     <option value="">Выберите тему</option>
-                                    <option value="historical">Исторический</option>
-                                    <option value="nature">Природный</option>
-                                    <option value="city">Городской</option>
-                                    <option value="gastronomy">Гастрономический</option>
-                                    <option value="art">Искусство</option>
+                                    <option value="historical" {% if route.theme == 'historical' %}selected{% endif %}>Исторический</option>
+                                    <option value="nature" {% if route.theme == 'nature' %}selected{% endif %}>Природный</option>
+                                    <option value="city" {% if route.theme == 'city' %}selected{% endif %}>Городской</option>
+                                    <option value="gastronomy" {% if route.theme == 'gastronomy' %}selected{% endif %}>Гастрономический</option>
+                                    <option value="art" {% if route.theme == 'art' %}selected{% endif %}>Искусство</option>
                                 </select>
                             </div>
                         </div>
@@ -287,6 +281,13 @@
     window.routeData = {{ route_data_json|safe }};
 </script>
 {% endif %}
+
+<!-- CSRF Token для AJAX запросов -->
+<script>
+    const CSRF_TOKEN = '{{ csrf_token }}';
+    const ROUTE_ID = '{{ route.id|default:"" }}';
+    const IS_EDIT_MODE = {% if route %}true{% else %}false{% endif %};
+</script>
 {% endblock %}
 
 {% block extra_css %}
@@ -496,4 +497,142 @@
 {% block extra_js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="{% static 'js/route_editor.js' %}"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const saveBtn = document.getElementById('save-btn');
+    
+    if (saveBtn) {
+        saveBtn.addEventListener('click', function() {
+            saveRoute();
+        });
+    }
+    
+    async function saveRoute() {
+        const saveBtn = document.getElementById('save-btn');
+        const originalText = saveBtn.innerHTML;
+        
+        try {
+            // Показываем индикатор загрузки
+            saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Сохранение...';
+            saveBtn.disabled = true;
+            
+            // Собираем данные формы
+            const formData = {
+                name: document.getElementById('name').value,
+                short_description: document.getElementById('short_description').value,
+                description: document.getElementById('description').value,
+                route_type: document.getElementById('route_type').value,
+                privacy: document.getElementById('privacy').value,
+                mood: document.getElementById('mood').value,
+                theme: document.getElementById('theme').value,
+                duration_minutes: parseInt(document.getElementById('duration_minutes').value) || 0,
+                total_distance: parseFloat(document.getElementById('total_distance').value) || 0,
+                has_audio_guide: document.getElementById('has_audio_guide').checked,
+                is_elderly_friendly: document.getElementById('is_elderly_friendly').checked,
+                is_active: document.getElementById('is_active') ? document.getElementById('is_active').checked : true,
+                waypoints: window.routeEditor ? window.routeEditor.getWaypointsData() : []
+            };
+            
+            // Валидация
+            if (!formData.name.trim()) {
+                throw new Error('Введите название маршрута');
+            }
+            
+            if (formData.waypoints.length < 2) {
+                throw new Error('Добавьте хотя бы две точки маршрута');
+            }
+            
+            // Определяем URL и метод в зависимости от режима
+            let url, method;
+            if (IS_EDIT_MODE && ROUTE_ID) {
+                url = `/routes/api/routes/${ROUTE_ID}/`;
+                method = 'PUT';
+            } else {
+                url = '/routes/api/routes/';
+                method = 'POST';
+            }
+            
+            console.log('Отправка данных маршрута:', formData);
+            console.log('URL:', url, 'Method:', method);
+            
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': CSRF_TOKEN,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(formData)
+            });
+            
+            const responseText = await response.text();
+            let data;
+            
+            try {
+                data = JSON.parse(responseText);
+            } catch (e) {
+                console.error('Не удалось распарсить JSON:', responseText);
+                throw new Error('Сервер вернул неверный формат данных');
+            }
+            
+            if (!response.ok) {
+                console.error('Ошибка сервера:', response.status, data);
+                
+                if (response.status === 404) {
+                    throw new Error('URL не найден. Проверьте настройки маршрутизации.');
+                } else if (response.status === 403) {
+                    throw new Error('Доступ запрещен. Проверьте авторизацию.');
+                } else if (response.status === 400) {
+                    throw new Error(`Ошибка валидации: ${data.error || JSON.stringify(data)}`);
+                } else {
+                    throw new Error(`Ошибка сервера: ${response.status} - ${data.error || 'Неизвестная ошибка'}`);
+                }
+            }
+            
+            if (!data.success) {
+                throw new Error(data.error || 'Неизвестная ошибка сервера');
+            }
+            
+            console.log('Маршрут успешно сохранен:', data);
+            
+            // Показываем уведомление об успехе
+            showNotification('Маршрут успешно сохранен!', 'success');
+            
+            // Перенаправляем на страницу маршрута
+            setTimeout(() => {
+                window.location.href = `/routes/${data.route_id || data.id}/`;
+            }, 1500);
+            
+        } catch (error) {
+            console.error('Ошибка сохранения:', error);
+            showNotification(`Ошибка сохранения: ${error.message}`, 'error');
+        } finally {
+            // Восстанавливаем кнопку
+            saveBtn.innerHTML = originalText;
+            saveBtn.disabled = false;
+        }
+    }
+    
+    function showNotification(message, type = 'info') {
+        // Создаем уведомление
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type === 'error' ? 'danger' : 'success'} alert-dismissible fade show position-fixed`;
+        notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        notification.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Автоматически скрываем через 5 секунд
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 5000);
+    }
+});
+</script>
 {% endblock %}

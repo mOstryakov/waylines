@@ -88,7 +88,6 @@ def private_chat(request, user_id):
     context = {
         'conversation': conversation,
         'other_user': other_user,
-        'messages': messages,
         'accepted_friends_count': accepted_friends_count,
     }
     

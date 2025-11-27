@@ -5,6 +5,8 @@ from . import views
 urlpatterns = [
     # Главная страница
     path("", views.home, name="home"),
+    path('api/routes/', views.RouteCreateView.as_view(), name='route_create'),
+    path('api/routes/<int:pk>/', views.RouteUpdateView.as_view(), name='route_update'),
     # Маршруты
     path("", views.all_routes, name="all_routes"),
     path("my/", views.my_routes, name="my_routes"),

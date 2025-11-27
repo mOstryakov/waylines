@@ -396,6 +396,7 @@
 {% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
 .message-own .message-body {
     background: #007bff !important;
@@ -415,6 +416,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     // Инициализация карты
     function initMap() {

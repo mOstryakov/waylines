@@ -11,13 +11,14 @@
     <!-- Индикатор загрузки -->
     <div class="route-loading" id="route-loading">
         <div class="spinner-border spinner-border-sm" role="status"></div>
-        <span>Загрузка маршрутов...</span>
+        <span>Загрузка маршрута...</span>
     </div>
 
     <!-- Элементы управления картой -->
     <div class="map-controls">
         <button id="style-toggle" class="btn btn-sm btn-outline-secondary">🛰️ Спутник</button>
         <button id="locate-me" class="btn btn-sm btn-outline-secondary">📍 Мое местоположение</button>
+        <button id="hide-all" class="btn btn-sm btn-outline-secondary">👁️ Скрыть все</button>
         <button id="filter-toggle" class="btn btn-sm btn-outline-primary">🔍 Фильтры</button>
     </div>
 
@@ -101,7 +102,7 @@
                             
                             <div class="route-stats">
                                 <small class="text-muted">
-                                    <i class="fas fa-route"></i> {{ route.distance|default:0 }} км
+                                    <i class="fas fa-route"></i> {{ route.distance|floatformat:1 }} км
                                 </small>
                             </div>
                         </div>
@@ -135,6 +136,13 @@
                 {% endif %}
             </div>
             {% endif %}
+
+            <!-- Подсказка при пустой карте -->
+            <div class="text-center text-muted py-3 border-top" id="empty-map-hint">
+                <i class="fas fa-map-marked-alt fa-2x mb-2"></i>
+                <p class="small mb-1">Выберите маршрут для отображения на карте</p>
+                <p class="small">Карта будет настроена под выбранный маршрут</p>
+            </div>
         </div>
 
         <!-- Детали выбранного маршрута -->
@@ -176,7 +184,7 @@
 
 {% block extra_css %}
 <style>
-        html, body {
+    html, body {
         height: 100%;
         margin: 0;
         padding: 0;
@@ -287,7 +295,12 @@
         gap: 8px;
     }
     
-    /* Стили для маркеров на карте */
+    /* Улучшенные стили для маршрутов */
+    .route-line {
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+        transition: all 0.3s ease;
+    }
+    
     .route-marker {
         background: #2563eb;
         border: 3px solid white;
@@ -297,31 +310,42 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        transition: all 0.3s ease;
+    }
+    
+    .route-marker:hover {
+        transform: scale(1.1);
+        z-index: 1000;
     }
     
     .route-marker.start {
-        background: #48bb78;
+        background: #10b981;
     }
     
     .route-marker.end {
-        background: #f56565;
+        background: #ef4444;
     }
     
     .route-popup {
-        min-width: 250px;
+        min-width: 280px;
+    }
+    
+    .route-popup h6 {
+        color: #1f2937;
+        margin-bottom: 8px;
     }
     
     .route-popup .btn-group {
         display: flex;
-        gap: 4px;
-        margin-top: 8px;
+        gap: 6px;
+        margin-top: 12px;
     }
     
     .route-popup .btn-group .btn {
         flex: 1;
         font-size: 12px;
-        padding: 4px 8px;
+        padding: 6px 10px;
     }
     
     .current-location-marker {
@@ -329,6 +353,27 @@
         border: 3px solid white;
         border-radius: 50%;
         box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+
+    /* Анимации */
+    .route-line,
+    .route-marker {
+        animation: fadeInUp 0.5s ease;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    #empty-map-hint {
+        display: block;
     }
 </style>
 {% endblock %}
@@ -369,30 +414,27 @@
         // Обработчики элементов управления
         document.getElementById('style-toggle').addEventListener('click', toggleMapStyle);
         document.getElementById('locate-me').addEventListener('click', locateUser);
+        document.getElementById('hide-all').addEventListener('click', hideAllRoutes);
         document.getElementById('filter-toggle').addEventListener('click', toggleFilters);
         
         // Инициализация фильтров
         initFilters();
         
-        // Загрузка маршрутов на карту
+        // Загрузка маршрутов (но не отображаем их сразу)
         loadRoutesToMap();
         
-        // Обработчик полной загрузки карты
-        map.whenReady(function() {
-            console.log('Карта успешно загружена');
-        });
+        console.log('Карта успешно загружена');
+        console.log('Доступно маршрутов:', allRoutes.length);
     }
     
     // Переключение стилей карты
     function toggleMapStyle() {
         if (currentStyle === 'streets') {
-            // Переключаем на спутник
             map.removeLayer(osmLayer);
             satelliteLayer.addTo(map);
             currentStyle = 'satellite';
             document.getElementById('style-toggle').textContent = '🗺️ Карта';
         } else {
-            // Переключаем на обычную карту
             map.removeLayer(satelliteLayer);
             osmLayer.addTo(map);
             currentStyle = 'streets';
@@ -400,21 +442,10 @@
         }
     }
     
-    // Загрузка маршрутов на карту
+    // Загрузка маршрутов на карту (НЕ отображаем сразу)
     function loadRoutesToMap() {
-        document.getElementById('route-loading').style.display = 'flex';
-        
-        // Проверяем что есть маршруты для отображения
-        if (allRoutes && allRoutes.length > 0) {
-            allRoutes.forEach(route => {
-                addRouteToMap(route);
-            });
-            console.log('Загружено маршрутов:', allRoutes.length);
-        } else {
-            console.log('Нет маршрутов для отображения');
-        }
-        
-        document.getElementById('route-loading').style.display = 'none';
+        console.log('Маршруты готовы к отображению:', allRoutes.length);
+        // Не добавляем маршруты на карту при загрузке
     }
     
     // Добавление маршрута на карту
@@ -429,7 +460,7 @@
         route.points.forEach((point, index) => {
             const marker = L.marker([point.lat, point.lng], {
                 icon: createRouteMarkerIcon(index, route.points.length)
-            }).addTo(map);
+            });
             
             marker.bindPopup(createPointPopup(point, route));
             markers.push(marker);
@@ -437,22 +468,64 @@
         
         // Создаем линию маршрута если есть 2+ точки
         let routeLine = null;
+        let outline = null;
+        let shadow = null;
+        
         if (route.points.length >= 2) {
             const coordinates = route.points.map(p => [p.lat, p.lng]);
-            routeLine = L.polyline(coordinates, {
-                color: '#2563eb',
-                weight: 4,
+            
+            // 1. Контур для лучшей видимости
+            outline = L.polyline(coordinates, {
+                color: 'white',
+                weight: 8,
                 opacity: 0.7,
-                lineJoin: 'round'
-            }).addTo(map);
+                lineJoin: 'round',
+                lineCap: 'round'
+            });
+            
+            // 2. Основная линия маршрута
+            routeLine = L.polyline(coordinates, {
+                color: getRouteColor(route),
+                weight: 6,
+                opacity: 0.9,
+                lineJoin: 'round',
+                lineCap: 'round',
+                className: 'route-line'
+            });
+            
+            // 3. Тень для объема
+            shadow = L.polyline(coordinates, {
+                color: '#1e40af',
+                weight: 10,
+                opacity: 0.2,
+                lineJoin: 'round',
+                lineCap: 'round'
+            });
         }
         
         // Сохраняем слои маршрута
         routeLayers[routeId] = {
             markers: markers,
             line: routeLine,
-            visible: true
+            outline: outline,
+            shadow: shadow,
+            visible: false
         };
+        
+        console.log(`Маршрут ${routeId} подготовлен для отображения`);
+    }
+    
+    // Функция для определения цвета маршрута по категории
+    function getRouteColor(route) {
+        const colors = {
+            'nature': '#10b981',
+            'city': '#3b82f6',
+            'historical': '#f59e0b',
+            'food': '#ef4444',
+            'attraction': '#8b5cf6',
+            'other': '#2563eb'
+        };
+        return colors[route.category?.name] || colors[route.category] || '#2563eb';
     }
     
     // Создание иконки для маркера маршрута
@@ -461,14 +534,14 @@
         const isEnd = index === total - 1;
         
         let backgroundColor = '#2563eb';
-        if (isStart) backgroundColor = '#48bb78';
-        if (isEnd) backgroundColor = '#f56565';
+        if (isStart) backgroundColor = '#10b981';
+        if (isEnd) backgroundColor = '#ef4444';
         
         const content = isStart ? 'A' : isEnd ? 'B' : (index + 1).toString();
         
         return L.divIcon({
-            className: 'route-marker',
-            html: `<div style="width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; color: white; font-weight: bold; background: ${backgroundColor}; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">${content}</div>`,
+            className: 'route-marker' + (isStart ? ' start' : '') + (isEnd ? ' end' : ''),
+            html: `<div style="width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; color: white; font-weight: bold; background: ${backgroundColor}; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.4);">${content}</div>`,
             iconSize: [24, 24],
             iconAnchor: [12, 12]
         });
@@ -495,13 +568,24 @@
     
     // Показать маршрут на карте
     function showRouteOnMap(routeId) {
-        const route = visibleRoutes[routeId];
-        if (!route || !route.points || route.points.length === 0) return;
+        const route = allRoutes.find(r => r.id === routeId);
+        if (!route || !route.points || route.points.length === 0) {
+            showToast('Маршрут не найден или не имеет точек', 'warning');
+            return;
+        }
         
-        // Скрываем все маршруты
+        // Показываем индикатор загрузки
+        document.getElementById('route-loading').style.display = 'flex';
+        
+        // Скрываем все ранее показанные маршруты
         Object.keys(routeLayers).forEach(id => {
             hideRoute(id);
         });
+        
+        // Если маршрут еще не был добавлен на карту - добавляем
+        if (!routeLayers[routeId]) {
+            addRouteToMap(route);
+        }
         
         // Показываем выбранный маршрут
         showRoute(routeId);
@@ -513,25 +597,42 @@
         const targetCard = document.querySelector(`.route-card[data-route-id="${routeId}"]`);
         if (targetCard) {
             targetCard.classList.add('active');
+            targetCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
         
         // Показываем детали маршрута в сайдбаре
         showRouteDetailsSidebar(route);
         
+        // Скрываем подсказку о пустой карте
+        document.getElementById('empty-map-hint').style.display = 'none';
+        
         // Подгоняем карту под маршрут
         const coordinates = route.points.map(p => [p.lat, p.lng]);
         const bounds = L.latLngBounds(coordinates);
-        map.fitBounds(bounds, { padding: [20, 20] });
+        map.fitBounds(bounds, { 
+            padding: [20, 20],
+            duration: 1
+        });
         
         selectedRouteId = routeId;
+        
+        // Скрываем индикатор загрузки
+        setTimeout(() => {
+            document.getElementById('route-loading').style.display = 'none';
+        }, 500);
+        
+        showToast(`Маршрут "${route.title}" показан на карте`, 'success');
     }
     
     // Показать маршрут
     function showRoute(routeId) {
         const layers = routeLayers[routeId];
         if (layers) {
-            layers.markers.forEach(marker => map.addLayer(marker));
+            // Добавляем все слои на карту
+            if (layers.shadow) map.addLayer(layers.shadow);
+            if (layers.outline) map.addLayer(layers.outline);
             if (layers.line) map.addLayer(layers.line);
+            layers.markers.forEach(marker => map.addLayer(marker));
             layers.visible = true;
         }
     }
@@ -539,11 +640,28 @@
     // Скрыть маршрут
     function hideRoute(routeId) {
         const layers = routeLayers[routeId];
-        if (layers) {
+        if (layers && layers.visible) {
+            // Убираем все слои с карты
             layers.markers.forEach(marker => map.removeLayer(marker));
             if (layers.line) map.removeLayer(layers.line);
+            if (layers.outline) map.removeLayer(layers.outline);
+            if (layers.shadow) map.removeLayer(layers.shadow);
             layers.visible = false;
         }
+    }
+    
+    // Скрыть все маршруты
+    function hideAllRoutes() {
+        Object.keys(routeLayers).forEach(id => {
+            hideRoute(id);
+        });
+        document.querySelectorAll('.route-card').forEach(card => {
+            card.classList.remove('active');
+        });
+        document.getElementById('route-details').style.display = 'none';
+        document.getElementById('empty-map-hint').style.display = 'block';
+        selectedRouteId = null;
+        showToast('Все маршруты скрыты', 'info');
     }
     
     // Показать детали маршрута в сайдбаре
@@ -562,7 +680,7 @@
             <div class="route-stats mb-3">
                 <div class="d-flex justify-content-between small mb-1">
                     <span>Расстояние:</span>
-                    <strong>${route.distance || '?'} км</strong>
+                    <strong>${route.distance ? route.distance.toFixed(1) : '?'} км</strong>
                 </div>
                 <div class="d-flex justify-content-between small mb-1">
                     <span>Точек:</span>
@@ -602,12 +720,6 @@
         document.querySelectorAll('.route-card').forEach(card => {
             card.classList.remove('active');
         });
-        
-        // Показываем все маршруты снова
-        Object.keys(routeLayers).forEach(id => {
-            showRoute(id);
-        });
-        
         selectedRouteId = null;
     }
     
@@ -629,7 +741,7 @@
                     
                     <h6>Детали маршрута</h6>
                     <ul class="list-unstyled">
-                        <li><strong>Расстояние:</strong> ${route.distance || '?'} км</li>
+                        <li><strong>Расстояние:</strong> ${route.distance ? route.distance.toFixed(1) : '?'} км</li>
                         <li><strong>Точек:</strong> ${route.points.length}</li>
                         <li><strong>Сложность:</strong> ${getDifficultyText(route.difficulty)}</li>
                         <li><strong>Аудиогид:</strong> ${route.has_audio ? '✅ Есть' : '❌ Нет'}</li>
@@ -784,17 +896,12 @@
             if (matchesSearch && matchesCategory && matchesDifficulty && matchesAudio) {
                 card.style.display = 'block';
                 visibleCount++;
-                
-                // Показываем маршрут на карте если он был скрыт
-                if (routeLayers[routeId] && !routeLayers[routeId].visible) {
-                    showRoute(routeId);
-                }
             } else {
                 card.style.display = 'none';
-                
-                // Скрываем маршрут на карте
+                // Скрываем маршрут на карте если он показан
                 if (routeLayers[routeId] && routeLayers[routeId].visible) {
                     hideRoute(routeId);
+                    card.classList.remove('active');
                 }
             }
         });
@@ -812,7 +919,6 @@
     }
     
     function showToast(msg, type = 'info') {
-        // Простая реализация toast-уведомлений
         const toast = document.createElement('div');
         toast.className = `toast align-items-center text-white bg-${type} border-0 position-fixed`;
         toast.style.cssText = 'top: 20px; right: 20px; z-index: 2000;';

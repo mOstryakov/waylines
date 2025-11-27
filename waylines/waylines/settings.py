@@ -31,13 +31,13 @@ ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 # Application definition
 
 INSTALLED_APPS = [
+    "channels",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "channels",
     "routes.apps.RoutesConfig",
     "chat.apps.ChatConfig",
 ]
@@ -158,6 +158,11 @@ if static_path.exists():
     STATICFILES_DIRS.append(static_path)
 
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+STATICFILES_FINDERS = [
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+]
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"

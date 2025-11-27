@@ -14,6 +14,11 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
     <style>
         /* Общие стили */
         .navbar-brand {
@@ -52,25 +57,104 @@
             background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
         }
 
-        /* ====== КРИТИЧЕСКИ ВАЖНО ДЛЯ СТРАНИЦЫ КАРТЫ ====== */
+        /* Стили для чата */
+        .chat-container {
+            background: #f8f9fa;
+        }
+        .chat-messages {
+            max-height: calc(100vh - 280px);
+            min-height: 400px;
+        }
+        .message-own .message-body {
+            background: #007bff !important;
+            color: white;
+            border-color: #007bff !important;
+        }
+        .message-own .message-header {
+            flex-direction: row-reverse;
+        }
+        .message {
+            animation: fadeIn 0.3s ease-in;
+        }
+        .message-temp {
+            opacity: 0.7;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .avatar {
+            flex-shrink: 0;
+        }
+
+        /* Уведомления */
+        .notifications-container {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 1060;
+            max-width: 350px;
+            width: 100%;
+        }
+        .notification {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 10px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            border-left: 4px solid;
+            transform: translateX(400px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            position: relative;
+            overflow: hidden;
+        }
+        .notification.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        .notification.hide {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        .notification-success {
+            border-left-color: #10b981;
+            color: #065f46;
+        }
+        .notification-error {
+            border-left-color: #ef4444;
+            color: #7f1d1d;
+        }
+        .notification-warning {
+            border-left-color: #f59e0b;
+            color: #78350f;
+        }
+        .notification-info {
+            border-left-color: #3b82f6;
+            color: #1e3a8a;
+        }
+        .notification-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background: currentColor;
+            opacity: 0.3;
+            width: 100%;
+            transform: scaleX(1);
+            transform-origin: left;
+            animation: progressBar 5s linear forwards;
+        }
+        @keyframes progressBar {
+            to { transform: scaleX(0); }
+        }
+
+        /* Карта */
         html, body {
             height: 100%;
             margin: 0;
             padding: 0;
-            overflow: hidden; /* временно, будет переопределено */
         }
-
-        /* По умолчанию — обычная прокрутка */
-        body {
-            overflow: auto;
-        }
-
-        /* На всех страницах, кроме карты */
-        body:not(.map-page) main {
-            min-height: calc(100vh - 56px - 120px); /* навбар + футер */
-        }
-
-        /* ====== РЕЖИМ СТРАНИЦЫ КАРТЫ ====== */
         body.map-page {
             overflow: hidden;
         }
@@ -84,7 +168,7 @@
         body.map-page main {
             position: relative;
             height: 100%;
-            margin-top: 56px; /* стандартная высота navbar */
+            margin-top: 56px;
         }
         body.map-page #map {
             position: absolute;
@@ -94,12 +178,17 @@
             bottom: 0;
             z-index: 0;
         }
-        /* Элементы управления картой должны быть поверх */
-        body.map-page .map-controls,
-        body.map-page .sidebar,
-        body.map-page .route-loading {
-            position: absolute;
-            z-index: 1020;
+
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .chat-messages {
+                max-height: calc(100vh - 200px);
+            }
+            .notifications-container {
+                right: 10px;
+                left: 10px;
+                max-width: none;
+            }
         }
     </style>
 
@@ -107,17 +196,18 @@
 </head>
 <body class="{% block body_class %}{% endblock %}">
     {% csrf_token %}
+
     <!-- Навигационная панель -->
     <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm">
         <div class="container">
             <a class="navbar-brand" href="{% url 'home' %}">
                 <i class="fas fa-route"></i> Waylines
             </a>
-            
+
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            
+
             <div class="collapse navbar-collapse" id="navbarNav">
                 <form class="d-flex me-3" method="get" action="{% url 'search' %}">
                     <div class="input-group" style="min-width: 300px;">
@@ -128,14 +218,14 @@
                         </button>
                     </div>
                 </form>
-                
+
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'all_routes' %}">
                             <i class="fas fa-globe"></i> Все маршруты
                         </a>
                     </li>
-                    
+
                     {% if user.is_authenticated %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'shared_routes' %}">
@@ -149,14 +239,14 @@
                     </li>
                     {% endif %}
                 </ul>
-                
+
                 <ul class="navbar-nav">
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'map_view' %}">
                             <i class="fas fa-map"></i> Карта
                         </a>
                     </li>
-                    
+
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'chat:chat_dashboard' %}">
                             <i class="fas fa-comments"></i> Чаты
@@ -165,7 +255,7 @@
                             {% endif %}
                         </a>
                     </li>
-                    
+
                     {% if user.is_authenticated %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="friendsDropdown" 
@@ -204,7 +294,7 @@
                             </a>
                         </div>
                     </li>
-                    
+
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="profileDropdown" 
                            role="button" data-bs-toggle="dropdown">
@@ -243,6 +333,9 @@
         </div>
     </nav>
 
+    <!-- Уведомления -->
+    <div id="notifications" class="notifications-container"></div>
+
     <!-- Основной контент -->
     <main>
         {% if messages %}
@@ -255,12 +348,12 @@
             {% endfor %}
         </div>
         {% endif %}
-        
+
         {% block content %}
         {% endblock %}
     </main>
 
-    <!-- Футер (можно скрыть на отдельных страницах) -->
+    <!-- Футер -->
     {% block footer %}
     <footer class="bg-dark text-white py-4 mt-5">
         <div class="container">
@@ -280,6 +373,87 @@
     <!-- JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Firebase Configuration -->
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDwAp4Qe5kIlOSewu7FLMj7IHDi4ofQI7E",
+            authDomain: "project-e123e.firebaseapp.com",
+            databaseURL: "https://project-e123e-default-rtdb.firebaseio.com",
+            projectId: "project-e123e",
+            storageBucket: "project-e123e.firebasestorage.app",
+            messagingSenderId: "849440145534",
+            appId: "1:849440145534:web:9873b2bc94bf0db959982f",
+            measurementId: "G-WG5K1M2D1V"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        console.log('✅ Firebase инициализирован!');
+    </script>
+
+    <!-- Общие утилиты и глобальные переменные -->
+    <script>
+        // ЕДИНСТВЕННОЕ МЕСТО для глобальных переменных
+        window.WAYLINES = {
+            currentUserId: {{ request.user.id|default:0 }},
+            currentUsername: "{{ request.user.username|default:'Anonymous'|escapejs }}",
+            csrfToken: "{{ csrf_token }}"
+        };
+
+        // Утилиты
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function getCurrentTime() {
+            return new Date().toLocaleTimeString('ru-RU', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function showNotification(message, type = 'info') {
+            const notifications = document.getElementById('notifications');
+            const notificationId = 'notification-' + Date.now();
+            const typeConfig = {
+                'success': { class: 'notification-success', icon: 'fa-check-circle', duration: 3000 },
+                'error': { class: 'notification-error', icon: 'fa-exclamation-circle', duration: 5000 },
+                'warning': { class: 'notification-warning', icon: 'fa-exclamation-triangle', duration: 4000 },
+                'info': { class: 'notification-info', icon: 'fa-info-circle', duration: 3000 }
+            };
+            const config = typeConfig[type] || typeConfig.info;
+            const notification = document.createElement('div');
+            notification.id = notificationId;
+            notification.className = `notification ${config.class}`;
+            notification.innerHTML = `
+                <div class="notification-content d-flex align-items-start">
+                    <i class="fas ${config.icon} me-2 mt-1"></i>
+                    <div class="notification-message flex-grow-1">${escapeHtml(message)}</div>
+                    <button type="button" class="btn-close btn-sm" onclick="closeNotification('${notificationId}')"></button>
+                </div>
+                <div class="notification-progress mt-2" style="height: 3px; background: currentColor; opacity: 0.2;"></div>
+            `;
+            notifications.appendChild(notification);
+            setTimeout(() => notification.classList.add('show'), 10);
+            setTimeout(() => closeNotification(notificationId), config.duration);
+        }
+
+        function closeNotification(notificationId) {
+            const notification = document.getElementById(notificationId);
+            if (notification) {
+                notification.classList.remove('show');
+                notification.classList.add('hide');
+                setTimeout(() => notification.remove(), 400);
+            }
+        }
+
+        function showError(message) { showNotification(message, 'error'); }
+        function showSuccess(message) { showNotification(message, 'success'); }
+        function showWarning(message) { showNotification(message, 'warning'); }
+        function showInfo(message) { showNotification(message, 'info'); }
+    </script>
 
     {% block extra_js %}{% endblock %}
 </body>

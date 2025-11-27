@@ -11,6 +11,8 @@ from django.core.paginator import Paginator
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
+from django.views import View
+from django.contrib.auth.mixins import LoginRequiredMixin
 import json
 import math
 from .models import *
@@ -768,3 +770,100 @@ def logout_view(request):
     return redirect("home")
 
 
+class RouteCreateView(LoginRequiredMixin, View):
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            
+            # Валидация обязательных полей
+            if not data.get('name'):
+                return JsonResponse({"success": False, "error": "Название маршрута обязательно"})
+            
+            if not data.get('waypoints') or len(data.get('waypoints', [])) < 2:
+                return JsonResponse({"success": False, "error": "Добавьте хотя бы две точки маршрута"})
+
+            route = Route.objects.create(
+                author=request.user,
+                name=data.get("name"),
+                description=data.get("description", ""),
+                short_description=data.get("short_description", ""),
+                privacy=data.get("privacy", "public"),
+                route_type=data.get("route_type", "walking"),
+                mood=data.get("mood", ""),
+                theme=data.get("theme", ""),
+                duration_minutes=data.get("duration_minutes", 0),
+                total_distance=data.get("total_distance", 0),
+                has_audio_guide=data.get("has_audio_guide", False),
+                is_elderly_friendly=data.get("is_elderly_friendly", False),
+            )
+
+            # Добавляем точки
+            waypoints_data = data.get("waypoints", [])
+            for i, point_data in enumerate(waypoints_data):
+                RoutePoint.objects.create(
+                    route=route,
+                    name=point_data.get("name", f"Точка {i+1}"),
+                    description=point_data.get("description", ""),
+                    address=point_data.get("address", ""),
+                    latitude=point_data["lat"],
+                    longitude=point_data["lng"],
+                    category=point_data.get("category", ""),
+                    hint_author=point_data.get("hint_author", ""),
+                    tags=point_data.get("tags", []),
+                    order=i,
+                )
+
+            return JsonResponse({"success": True, "route_id": route.id, "id": route.id})
+            
+        except json.JSONDecodeError:
+            return JsonResponse({"success": False, "error": "Неверный формат JSON"})
+        except KeyError as e:
+            return JsonResponse({"success": False, "error": f"Отсутствует обязательное поле: {str(e)}"})
+        except Exception as e:
+            return JsonResponse({"success": False, "error": f"Ошибка сервера: {str(e)}"})
+
+
+class RouteUpdateView(LoginRequiredMixin, View):
+    def put(self, request, pk):
+        try:
+            route = get_object_or_404(Route, id=pk, author=request.user)
+            data = json.loads(request.body)
+
+            # Обновляем маршрут
+            route.name = data.get("name", route.name)
+            route.description = data.get("description", route.description)
+            route.short_description = data.get("short_description", route.short_description)
+            route.privacy = data.get("privacy", route.privacy)
+            route.route_type = data.get("route_type", route.route_type)
+            route.mood = data.get("mood", route.mood)
+            route.theme = data.get("theme", route.theme)
+            route.duration_minutes = data.get("duration_minutes", route.duration_minutes)
+            route.total_distance = data.get("total_distance", route.total_distance)
+            route.has_audio_guide = data.get("has_audio_guide", route.has_audio_guide)
+            route.is_elderly_friendly = data.get("is_elderly_friendly", route.is_elderly_friendly)
+            route.is_active = data.get("is_active", route.is_active)
+            route.save()
+
+            # Обновляем точки
+            route.points.all().delete()
+            waypoints_data = data.get("waypoints", [])
+            for i, point_data in enumerate(waypoints_data):
+                RoutePoint.objects.create(
+                    route=route,
+                    name=point_data.get("name", f"Точка {i+1}"),
+                    description=point_data.get("description", ""),
+                    address=point_data.get("address", ""),
+                    latitude=point_data["lat"],
+                    longitude=point_data["lng"],
+                    category=point_data.get("category", ""),
+                    hint_author=point_data.get("hint_author", ""),
+                    tags=point_data.get("tags", []),
+                    order=i,
+                )
+
+            return JsonResponse({"success": True, "route_id": route.id, "id": route.id})
+            
+        except json.JSONDecodeError:
+            return JsonResponse({"success": False, "error": "Неверный формат JSON"})
+        except Exception as e:
+            return JsonResponse({"success": False, "error": f"Ошибка сервера: {str(e)}"})
