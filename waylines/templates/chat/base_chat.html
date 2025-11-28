@@ -1,0 +1,626 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% block chat_title %}{% endblock %} - Waylines{% endblock %}
+
+{% block content %}
+<!-- Уведомления -->
+<div id="notifications" class="notifications-container"></div>
+
+<div class="container-fluid h-100 p-0">
+    <div class="row g-0 h-100">
+        <!-- Чат -->
+        <div class="col-12" id="chat-main-col">
+            <div class="chat-container h-100 d-flex flex-column bg-light">
+                <!-- Заголовок чата -->
+                <div class="chat-header bg-white border-bottom p-4 shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <a href="{% url 'chat:chat_dashboard' %}" class="btn btn-sm btn-outline-secondary me-3">
+                                <i class="fas fa-arrow-left"></i>
+                            </a>
+                            <button class="btn btn-sm btn-outline-info me-3 d-md-none" onclick="toggleInfoSidebar()">
+                                <i class="fas fa-info-circle"></i>
+                            </button>
+                            {% block chat_header_content %}{% endblock %}
+                        </div>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-light rounded-circle" type="button" data-bs-toggle="dropdown"
+                                    style="width: 40px; height: 40px;">
+                                <i class="fas fa-ellipsis-v text-muted"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                                {% block chat_menu_items %}{% endblock %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="#" onclick="refreshChat()">
+                                    <i class="fas fa-sync-alt me-2"></i> Обновить чат
+                                </a></li>
+                                <li><a class="dropdown-item" href="{% url 'chat:chat_dashboard' %}">
+                                    <i class="fas fa-comments me-2"></i> Все чаты
+                                </a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Сообщения -->
+                <div class="chat-messages flex-grow-1 p-4" id="chat-messages" 
+                     style="overflow-y: auto; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
+                    {% block chat_messages %}{% endblock %}
+                </div>
+
+                <!-- Индикатор загрузки -->
+                <div id="chat-loading" class="text-center py-3 bg-white border-top" style="display: none;">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                        <span class="visually-hidden">Загрузка...</span>
+                    </div>
+                    <small class="text-muted ms-2">Загрузка сообщений...</small>
+                </div>
+
+                <!-- Индикатор набора сообщения -->
+                <div id="typing-indicator" class="px-4 py-2 bg-white border-top" style="display: none;">
+                    <div class="typing-dots">
+                        <small class="text-muted">
+                            <i class="fas fa-pencil-alt me-2"></i>
+                            <span id="typing-user"></span> печатает
+                            <span class="typing-animation"></span>
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Форма отправки сообщения -->
+                <div class="chat-input bg-white border-top p-3 shadow-sm">
+                    {% block chat_input_form %}{% endblock %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block chat_sidebar %}{% endblock %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Основные стили чата */
+.chat-container {
+    background: #f8f9fa;
+    transition: all 0.3s ease;
+}
+
+.chat-messages {
+    max-height: calc(100vh - 280px);
+    min-height: 400px;
+    scroll-behavior: smooth;
+}
+
+/* Стили для сообщений */
+.message-wrapper {
+    display: flex;
+    flex-direction: column;
+}
+
+.own-message {
+    align-items: flex-end;
+}
+
+.other-message {
+    align-items: flex-start;
+}
+
+.message-bubble {
+    max-width: 70%;
+    padding: 12px 16px;
+    border-radius: 18px;
+    position: relative;
+    animation: messageSlideIn 0.3s ease-out;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.own-bubble {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+    border-bottom-right-radius: 6px;
+}
+
+.other-bubble {
+    background: white;
+    color: #333;
+    border-bottom-left-radius: 6px;
+    border: 1px solid #e9ecef;
+}
+
+.message-content {
+    line-height: 1.4;
+    word-wrap: break-word;
+}
+
+.message-time {
+    font-size: 0.75rem;
+    opacity: 0.8;
+}
+
+.message-sender {
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+/* Стили для медиа-сообщений */
+.media-message img,
+.media-message video {
+    max-width: 100%;
+    border-radius: 12px;
+}
+
+.voice-message {
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+}
+
+.voice-waveform {
+    display: flex;
+    align-items: center;
+    height: 30px;
+}
+
+.waveform-bar {
+    width: 3px;
+    height: 20px;
+    background-color: currentColor;
+    margin: 0 1px;
+    border-radius: 2px;
+    animation: waveform 1.5s ease-in-out infinite;
+}
+
+.waveform-bar:nth-child(2) { animation-delay: 0.2s; }
+.waveform-bar:nth-child(3) { animation-delay: 0.4s; }
+.waveform-bar:nth-child(4) { animation-delay: 0.6s; }
+.waveform-bar:nth-child(5) { animation-delay: 0.8s; }
+
+@keyframes waveform {
+    0%, 100% { height: 10px; }
+    50% { height: 20px; }
+}
+
+/* Анимации */
+@keyframes messageSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Анимация печати */
+.typing-animation::after {
+    content: '...';
+    animation: typing 1.5s infinite;
+}
+
+@keyframes typing {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
+
+/* Стили для аватаров */
+.avatar {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #007bff, #6610f2) !important;
+}
+
+.bg-gradient-success {
+    background: linear-gradient(135deg, #198754, #20c997) !important;
+}
+
+/* Стили для пустого состояния */
+.empty-state-icon {
+    opacity: 0.5;
+}
+
+/* Стили для скроллбара */
+.chat-messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 10px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Стили для уведомлений */
+.notifications-container {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    z-index: 1060;
+    max-width: 350px;
+    width: 100%;
+}
+
+.notification {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 10px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    border-left: 4px solid;
+    transform: translateX(400px);
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    position: relative;
+    overflow: hidden;
+}
+
+.notification.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.notification.hide {
+    transform: translateX(400px);
+    opacity: 0;
+}
+
+.notification-success {
+    border-left-color: #10b981;
+    color: #065f46;
+}
+
+.notification-error {
+    border-left-color: #ef4444;
+    color: #7f1d1d;
+}
+
+.notification-warning {
+    border-left-color: #f59e0b;
+    color: #78350f;
+}
+
+.notification-info {
+    border-left-color: #3b82f6;
+    color: #1e3a8a;
+}
+
+.notification-content {
+    display: flex;
+    align-items: center;
+}
+
+.notification-icon {
+    margin-right: 12px;
+    font-size: 1.2rem;
+}
+
+.notification-message {
+    flex: 1;
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    color: currentColor;
+    opacity: 0.7;
+    cursor: pointer;
+    padding: 4px;
+    margin-left: 8px;
+}
+
+.notification-close:hover {
+    opacity: 1;
+}
+
+/* Стили для сайдбара */
+.info-sidebar {
+    position: fixed;
+    top: 0;
+    right: -400px;
+    width: 350px;
+    height: 100vh;
+    background: white;
+    box-shadow: -5px 0 15px rgba(0,0,0,0.1);
+    z-index: 1040;
+    transition: right 0.3s ease;
+    overflow-y: auto;
+}
+
+.info-sidebar.active {
+    right: 0;
+}
+
+.info-sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1039;
+    display: none;
+}
+
+.info-sidebar-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.info-sidebar-header {
+    padding: 20px;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.info-sidebar-body {
+    padding: 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.info-grid .info-item {
+    transition: background-color 0.2s ease;
+}
+
+.info-grid .info-item:hover {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .chat-messages {
+        max-height: calc(100vh - 200px);
+        padding: 16px;
+    }
+    .message-bubble {
+        max-width: 85%;
+    }
+    .notifications-container {
+        right: 10px;
+        left: 10px;
+        max-width: none;
+    }
+    
+    .info-sidebar {
+        width: 100%;
+        right: -100%;
+    }
+}
+
+/* Эффекты при наведении */
+.btn:hover {
+    transform: translateY(-1px);
+    transition: all 0.2s ease;
+}
+
+.message-bubble:hover {
+    transform: translateY(-1px);
+    transition: all 0.2s ease;
+}
+
+/* Стили для предпросмотра медиа */
+#media-preview img,
+#media-preview video {
+    max-width: 150px;
+    max-height: 150px;
+    border-radius: 8px;
+}
+
+/* Стили для записи голосовых сообщений */
+.recording-animation {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pulse {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-color: #dc3545;
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+    opacity: 0.6;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(0.8);
+        opacity: 0.6;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 0.3;
+    }
+    100% {
+        transform: scale(0.8);
+        opacity: 0.6;
+    }
+}
+
+.voice-toggle-btn.recording {
+    background-color: #dc3545 !important;
+    border-color: #dc3545 !important;
+    color: white !important;
+    animation: recordingPulse 1s infinite;
+}
+
+@keyframes recordingPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+#voice-recording-indicator {
+    background: linear-gradient(135deg, #ffe6e6, #ffcccc);
+    border-radius: 25px;
+    padding: 12px 20px;
+    border: 2px solid #dc3545;
+}
+
+/* Сдвиг чата при открытом сайдбаре */
+body.sidebar-open #chat-main-col {
+    margin-right: 350px;
+    transition: margin-right 0.3s ease;
+}
+
+@media (max-width: 768px) {
+    body.sidebar-open #chat-main-col {
+        margin-right: 0;
+    }
+}
+
+/* Стили для ошибок медиа */
+.media-error {
+    background: #f8f9fa;
+    border-radius: 12px;
+    border: 2px dashed #dee2e6;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/chat/chat-core.js' %}"></script>
+<script>
+// Глобальные переменные
+let firebaseChat = null;
+let isSending = false;
+
+// Базовая инициализация чата
+function initializeChat() {
+    console.log('🔧 Базовая инициализация чата');
+    setupCommonEventListeners();
+    updateCharCounter();
+    
+    // Фокусировка на поле ввода
+    const messageInput = document.querySelector('#chat-message-input');
+    if (messageInput) {
+        messageInput.focus();
+    }
+}
+
+// Общие обработчики событий
+function setupCommonEventListeners() {
+    const messageInput = document.querySelector('#chat-message-input');
+    const chatForm = document.querySelector('#chat-form');
+    
+    if (messageInput) {
+        messageInput.addEventListener('input', updateCharCounter);
+        
+        messageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleMessageSubmit(e);
+            }
+        });
+    }
+    
+    if (chatForm) {
+        chatForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            handleMessageSubmit(e);
+        });
+    }
+    
+    // Автопрокрутка при изменении размера
+    window.addEventListener('resize', scrollToBottom);
+}
+
+// Базовые функции управления чатом
+function handleMessageSubmit(e) {
+    console.log('📤 Базовый обработчик отправки сообщения');
+    e.preventDefault();
+    
+    const messageInput = document.querySelector('#chat-message-input');
+    const message = messageInput ? messageInput.value.trim() : '';
+    
+    if (!message) {
+        showWarning('Введите сообщение');
+        return;
+    }
+    
+    if (!firebaseChat) {
+        showError('Чат не инициализирован');
+        return;
+    }
+    
+    if (typeof firebaseChat.sendMessage === 'function') {
+        firebaseChat.sendMessage(message);
+    } else {
+        showError('Метод отправки не доступен');
+    }
+}
+
+function refreshChat() {
+    if (firebaseChat && typeof firebaseChat.loadMessageHistory === 'function') {
+        firebaseChat.loadMessageHistory();
+        showInfo('Чат обновлен');
+    } else {
+        showError('Чат не инициализирован');
+    }
+}
+
+function toggleInfoSidebar() {
+    console.log('ℹ️ Базовый переключатель сайдбара информации');
+}
+
+function updateCharCounter() {
+    const input = document.querySelector('#chat-message-input');
+    const counter = document.querySelector('#char-counter');
+    
+    if (input && counter) {
+        const length = input.value.length;
+        counter.textContent = `${length}/1000`;
+        counter.className = length > 950 ? 'text-danger' : 
+                          length > 800 ? 'text-warning' : 
+                          length > 0 ? 'text-success' : 'text-muted';
+    }
+}
+
+function scrollToBottom() {
+    const messagesContainer = document.querySelector('#chat-messages');
+    if (messagesContainer) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    initializeChat();
+});
+
+// Очистка при закрытии страницы
+window.addEventListener('beforeunload', function() {
+    if (firebaseChat && typeof firebaseChat.destroy === 'function') {
+        firebaseChat.destroy();
+    }
+});
+</script>
+{% endblock %}

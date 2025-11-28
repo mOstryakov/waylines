@@ -4,402 +4,317 @@
 {% block title %}{{ route.name }} - Waylines{% endblock %}
 
 {% block content %}
-<div class="container">
-    <!-- Заголовок и фото -->
-    <div class="row mb-4">
-        <div class="col-md-8">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{% url 'home' %}">Главная</a></li>
-                    <li class="breadcrumb-item"><a href="{% url 'all_routes' %}">Маршруты</a></li>
-                    <li class="breadcrumb-item active">{{ route.name }}</li>
-                </ol>
-            </nav>
-            
-            <h1 class="display-5 fw-bold mb-3">{{ route.name }}</h1>
-            
-            <div class="d-flex flex-wrap gap-2 mb-3">
-                <span class="badge bg-primary">{{ route.get_route_type_display }}</span>
-                {% if route.mood %}<span class="badge bg-success">{{ route.get_mood_display }}</span>{% endif %}
-                {% if route.theme %}<span class="badge bg-info">{{ route.get_theme_display }}</span>{% endif %}
-                {% if route.is_elderly_friendly %}<span class="badge bg-warning">Для пожилых</span>{% endif %}
-                {% if route.has_audio_guide %}<span class="badge bg-secondary">Аудиогид</span>{% endif %}
-                {% if not route.is_active %}<span class="badge bg-danger">Не актуален</span>{% endif %}
-            </div>
-        </div>
-        <div class="col-md-4 text-end">
-            <div class="btn-group">
-                {% if user.is_authenticated %}
-                <form method="post" action="{% url 'interactions:toggle_favorite' route.id %}" style="display: inline;">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-outline-primary">
-                        <i class="{% if route.id in user_favorites_ids %}fas{% else %}far{% endif %} fa-heart"></i>
-                        {% if route.id in user_favorites_ids %}В избранном{% else %}В избранное{% endif %}
-                    </button>
-                </form>
-                <button class="btn btn-outline-secondary" onclick="shareRoute()">
-                    <i class="fas fa-share-alt"></i> Поделиться
-                </button>
-                {% if route.author == user %}
-                <a href="{% url 'edit_route' route.id %}" class="btn btn-primary">
-                    <i class="fas fa-edit"></i> Редактировать
-                </a>
-                {% endif %}
-                {% else %}
-                <a href="{% url 'login' %}?next={{ request.path }}" class="btn btn-primary">Войдите чтобы добавить в избранное</a>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <!-- Фото маршрута -->
-    {% if route.photos.all %}
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="route-photos-carousel">
-                <div id="routePhotosCarousel" class="carousel slide" data-bs-ride="carousel">
-                    <div class="carousel-inner">
-                        {% for photo in route.photos.all %}
-                        <div class="carousel-item {% if forloop.first %}active{% endif %}">
-                            <img src="{{ photo.image.url }}" class="d-block w-100 rounded" style="height: 400px; object-fit: cover;" alt="{{ photo.caption }}">
-                            {% if photo.caption %}
-                            <div class="carousel-caption d-none d-md-block">
-                                <p>{{ photo.caption }}</p>
+<div class="route-detail-page">
+    <!-- Hero секция -->
+    <div class="route-hero position-relative mb-4">
+        {% if route.photos.all %}
+        <div class="route-hero-carousel">
+            <div id="routeHeroCarousel" class="carousel slide" data-bs-ride="carousel">
+                <div class="carousel-inner">
+                    {% for photo in route.photos.all %}
+                    <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                        <div class="hero-image" style="background-image: url('{{ photo.image.url }}');"></div>
+                        {% if photo.caption %}
+                        <div class="hero-caption">
+                            <div class="container">
+                                <p class="mb-0 text-white">{{ photo.caption }}</p>
                             </div>
-                            {% endif %}
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% if route.photos.count > 1 %}
-                    <button class="carousel-control-prev" type="button" data-bs-target="#routePhotosCarousel" data-bs-slide="prev">
-                        <span class="carousel-control-prev-icon"></span>
-                    </button>
-                    <button class="carousel-control-next" type="button" data-bs-target="#routePhotosCarousel" data-bs-slide="next">
-                        <span class="carousel-control-next-icon"></span>
-                    </button>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <div class="row">
-        <!-- Основная информация -->
-        <div class="col-lg-8">
-            <!-- Описание -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Описание маршрута</h5>
-                </div>
-                <div class="card-body">
-                    {% if route.description %}
-                    <p class="card-text">{{ route.description|linebreaks }}</p>
-                    {% else %}
-                    <p class="card-text text-muted">Описание отсутствует</p>
-                    {% endif %}
-                    
-                    <div class="row mt-4">
-                        <div class="col-md-3">
-                            <small class="text-muted">Расстояние</small>
-                            <div class="fw-bold">{{ route.total_distance|floatformat:1 }} км</div>
-                        </div>
-                        <div class="col-md-3">
-                            <small class="text-muted">Продолжительность</small>
-                            <div class="fw-bold">{{ route.duration_minutes }} мин</div>
-                        </div>
-                        <div class="col-md-3">
-                            <small class="text-muted">Точек</small>
-                            <div class="fw-bold">{{ route.points.count }}</div>
-                        </div>
-                        <div class="col-md-3">
-                            <small class="text-muted">Автор</small>
-                            <div class="fw-bold">
-                                <a href="{% url 'user_profile' route.author.username %}">{{ route.author.username }}</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Карта и точки -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Карта маршрута</h5>
-                </div>
-                <div class="card-body p-0">
-                    <div id="route-map" style="height: 400px; border-radius: 0 0 0.375rem 0.375rem;"></div>
-                </div>
-            </div>
-
-            <!-- Список точек -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Точки маршрута</h5>
-                </div>
-                <div class="card-body">
-                    <div class="points-list">
-                        {% for point in points %}
-                        <div class="point-item mb-3 pb-3 border-bottom">
-                            <div class="d-flex align-items-start">
-                                <div class="point-marker me-3">
-                                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" 
-                                         style="width: 32px; height: 32px; font-weight: bold;">
-                                        {{ forloop.counter }}
-                                    </div>
-                                </div>
-                                <div class="flex-grow-1">
-                                    <h6 class="mb-1">{{ point.name }}</h6>
-                                    {% if point.address %}
-                                    <p class="text-muted small mb-1">{{ point.address }}</p>
-                                    {% endif %}
-                                    {% if point.description %}
-                                    <p class="mb-2">{{ point.description }}</p>
-                                    {% endif %}
-                                    
-                                    {% if point.photos.all %}
-                                    <div class="point-photos d-flex gap-2 mb-2">
-                                        {% for photo in point.photos.all %}
-                                        <img src="{{ photo.image.url }}" class="rounded" style="width: 60px; height: 60px; object-fit: cover;" 
-                                             alt="{{ photo.caption }}" data-bs-toggle="tooltip" title="{{ photo.caption }}">
-                                        {% endfor %}
-                                    </div>
-                                    {% endif %}
-                                    
-                                    {% if point.tags %}
-                                    <div class="point-tags">
-                                        {% for tag in point.tags %}
-                                        <span class="badge bg-light text-dark border">{{ tag }}</span>
-                                        {% endfor %}
-                                    </div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Комментарии (обычные) -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">
-                        <i class="fas fa-comments"></i> Комментарии к маршруту
-                        <small class="text-muted">({{ comments.count }})</small>
-                    </h5>
-                </div>
-                <div class="card-body">
-                    {% if user.is_authenticated %}
-                    <form method="post" action="{% url 'interactions:add_comment' route.id %}" class="mb-4">
-                        {% csrf_token %}
-                        <div class="mb-3">
-                            <textarea name="text" class="form-control" rows="3" placeholder="Оставьте ваш комментарий..." required></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Отправить комментарий</button>
-                    </form>
-                    {% else %}
-                    <div class="alert alert-info">
-                        <a href="{% url 'login' %}?next={{ request.path }}">Войдите</a>, чтобы оставить комментарий
-                    </div>
-                    {% endif %}
-                    
-                    <div class="comments-list">
-                        {% for comment in comments %}
-                        <div class="comment-item mb-3 pb-3 border-bottom">
-                            <div class="d-flex align-items-start">
-                                <div class="me-3">
-                                    <div class="rounded-circle bg-light d-flex align-items-center justify-content-center" 
-                                         style="width: 40px; height: 40px;">
-                                        <i class="fas fa-user text-muted"></i>
-                                    </div>
-                                </div>
-                                <div class="flex-grow-1">
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <strong>{{ comment.user.username }}</strong>
-                                        <small class="text-muted">{{ comment.created_at|timesince }} назад</small>
-                                    </div>
-                                    <p class="mb-0">{{ comment.text }}</p>
-                                </div>
-                            </div>
-                        </div>
-                        {% empty %}
-                        <p class="text-muted text-center py-3">Пока нет комментариев. Будьте первым!</p>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Чат маршрута (realtime) -->
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-comment-dots"></i> Живой чат маршрута
-                        <small class="text-muted">(realtime обсуждение)</small>
-                    </h5>
-                </div>
-                <div class="card-body p-0">
-                    <div class="route-chat-container">
-                        <!-- Сообщения чата -->
-                        <div class="chat-messages p-3" id="route-chat-messages" 
-                             style="height: 300px; overflow-y: auto; background: #f8f9fa;">
-                            {% if route_chat_messages %}
-                                {% for message in route_chat_messages %}
-                                <div class="message mb-3 {% if message.user == request.user %}message-own{% endif %}">
-                                    <div class="message-header d-flex justify-content-between align-items-center mb-1">
-                                        <strong>
-                                            {% if message.user == route.author %}
-                                            <i class="fas fa-crown text-warning" title="Автор маршрута"></i>
-                                            {% endif %}
-                                            {{ message.user.username }}
-                                        </strong>
-                                        <small class="text-muted">{{ message.timestamp|date:"H:i" }}</small>
-                                    </div>
-                                    <div class="message-body {% if message.user == request.user %}bg-primary text-white{% else %}bg-light{% endif %} rounded p-2">
-                                        {{ message.message }}
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            {% else %}
-                            <div class="text-center text-muted py-4">
-                                <i class="fas fa-comments fa-2x mb-2"></i>
-                                <p>Обсуждение маршрута пока пустое</p>
-                                <small>Будьте первым, кто оставит сообщение!</small>
-                            </div>
-                            {% endif %}
-                        </div>
-
-                        <!-- Форма отправки сообщения -->
-                        {% if user.is_authenticated %}
-                        <div class="chat-input border-top p-3 bg-white">
-                            <form id="route-chat-form" class="d-flex gap-2">
-                                {% csrf_token %}
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="route-chat-message-input" 
-                                       placeholder="Напишите сообщение в чат..." 
-                                       maxlength="1000"
-                                       required>
-                                <button type="submit" class="btn btn-primary" id="route-chat-message-submit">
-                                    <i class="fas fa-paper-plane"></i>
-                                </button>
-                            </form>
-                        </div>
-                        {% else %}
-                        <div class="border-top p-3 bg-light text-center">
-                            <a href="{% url 'login' %}?next={{ request.path }}" class="btn btn-outline-primary">
-                                <i class="fas fa-sign-in-alt"></i> Войдите, чтобы участвовать в чате
-                            </a>
                         </div>
                         {% endif %}
                     </div>
+                    {% endfor %}
                 </div>
             </div>
         </div>
-
-        <!-- Боковая панель -->
-        <div class="col-lg-4">
-            <!-- Рейтинг -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Рейтинг</h5>
-                </div>
-                <div class="card-body text-center">
-                    <div class="rating-display mb-3">
-                        <div class="h1 mb-0">{{ route.get_average_rating|floatformat:1 }}</div>
-                        <div class="rating-stars mb-2">
-                            {% with rating=route.get_average_rating %}
-                            {% for i in "12345" %}
-                                {% if forloop.counter <= rating %}
-                                    <i class="fas fa-star text-warning"></i>
-                                {% else %}
-                                    <i class="far fa-star text-warning"></i>
-                                {% endif %}
-                            {% endfor %}
-                            {% endwith %}
-                        </div>
-                        <small class="text-muted">на основе {{ route.ratings.count }} оценок</small>
-                    </div>
-
-                    {% if user.is_authenticated and route.author != user %}
-                    <div class="rating-form">
-                        <p class="small mb-2">Ваша оценка:</p>
-                        <form method="post" action="{% url 'interactions:add_rating' route.id %}" id="rating-form">
-                            {% csrf_token %}
-                            <div class="star-rating mb-2">
-                                {% for i in "12345" %}
-                                <button type="button" class="btn btn-link p-0 me-1 star-btn" data-rating="{{ forloop.counter }}">
-                                    <i class="{% if user_rating and forloop.counter <= user_rating %}fas{% else %}far{% endif %} fa-star fa-lg text-warning"></i>
-                                </button>
-                                {% endfor %}
-                            </div>
-                            <input type="hidden" name="score" id="rating-score">
-                        </form>
-                    </div>
-                    {% endif %}
+        {% else %}
+        <div class="hero-placeholder bg-light">
+            <div class="container">
+                <div class="placeholder-content text-center text-muted py-5">
+                    <i class="fas fa-route fa-3x mb-3 opacity-50"></i>
+                    <h3 class="text-dark">{{ route.name }}</h3>
                 </div>
             </div>
-
-            <!-- Информация о маршруте -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Информация</h5>
-                </div>
-                <div class="card-body">
-                    <div class="info-item mb-2">
-                        <small class="text-muted">Создан</small>
-                        <div>{{ route.created_at|date:"d.m.Y" }}</div>
+        </div>
+        {% endif %}
+        
+        <!-- Overlay с информацией -->
+        <div class="hero-overlay-light">
+            <div class="container">
+                <div class="row align-items-center">
+                    <div class="col-lg-8">
+                        <nav aria-label="breadcrumb" class="breadcrumb-nav-light">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="{% url 'home' %}">Главная</a></li>
+                                <li class="breadcrumb-item"><a href="{% url 'all_routes' %}">Маршруты</a></li>
+                                <li class="breadcrumb-item active">{{ route.name }}</li>
+                            </ol>
+                        </nav>
+                        
+                        <h1 class="hero-title-light">{{ route.name }}</h1>
+                        
+                        <div class="hero-meta-light d-flex flex-wrap gap-3 align-items-center">
+                            <div class="author-info d-flex align-items-center">
+                                <div class="author-avatar me-2">
+                                    <div class="avatar-circle-light">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                </div>
+                                <span>Автор: <a href="{% url 'user_profile' route.author.username %}">{{ route.author.username }}</a></span>
+                            </div>
+                            <span class="meta-divider">•</span>
+                            <span>{{ route.created_at|date:"d.m.Y" }}</span>
+                        </div>
                     </div>
-                    <div class="info-item mb-2">
-                        <small class="text-muted">Обновлен</small>
-                        <div>{{ route.updated_at|date:"d.m.Y" }}</div>
-                    </div>
-                    <div class="info-item mb-2">
-                        <small class="text-muted">Статус</small>
-                        <div>
-                            {% if route.is_active %}
-                            <span class="badge bg-success">Актуален</span>
+                    
+                    <div class="col-lg-4 text-lg-end">
+                        <div class="hero-actions-light">
+                            {% if user.is_authenticated %}
+                            <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
+                                <form method="post" action="{% url 'interactions:toggle_favorite' route.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn {% if route.id in user_favorites_ids %}btn-primary{% else %}btn-outline-primary{% endif %} btn-sm">
+                                        <i class="{% if route.id in user_favorites_ids %}fas{% else %}far{% endif %} fa-heart"></i>
+                                        {% if route.id in user_favorites_ids %}В избранном{% else %}В избранное{% endif %}
+                                    </button>
+                                </form>
+                                
+                                <a href="{% url 'chat:route_chat' route.id %}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-comments"></i> Чат маршрута
+                                </a>
+                                
+                                {% if route.author == user %}
+                                <a href="{% url 'edit_route' route.id %}" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fas fa-edit"></i> Редактировать
+                                </a>
+                                {% endif %}
+                            </div>
                             {% else %}
-                            <span class="badge bg-danger">Не актуален</span>
+                            <a href="{% url 'login' %}?next={{ request.path }}" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-sign-in-alt"></i> Войти
+                            </a>
                             {% endif %}
                         </div>
                     </div>
-                    <div class="info-item">
-                        <small class="text-muted">Приватность</small>
-                        <div>{{ route.get_privacy_display }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="row">
+            <!-- Основной контент -->
+            <div class="col-lg-8">
+                <!-- Бейджи и теги -->
+                <div class="route-tags mb-4">
+                    <span class="badge route-type-badge {{ route.route_type }}">
+                        <i class="fas fa-{% if route.route_type == 'walking' %}walking{% elif route.route_type == 'driving' %}car{% else %}bicycle{% endif %} me-1"></i>
+                        {{ route.get_route_type_display }}
+                    </span>
+                    
+                    {% if route.mood %}
+                    <span class="badge bg-light text-dark border">
+                        <i class="fas fa-smile me-1 text-muted"></i>{{ route.get_mood_display }}
+                    </span>
+                    {% endif %}
+                    
+                    {% if route.theme %}
+                    <span class="badge bg-light text-dark border">
+                        <i class="fas fa-tag me-1 text-muted"></i>{{ route.get_theme_display }}
+                    </span>
+                    {% endif %}
+                    
+                    {% if route.is_elderly_friendly %}
+                    <span class="badge bg-light text-dark border">
+                        <i class="fas fa-wheelchair me-1 text-muted"></i>Для пожилых
+                    </span>
+                    {% endif %}
+                    
+                    {% if route.has_audio_guide %}
+                    <span class="badge bg-light text-dark border">
+                        <i class="fas fa-headphones me-1 text-muted"></i>Аудиогид
+                    </span>
+                    {% endif %}
+                    
+                    {% if not route.is_active %}
+                    <span class="badge bg-light text-dark border">
+                        <i class="fas fa-pause-circle me-1 text-muted"></i>Не актуален
+                    </span>
+                    {% endif %}
+                </div>
+
+                <!-- Описание и статистика -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title text-dark mb-3">О маршруте</h5>
+                        {% if route.description %}
+                        <div class="route-description text-muted">
+                            {{ route.description|linebreaks }}
+                        </div>
+                        {% else %}
+                        <p class="text-muted">Описание отсутствует</p>
+                        {% endif %}
+                        
+                        <div class="route-stats mt-4 pt-3 border-top">
+                            <div class="row g-3">
+                                <div class="col-sm-3">
+                                    <div class="stat-item text-center">
+                                        <div class="stat-value text-primary">{{ route.total_distance|floatformat:1 }} км</div>
+                                        <div class="stat-label text-muted small">Дистанция</div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-3">
+                                    <div class="stat-item text-center">
+                                        <div class="stat-value text-success">{{ route.duration_minutes }} мин</div>
+                                        <div class="stat-label text-muted small">Время</div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-3">
+                                    <div class="stat-item text-center">
+                                        <div class="stat-value text-info">{{ route.points.count }}</div>
+                                        <div class="stat-label text-muted small">Точек</div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-3">
+                                    <div class="stat-item text-center">
+                                        <div class="stat-value text-warning">{{ route.elevation_gain|default:0 }} м</div>
+                                        <div class="stat-label text-muted small">Набор высоты</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Карта -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white border-bottom">
+                        <h5 class="card-title mb-0 text-dark">
+                            <i class="fas fa-map me-2 text-muted"></i>Карта маршрута
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="route-map" class="route-map-plain"></div>
+                    </div>
+                </div>
+
+                <!-- Точки маршрута -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white border-bottom">
+                        <h5 class="card-title mb-0 text-dark">
+                            <i class="fas fa-location-dot me-2 text-muted"></i>Точки маршрута
+                            <span class="badge bg-primary ms-2">{{ route.points.count }}</span>
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="points-list">
+                            {% for point in points %}
+                            <div class="point-item mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}">
+                                <div class="d-flex align-items-start">
+                                    <div class="point-number me-3">
+                                        <div class="number-circle">{{ forloop.counter }}</div>
+                                    </div>
+                                    <div class="point-content flex-grow-1">
+                                        <h6 class="point-title text-dark mb-1">{{ point.name }}</h6>
+                                        {% if point.address %}
+                                        <p class="point-address text-muted small mb-2">
+                                            <i class="fas fa-map-marker-alt me-1"></i>{{ point.address }}
+                                        </p>
+                                        {% endif %}
+                                        
+                                        {% if point.description %}
+                                        <p class="point-description text-muted mb-2">{{ point.description }}</p>
+                                        {% endif %}
+                                        
+                                        {% if point.photos.all %}
+                                        <div class="point-photos d-flex gap-2 mb-2">
+                                            {% for photo in point.photos.all %}
+                                            <img src="{{ photo.image.url }}" class="point-photo rounded" 
+                                                 alt="{{ photo.caption }}" 
+                                                 style="width: 60px; height: 60px; object-fit: cover;">
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Комментарии -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white border-bottom">
+                        <h5 class="card-title mb-0 text-dark">
+                            <i class="fas fa-comments me-2 text-muted"></i>Комментарии
+                            <span class="badge bg-primary ms-2">{{ comments.count }}</span>
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if user.is_authenticated %}
+                        <form method="post" action="{% url 'interactions:add_comment' route.id %}" class="mb-4">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <textarea name="text" class="form-control" rows="3" placeholder="Оставьте ваш комментарий..." required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Отправить комментарий</button>
+                        </form>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <a href="{% url 'login' %}?next={{ request.path }}" class="alert-link">Войдите</a>, чтобы оставить комментарий
+                        </div>
+                        {% endif %}
+                        
+                        <div class="comments-list">
+                            {% for comment in comments %}
+                            <div class="comment-item mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}">
+                                <div class="d-flex align-items-start">
+                                    <div class="comment-avatar me-3">
+                                        <div class="avatar-circle-light">
+                                            <i class="fas fa-user"></i>
+                                        </div>
+                                    </div>
+                                    <div class="comment-content flex-grow-1">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <strong class="text-dark">{{ comment.user.username }}</strong>
+                                            <small class="text-muted">{{ comment.created_at|date:"d.m.Y H:i" }}</small>
+                                        </div>
+                                        <p class="mb-0 text-muted">{{ comment.text }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-comments fa-2x text-muted mb-3"></i>
+                                <p class="text-muted mb-0">Пока нет комментариев. Будьте первым!</p>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Чат маршрута -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body text-center">
+                        <i class="fas fa-comments fa-2x text-primary mb-3"></i>
+                        <h5 class="text-dark mb-2">Чат маршрута</h5>
+                        <p class="text-muted mb-3">Присоединяйтесь к обсуждению маршрута с другими пользователями</p>
+                        <a href="{% url 'chat:route_chat' route.id %}" class="btn btn-primary">
+                            <i class="fas fa-arrow-right me-2"></i>Перейти в чат
+                        </a>
                     </div>
                 </div>
             </div>
 
-            <!-- Переход в полный чат -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Обсуждение</h5>
-                </div>
-                <div class="card-body text-center">
-                    <p class="small text-muted mb-3">Присоединяйтесь к полному чату маршрута для более удобного общения</p>
-                    <a href="{% url 'chat:route_chat' route.id %}" class="btn btn-success w-100">
-                        <i class="fas fa-comments me-2"></i> Перейти в чат маршрута
-                    </a>
-                </div>
-            </div>
-
-            <!-- Похожие маршруты -->
-            {% if similar_routes %}
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Похожие маршруты</h5>
-                </div>
-                <div class="card-body">
-                    {% for similar in similar_routes %}
-                    <div class="similar-route mb-3">
-                        <a href="{% url 'route_detail' similar.id %}" class="text-decoration-none">
-                            <h6 class="mb-1">{{ similar.name }}</h6>
-                        </a>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <small class="text-muted">{{ similar.total_distance|floatformat:1 }} км</small>
-                            <small class="rating-stars">
-                                {% with rating=similar.get_average_rating %}
+            <!-- Сайдбар -->
+            <div class="col-lg-4">
+                <!-- Рейтинг -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body text-center">
+                        <div class="rating-display mb-3">
+                            <div class="rating-score text-dark">{{ route.get_average_rating|default:0|floatformat:1 }}</div>
+                            <div class="rating-stars mb-2">
+                                {% with rating=route.get_average_rating|default:0 %}
                                 {% for i in "12345" %}
                                     {% if forloop.counter <= rating %}
                                     <i class="fas fa-star text-warning"></i>
@@ -408,13 +323,104 @@
                                     {% endif %}
                                 {% endfor %}
                                 {% endwith %}
-                            </small>
+                            </div>
+                            <small class="text-muted">на основе {{ route.ratings.count }} оценок</small>
+                        </div>
+
+                        {% if user.is_authenticated and route.author != user %}
+                        <div class="rating-form">
+                            <p class="small text-muted mb-2">Ваша оценка:</p>
+                            <form method="post" action="{% url 'interactions:add_rating' route.id %}" id="rating-form">
+                                {% csrf_token %}
+                                <div class="star-rating mb-2">
+                                    {% for i in "12345" %}
+                                    <button type="button" class="btn btn-link p-0 me-1 star-btn" data-rating="{{ forloop.counter }}">
+                                        <i class="{% if user_rating and forloop.counter <= user_rating %}fas{% else %}far{% endif %} fa-star fa-lg text-warning"></i>
+                                    </button>
+                                    {% endfor %}
+                                </div>
+                                <input type="hidden" name="score" id="rating-score" value="{{ user_rating|default:0 }}">
+                            </form>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Информация -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white border-bottom">
+                        <h6 class="card-title mb-0 text-dark">
+                            <i class="fas fa-info-circle me-2 text-muted"></i>Информация
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="info-list">
+                            <div class="info-item d-flex justify-content-between py-2 border-bottom">
+                                <span class="info-label text-muted">Создан</span>
+                                <span class="info-value text-dark">{{ route.created_at|date:"d.m.Y" }}</span>
+                            </div>
+                            <div class="info-item d-flex justify-content-between py-2 border-bottom">
+                                <span class="info-label text-muted">Обновлен</span>
+                                <span class="info-value text-dark">{{ route.updated_at|date:"d.m.Y" }}</span>
+                            </div>
+                            <div class="info-item d-flex justify-content-between py-2 border-bottom">
+                                <span class="info-label text-muted">Статус</span>
+                                <span class="info-value">
+                                    {% if route.is_active %}
+                                    <span class="badge bg-success">Актуален</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Не актуален</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="info-item d-flex justify-content-between py-2">
+                                <span class="info-label text-muted">Приватность</span>
+                                <span class="info-value text-dark">{{ route.get_privacy_display }}</span>
+                            </div>
                         </div>
                     </div>
-                    {% endfor %}
                 </div>
+
+                <!-- Быстрый переход в чат -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body text-center">
+                        <div class="d-flex align-items-center justify-content-center mb-3">
+                            <i class="fas fa-comments fa-lg text-primary me-2"></i>
+                            <h6 class="mb-0 text-dark">Быстрый доступ</h6>
+                        </div>
+                        <a href="{% url 'chat:route_chat' route.id %}" class="btn btn-outline-primary w-100 mb-2">
+                            <i class="fas fa-comment me-2"></i>Открыть чат
+                        </a>
+                        <small class="text-muted">Общайтесь с другими участниками маршрута</small>
+                    </div>
+                </div>
+
+                <!-- Похожие маршруты -->
+                {% if similar_routes %}
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-bottom">
+                        <h6 class="card-title mb-0 text-dark">
+                            <i class="fas fa-route me-2 text-muted"></i>Похожие маршруты
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        {% for similar in similar_routes %}
+                        <a href="{% url 'route_detail' similar.id %}" class="similar-route text-decoration-none d-block">
+                            <div class="similar-item p-2 rounded hover-bg mb-2">
+                                <h6 class="similar-title text-dark mb-1">{{ similar.name }}</h6>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">{{ similar.total_distance|floatformat:1 }} км</small>
+                                    <small class="text-warning">
+                                        <i class="fas fa-star"></i> {{ similar.get_average_rating|default:0|floatformat:1 }}
+                                    </small>
+                                </div>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
             </div>
-            {% endif %}
         </div>
     </div>
 </div>
@@ -423,22 +429,160 @@
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
-.message-own .message-body {
-    background: #007bff !important;
+.route-detail-page {
+    background: #fafafa;
+}
+
+/* Спокойный hero */
+.route-hero {
+    height: 400px;
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 0 1rem;
+}
+
+.hero-image {
+    height: 400px;
+    background-size: cover;
+    background-position: center;
+}
+
+.hero-placeholder {
+    height: 400px;
+    border-radius: 12px;
+}
+
+.hero-overlay-light {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to top, rgba(255,255,255,0.95) 0%, transparent 100%);
+    padding: 2rem 0 1rem;
+}
+
+.hero-title-light {
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #1a1a1a;
+}
+
+.breadcrumb-nav-light .breadcrumb {
+    background: transparent;
+    margin-bottom: 1rem;
+}
+
+.breadcrumb-nav-light .breadcrumb-item a {
+    color: #6c757d;
+}
+
+.hero-meta-light {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.avatar-circle-light {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    color: #6c757d;
+}
+
+/* Карточки */
+.card {
+    border-radius: 8px;
+}
+
+/* Карта */
+.route-map-plain {
+    height: 300px;
+    border-radius: 0 0 8px 8px;
+}
+
+/* Точки маршрута */
+.number-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #f8f9fa;
+    border: 2px solid #dee2e6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+/* Рейтинг */
+.rating-score {
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+/* Информация */
+.info-list .info-item:last-child {
+    border-bottom: none !important;
+}
+
+/* Похожие маршруты */
+.hover-bg {
+    transition: background-color 0.2s ease;
+}
+
+.hover-bg:hover {
+    background-color: #f8f9fa;
+}
+
+/* Бейджи */
+.route-type-badge.walking { 
+    background: #e8f5e8; 
+    color: #2e7d32; 
+    border: 1px solid #c8e6c9;
+}
+.route-type-badge.driving { 
+    background: #e3f2fd; 
+    color: #1565c0; 
+    border: 1px solid #bbdefb;
+}
+.route-type-badge.cycling { 
+    background: #fff3e0; 
+    color: #ef6c00; 
+    border: 1px solid #ffe0b2;
+}
+
+/* Кнопка избранного */
+.btn-favorite.active {
+    background-color: #dc3545;
+    border-color: #dc3545;
     color: white;
 }
-.chat-messages {
-    border-radius: 0.375rem;
-}
-.message {
-    animation: fadeIn 0.3s ease-in;
-}
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-.rating-stars {
-    color: #ffc107;
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .route-hero {
+        height: 300px;
+        margin: 0;
+        border-radius: 0;
+    }
+    
+    .hero-image {
+        height: 300px;
+    }
+    
+    .hero-title-light {
+        font-size: 1.5rem;
+    }
+    
+    .hero-actions-light .d-flex {
+        justify-content: flex-start !important;
+    }
 }
 </style>
 {% endblock %}
@@ -446,209 +590,69 @@
 {% block extra_js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // Инициализация карты
-    function initMap() {
-        const map = L.map('route-map').setView([{{ points.0.latitude|default:55.7558 }}, {{ points.0.longitude|default:37.6176 }}], 13);
-        
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
+// Инициализация карты
+function initMap() {
+    const map = L.map('route-map').setView([{{ points.0.latitude|default:55.7558 }}, {{ points.0.longitude|default:37.6176 }}], 13);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    
+    const points = [
+        {% for point in points %}
+        {
+            lat: {{ point.latitude }},
+            lng: {{ point.longitude }},
+            name: "{{ point.name|escapejs }}",
+            address: "{{ point.address|escapejs }}"
+        },
+        {% endfor %}
+    ];
+    
+    // Маркеры
+    points.forEach((point, index) => {
+        const marker = L.marker([point.lat, point.lng]).addTo(map);
+        marker.bindPopup(`
+            <div>
+                <strong>Точка ${index + 1}: ${point.name}</strong><br>
+                <small>${point.address}</small>
+            </div>
+        `);
+    });
+    
+    // Линия маршрута
+    if (points.length > 1) {
+        const routeLine = L.polyline(points.map(p => [p.lat, p.lng]), {
+            color: '#2563eb',
+            weight: 4,
+            opacity: 0.7
         }).addTo(map);
         
-        // Добавляем точки маршрута
-        const points = [
-            {% for point in points %}
-            {
-                lat: {{ point.latitude }},
-                lng: {{ point.longitude }},
-                name: "{{ point.name|escapejs }}",
-                address: "{{ point.address|escapejs }}"
-            },
-            {% endfor %}
-        ];
-        
-        // Создаем маркеры
-        points.forEach((point, index) => {
-            const marker = L.marker([point.lat, point.lng]).addTo(map);
-            marker.bindPopup(`
-                <div>
-                    <strong>Точка ${index + 1}: ${point.name}</strong><br>
-                    <small>${point.address}</small>
-                </div>
-            `);
+        map.fitBounds(routeLine.getBounds());
+    }
+}
+
+// Рейтинг
+document.addEventListener('DOMContentLoaded', function() {
+    initMap();
+    
+    // Исправление ошибки с рейтингом
+    const starButtons = document.querySelectorAll('.star-btn');
+    if (starButtons.length > 0) {
+        starButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const rating = this.getAttribute('data-rating');
+                document.getElementById('rating-score').value = rating;
+                document.getElementById('rating-form').submit();
+            });
         });
-        
-        // Создаем линию маршрута если есть больше одной точки
-        if (points.length > 1) {
-            const routeLine = L.polyline(points.map(p => [p.lat, p.lng]), {
-                color: '#2563eb',
-                weight: 4,
-                opacity: 0.7
-            }).addTo(map);
-            
-            map.fitBounds(routeLine.getBounds());
-        }
     }
     
-    // Рейтинг
-    document.querySelectorAll('.star-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const rating = this.dataset.rating;
-            document.getElementById('rating-score').value = rating;
-            document.getElementById('rating-form').submit();
-        });
+    // Инициализация tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
     });
-
-    // Поделиться
-    function shareRoute() {
-        if (navigator.share) {
-            navigator.share({
-                title: '{{ route.name }}',
-                text: 'Посмотрите этот маршрут на Waylines',
-                url: window.location.href,
-            });
-        } else {
-            // Fallback - копирование ссылки
-            navigator.clipboard.writeText(window.location.href).then(() => {
-                alert('Ссылка скопирована в буфер обмена');
-            });
-        }
-    }
-
-    // Чат маршрута с Firebase
-    {% if user.is_authenticated %}
-    const routeId = {{ route.id }};
-    const routeCurrentUserId = {{ user.id }};
-    const routeCurrentUsername = "{{ user.username }}";
-
-    // Инициализация Firebase для чата маршрута
-    function initializeRouteChat() {
-        try {
-            // Firebase конфигурация
-            const firebaseConfig = {
-                apiKey: "AIzaSyDwAp4Qe5kIlOSewu7FLMj7IHDi4ofQI7E",
-                authDomain: "project-e123e.firebaseapp.com",
-                databaseURL: "https://project-e123e-default-rtdb.firebaseio.com",
-                projectId: "project-e123e",
-                storageBucket: "project-e123e.firebasestorage.app",
-                messagingSenderId: "849440145534",
-                appId: "1:849440145534:web:9873b2bc94bf0db959982f",
-                measurementId: "G-WG5K1M2D1V"
-            };
-
-            // Инициализация Firebase
-            if (!firebase.apps.length) {
-                firebase.initializeApp(firebaseConfig);
-            }
-
-            const database = firebase.database();
-            const messagesRef = database.ref(`route_chats/${routeId}/messages`);
-
-            // Слушаем новые сообщения
-            messagesRef.orderByChild('timestamp').on('child_added', (snapshot) => {
-                const message = snapshot.val();
-                addRouteChatMessage(message);
-            });
-
-            // Отправка сообщения
-            document.querySelector('#route-chat-form').onsubmit = function(e) {
-                e.preventDefault();
-                const messageInput = document.querySelector('#route-chat-message-input');
-                const message = messageInput.value.trim();
-                
-                if (message) {
-                    const messageData = {
-                        id: Date.now().toString(),
-                        message: message,
-                        user: routeCurrentUsername,
-                        user_id: routeCurrentUserId,
-                        timestamp: Date.now(),
-                        created_at: new Date().toLocaleTimeString('ru-RU', { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                        })
-                    };
-                    
-                    messagesRef.child(messageData.id).set(messageData);
-                    messageInput.value = '';
-                }
-            };
-
-        } catch (error) {
-            console.error('Ошибка инициализации чата:', error);
-        }
-    }
-
-    // Добавление сообщения в чат
-    function addRouteChatMessage(data) {
-        const messagesContainer = document.querySelector('#route-chat-messages');
-        
-        // Убираем сообщение о пустом чате
-        if (messagesContainer.querySelector('.text-center')) {
-            messagesContainer.innerHTML = '';
-        }
-
-        // Проверяем, нет ли уже такого сообщения
-        const existingMessage = messagesContainer.querySelector(`[data-message-id="${data.id}"]`);
-        if (existingMessage) {
-            return;
-        }
-
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'message mb-3';
-        messageDiv.dataset.messageId = data.id;
-        
-        if (data.user_id == routeCurrentUserId) {
-            messageDiv.classList.add('message-own');
-        }
-
-        const isAuthor = data.user === "{{ route.author.username }}";
-        const authorIcon = isAuthor ? '<i class="fas fa-crown text-warning" title="Автор маршрута"></i> ' : '';
-
-        messageDiv.innerHTML = `
-            <div class="message-header d-flex justify-content-between align-items-center mb-1">
-                <strong>${authorIcon}${data.user}</strong>
-                <small class="text-muted">${data.created_at}</small>
-            </div>
-            <div class="message-body {% if data.user_id == routeCurrentUserId %}bg-primary text-white{% else %}bg-light{% endif %} rounded p-2">
-                ${data.message}
-            </div>
-        `;
-
-        messagesContainer.appendChild(messageDiv);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        
-        // Анимация появления
-        messageDiv.style.animation = 'fadeIn 0.3s ease-in';
-    }
-
-    // Автопрокрутка чата
-    const routeMessagesContainer = document.querySelector('#route-chat-messages');
-    if (routeMessagesContainer) {
-        routeMessagesContainer.scrollTop = routeMessagesContainer.scrollHeight;
-    }
-
-    // Обработка Enter для чата
-    document.querySelector('#route-chat-message-input').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            document.querySelector('#route-chat-form').dispatchEvent(new Event('submit'));
-        }
-    });
-    {% endif %}
-    
-    // Инициализация при загрузке
-    document.addEventListener('DOMContentLoaded', function() {
-        initMap();
-        
-        {% if user.is_authenticated %}
-        initializeRouteChat();
-        {% endif %}
-        
-        // Инициализация tooltips
-        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
-        });
-    });
+});
 </script>
 {% endblock %}

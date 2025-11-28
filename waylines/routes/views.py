@@ -9,6 +9,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
 from django.db.models import Q, Count, Avg
 from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
 from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
 from django.views import View
@@ -583,6 +584,59 @@ def can_view_route(user, route):
     return False
 
 
+@login_required
+@require_http_methods(["POST"])
+def share_route(request, route_id):
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+
+    try:
+        route = Route.objects.get(id=route_id, author=request.user)
+    except Route.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Маршрут не найден или вы не автор'
+        }, status=403)
+
+    try:
+        data = json.loads(request.body)
+        email = data.get('email', '').strip()
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({
+            'success': False,
+            'error': 'Некорректный формат данных'
+        }, status=400)
+
+    if not email:
+        return JsonResponse({
+            'success': False,
+            'error': 'Email не указан'
+        }, status=400)
+
+    try:
+        target_user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Пользователь с таким email не зарегистрирован'
+        }, status=404)
+
+    if target_user == request.user:
+        return JsonResponse({
+            'success': False,
+            'error': 'Нельзя предоставить доступ самому себе'
+        }, status=400)
+
+    route.privacy = "personal"
+    route.shared_with.add(target_user)
+    route.save()
+
+    return JsonResponse({
+        'success': True,
+        'message': f'Доступ к маршруту «{route.name}» предоставлен пользователю {email}'
+    })
+
+
 def get_user_rating(user, route):
     """Получение оценки пользователя для маршрута"""
     if not user.is_authenticated:
@@ -784,6 +838,8 @@ class RouteUpdateView(LoginRequiredMixin, View):
             return JsonResponse({"success": False, "error": "Неверный формат JSON"})
         except Exception as e:
             return JsonResponse({"success": False, "error": f"Ошибка сервера: {str(e)}"})
-        
+
+
     def post(self, request, pk):
         return self.put(request, pk)
+

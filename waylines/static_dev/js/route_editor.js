@@ -54,12 +54,47 @@ class RouteEditor {
         this.map.on('click', (e) => this.addPoint(e.latlng));
     }
 
+    // НОВЫЙ МЕТОД: Нормализация координат
+    normalizeCoordinate(coord) {
+        if (coord === null || coord === undefined) {
+            return 0;
+        }
+        
+        // Если это число - возвращаем как есть
+        if (typeof coord === 'number') {
+            return coord;
+        }
+        
+        // Если это строка - заменяем запятые на точки и парсим
+        if (typeof coord === 'string') {
+            // Удаляем лишние пробелы и заменяем запятые на точки
+            const normalized = coord.toString().trim().replace(/,/g, '.');
+            
+            // Удаляем все символы кроме цифр, точек и минусов
+            const cleaned = normalized.replace(/[^\d.-]/g, '');
+            
+            // Парсим в число
+            const parsed = parseFloat(cleaned);
+            
+            // Проверяем результат
+            if (isNaN(parsed)) {
+                console.warn('Неверный формат координаты:', coord, '->', parsed);
+                return 0;
+            }
+            
+            return parsed;
+        }
+        
+        // Для других типов пытаемся преобразовать в число
+        return parseFloat(coord) || 0;
+    }
+
     loadExistingRoute(routeData) {
         if (routeData.points && routeData.points.length > 0) {
             this.points = routeData.points.map(point => ({
                 name: point.name,
-                lat: point.lat,
-                lng: point.lng,
+                lat: this.normalizeCoordinate(point.lat),
+                lng: this.normalizeCoordinate(point.lng),
                 address: point.address || '',
                 description: point.description || '',
                 photos: point.photos || [],
@@ -67,21 +102,52 @@ class RouteEditor {
                 category: point.category || '',
                 hint_author: point.hint_author || ''
             }));
-            
+
             // Устанавливаем тип маршрута
             this.routeType = routeData.route_type || 'walking';
             document.querySelectorAll('.route-type-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.type === this.routeType);
             });
+
+            // Вспомогательная функция для безопасной установки значений
+            const setValueIfExists = (id, value) => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.value = value || '';
+                } else {
+                    console.warn(`Element with id '${id}' not found`);
+                }
+            };
+
+            const setCheckedIfExists = (id, checked) => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.checked = !!checked;
+                } else {
+                    console.warn(`Element with id '${id}' not found`);
+                }
+            };
+
+            // Заполняем форму маршрута с проверками
+            setValueIfExists('name', routeData.name);
+            setValueIfExists('short_description', routeData.short_description);
+            setValueIfExists('description', routeData.description);
+            setValueIfExists('duration_minutes', routeData.duration_minutes);
+            setValueIfExists('total_distance', routeData.total_distance);
+            setValueIfExists('privacy', routeData.privacy);
+            setValueIfExists('mood', routeData.mood);
+            setValueIfExists('theme', routeData.theme);
             
-            // Заполняем форму маршрута
-            document.getElementById('name').value = routeData.name || '';
-            document.getElementById('description').value = routeData.description || '';
-            document.getElementById('duration').value = routeData.duration || '';
-            document.getElementById('privacy').value = routeData.privacy || 'public';
-            
+            // Исправляем поле route_type - проверяем разные варианты названия
+            const routeTypeValue = routeData.route_type || routeData.routeType;
+            setValueIfExists('route_type', routeTypeValue);
+
+            setCheckedIfExists('has_audio_guide', routeData.has_audio_guide);
+            setCheckedIfExists('is_elderly_friendly', routeData.is_elderly_friendly);
+            setCheckedIfExists('is_active', routeData.is_active);
+
             this.updateMap();
-            
+
             // Строим маршрут если есть точки
             if (this.points.length >= 2) {
                 this.buildRoute();
@@ -254,8 +320,8 @@ class RouteEditor {
     addPointFromSearch(result) {
         const point = {
             name: result.display_name.split(',')[0],
-            lat: parseFloat(result.lat),
-            lng: parseFloat(result.lon),
+            lat: this.normalizeCoordinate(result.lat),
+            lng: this.normalizeCoordinate(result.lon),
             address: result.display_name,
             description: '',
             photos: [],
@@ -329,8 +395,8 @@ class RouteEditor {
     addPoint(latlng) {
         const point = {
             name: `Точка ${this.points.length + 1}`,
-            lat: latlng.lat,
-            lng: latlng.lng,
+            lat: this.normalizeCoordinate(latlng.lat),
+            lng: this.normalizeCoordinate(latlng.lng),
             address: 'Определение адреса...',
             description: '',
             photos: [],
@@ -533,7 +599,6 @@ class RouteEditor {
         // Подготавливаем координаты в формате [долгота, широта]
         const coordinates = this.points.map(point => [point.lng, point.lat]);
         
-        // Ваш API ключ (убедитесь, что он правильно закодирован)
         const apiKey = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjYyMzA1OTQzOTI2NzQ1MDBiMTUwOGUxYmVhZTUwMGM4IiwiaCI6Im11cm11cjY0In0=';
         
         const response = await fetch(`https://api.openrouteservice.org/v2/directions/${profile}/geojson`, {
@@ -594,7 +659,7 @@ class RouteEditor {
         return colors[this.routeType] || '#2563eb';
     }
 
-        updateStats() {
+    updateStats() {
         document.getElementById('points-count').textContent = this.points.length;
         document.getElementById('total-distance').textContent = this.calculateTotalDistance() + ' км';
         
@@ -602,31 +667,6 @@ class RouteEditor {
         if (totalDistanceInput) {
             totalDistanceInput.value = this.calculateTotalDistance();
         }
-    }
-
-    calculateTotalDistance() {
-        if (this.points.length < 2) return '0';
-
-        let total = 0;
-        for (let i = 1; i < this.points.length; i++) {
-            const prev = this.points[i-1];
-            const curr = this.points[i];
-            total += this.calculateDistance(prev.lat, prev.lng, curr.lat, curr.lng);
-        }
-        
-        return total.toFixed(2);
-    }
-
-    calculateDistance(lat1, lng1, lat2, lng2) {
-        const R = 6371;
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLng = (lng2 - lng1) * Math.PI / 180;
-        const a = 
-            Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-            Math.sin(dLng/2) * Math.sin(dLng/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        return R * c;
     }
 
     updatePointsList() {
@@ -881,7 +921,9 @@ class RouteEditor {
             category: document.getElementById('point-category').value,
             tags: document.getElementById('point-tags').value.split(',').map(tag => tag.trim()).filter(tag => tag),
             hint_author: document.getElementById('point-hint-author').value,
-            photos: [...this.uploadedPhotos]
+            photos: [...this.uploadedPhotos],
+            lat: this.normalizeCoordinate(document.getElementById('point-lat').value),
+            lng: this.normalizeCoordinate(document.getElementById('point-lng').value)
         };
 
         this.updateMap();
@@ -905,8 +947,8 @@ class RouteEditor {
             name: point.name,
             description: point.description || '',
             address: point.address || '',
-            lat: point.lat,
-            lng: point.lng,
+            lat: this.normalizeCoordinate(point.lat),
+            lng: this.normalizeCoordinate(point.lng),
             category: point.category || '',
             hint_author: point.hint_author || '',
             tags: point.tags || []
@@ -1025,7 +1067,7 @@ class RouteEditor {
         document.getElementById('route-loading').style.display = 'flex';
 
         try {
-            // Собираем данные маршрута
+            // Собираем данные маршрута с нормализованными координатами
             const routeData = {
                 name: name,
                 short_description: document.getElementById('short_description').value,
@@ -1039,12 +1081,12 @@ class RouteEditor {
                 has_audio_guide: document.getElementById('has_audio_guide').checked,
                 is_elderly_friendly: document.getElementById('is_elderly_friendly').checked,
                 is_active: document.getElementById('is_active') ? document.getElementById('is_active').checked : true,
-                points: this.points.map((point, index) => ({
+                waypoints: this.points.map((point, index) => ({
                     name: point.name,
                     description: point.description || '',
                     address: point.address || '',
-                    lat: point.lat,
-                    lng: point.lng,
+                    lat: this.normalizeCoordinate(point.lat),
+                    lng: this.normalizeCoordinate(point.lng),
                     category: point.category || '',
                     hint_author: point.hint_author || '',
                     tags: point.tags || []
@@ -1053,10 +1095,29 @@ class RouteEditor {
 
             console.log('Отправка данных маршрута:', routeData);
 
-            // Определяем URL и метод
+            // Проверяем координаты перед отправкой
+            const invalidPoints = routeData.waypoints.filter(point => 
+                isNaN(point.lat) || isNaN(point.lng) || point.lat === 0 || point.lng === 0
+            );
+            
+            if (invalidPoints.length > 0) {
+                console.error('Неверные координаты:', invalidPoints);
+                throw new Error('Обнаружены точки с неверными координатами');
+            }
+
+            // ИСПРАВЛЕННЫЕ URL - используем правильный путь
+            let url, method;
             const isEdit = window.routeData && window.routeData.id;
-            const url = isEdit ? `/routes/${window.routeData.id}/edit/` : '/routes/create/';
-            const method = 'POST';
+
+            if (isEdit) {
+                // ПРАВИЛЬНЫЙ URL для редактирования
+                url = `/routes/api/routes/${window.routeData.id}/`;
+                method = 'POST'; // Ваш RouteUpdateView принимает POST
+            } else {
+                // ПРАВИЛЬНЫЙ URL для создания
+                url = '/routes/api/routes/';
+                method = 'POST';
+            }
 
             console.log('URL:', url, 'Method:', method);
 
@@ -1070,55 +1131,46 @@ class RouteEditor {
                 body: JSON.stringify(routeData)
             });
 
-            // Проверяем Content-Type ответа
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                // Сервер вернул не JSON, вероятно HTML страницу с ошибкой
-                const text = await response.text();
-                console.error('Сервер вернул не JSON:', text.substring(0, 500));
+            // Проверяем ответ
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Ошибка сервера:', errorText);
                 
-                if (response.status === 404) {
-                    throw new Error('Страница не найдена (404). Проверьте URL.');
-                } else if (response.status === 403) {
-                    throw new Error('Доступ запрещен (403). Возможно, нужна авторизация.');
-                } else if (response.status === 500) {
-                    throw new Error('Ошибка сервера (500). Попробуйте позже.');
-                } else {
-                    throw new Error(`HTTP ошибка ${response.status}. Сервер вернул HTML вместо JSON.`);
+                // Пытаемся распарсить JSON ошибки
+                try {
+                    const errorData = JSON.parse(errorText);
+                    throw new Error(`HTTP ${response.status}: ${errorData.error || errorText}`);
+                } catch (e) {
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
                 }
             }
 
             const data = await response.json();
             
-            if (!response.ok) {
-                throw new Error(data.error || `HTTP error! status: ${response.status}`);
-            }
-
             if (data.success) {
                 this.showToast('Маршрут успешно сохранен!', 'success');
-                // Перенаправляем на страницу маршрута
+                
                 setTimeout(() => {
-                    if (data.route_id) {
-                        window.location.href = `/routes/${data.route_id}/`;
-                    } else if (data.id) {
-                        window.location.href = `/routes/${data.id}/`;
+                    const routeId = data.route_id || data.id;
+                    if (routeId) {
+                        // ТЕПЕРЬ ПРАВИЛЬНЫЙ ПУТЬ - без двойного префикса
+                        window.location.href = `/routes/${routeId}/`;
                     } else {
                         window.location.href = '/routes/my/';
                     }
                 }, 1500);
-            } else {
-                throw new Error(data.error || 'Неизвестная ошибка при сохранении');
             }
 
         } catch (error) {
             console.error('Ошибка сохранения:', error);
             let errorMessage = error.message;
             
-            // Более понятные сообщения об ошибках
-            if (error.message.includes('Unexpected token')) {
-                errorMessage = 'Сервер вернул некорректный ответ. Возможно, проблема с URL или правами доступа.';
-            } else if (error.message.includes('Failed to fetch')) {
+            if (error.message.includes('Failed to fetch')) {
                 errorMessage = 'Ошибка сети. Проверьте подключение к интернету.';
+            } else if (error.message.includes('404')) {
+                errorMessage = 'API endpoint не найден. Проверьте URL.';
+            } else if (error.message.includes('403')) {
+                errorMessage = 'Доступ запрещен. Возможно, нужно авторизоваться.';
             }
             
             this.showToast(`Ошибка сохранения: ${errorMessage}`, 'danger');
