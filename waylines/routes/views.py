@@ -2,6 +2,7 @@ __all__ = ()
 
 import json
 import math
+from io import BytesIO
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -14,6 +15,8 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
+from django.core.files import File
+from django.http import HttpResponse
 
 from routes.models import Route, RoutePoint, RouteFavorite, RouteRating, SavedPlace, RouteComment, PointComment, User
 from users.models import Friendship
@@ -128,24 +131,34 @@ def my_routes(request):
 
 @login_required
 def shared_routes(request):
-    """Маршруты, доступные пользователю"""
-    routes = (
-        Route.objects.filter(Q(shared_with=request.user) | Q(privacy="link"))
-        .exclude(author=request.user)
-        .distinct()
-        .order_by("-created_at")
-    )
+    shared_with_me = Route.objects.filter(
+        shared_with=request.user,
+        is_active=True
+    ).distinct()
+
+    link_access_routes = Route.objects.filter(
+        privacy="link",
+        is_active=True
+    ).exclude(author=request.user)
+
+    routes = (shared_with_me | link_access_routes).distinct().order_by("-created_at")
 
     context = {
         "routes": routes,
-        "pending_friend_requests": Friendship.objects.filter(
-            to_user=request.user, status="pending"
-        )[:5],
-        "pending_requests_count": Friendship.objects.filter(
-            to_user=request.user, status="pending"
-        ).count(),
+        "shared_count": shared_with_me.count(),
+        "link_count": link_access_routes.count(),
     }
+
+    if request.user.is_authenticated:
+        context["pending_friend_requests"] = Friendship.objects.filter(
+            to_user=request.user, status="pending"
+        )[:5]
+        context["pending_requests_count"] = Friendship.objects.filter(
+            to_user=request.user, status="pending"
+        ).count()
+
     return render(request, "routes/shared_routes.html", context)
+
 
 
 def route_detail(request, route_id):
@@ -204,7 +217,90 @@ def route_detail(request, route_id):
 
     return render(request, "routes/route_detail.html", context)
 
-
+@login_required
+@csrf_exempt
+def send_to_friend(request, route_id):
+    """Отправка маршрута другу"""
+    route = get_object_or_404(Route, id=route_id)
+    
+    if route.author != request.user and not request.user.is_staff:
+        return JsonResponse({
+            'success': False,
+            'error': 'У вас нет прав для отправки этого маршрута'
+        })
+    
+    try:
+        data = json.loads(request.body)
+        friend_id = data.get('friend_id')
+        message = data.get('message', '')
+        
+        if not friend_id:
+            return JsonResponse({
+                'success': False,
+                'error': 'Не выбран друг'
+            })
+        
+        try:
+            from users.models import Friendship
+            friend = User.objects.get(id=friend_id)
+            
+            # Проверяем дружбу
+            friendship = Friendship.objects.filter(
+                (Q(from_user=request.user, to_user=friend) |
+                 Q(from_user=friend, to_user=request.user)),
+                status='accepted'
+            ).first()
+            
+            if not friendship:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Пользователь не является вашим другом'
+                })
+            
+            # Добавляем маршрут в общий доступ
+            route.shared_with.add(friend)
+            route.save()
+            
+            # Создаем уведомление (если есть модель Notification)
+            try:
+                from notifications.models import Notification
+                Notification.objects.create(
+                    user=friend,
+                    title='Вам отправили маршрут',
+                    message=f'{request.user.username} отправил(а) вам маршрут "{route.name}"',
+                    notification_type='route_shared',
+                    related_object_id=route.id,
+                    related_object_type='route'
+                )
+            except ImportError:
+                # Модель уведомлений не найдена - пропускаем
+                pass
+            
+            friend_name = friend.first_name or friend.username
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Маршрут "{route.name}" отправлен другу {friend_name}'
+            })
+            
+        except User.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': 'Друг не найден'
+            })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Неверный формат данных'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Ошибка отправки: {str(e)}'
+        })
+ 
+    
 @login_required
 def create_route(request):
     """Создание нового маршрута"""
@@ -843,3 +939,210 @@ class RouteUpdateView(LoginRequiredMixin, View):
     def post(self, request, pk):
         return self.put(request, pk)
 
+@login_required
+@csrf_exempt
+def generate_qr_code(request, route_id):
+    """Генерация QR кода для маршрута"""
+    route = get_object_or_404(Route, id=route_id)
+    
+    # Проверяем права доступа
+    if route.author != request.user and not request.user.is_staff:
+        return JsonResponse({
+            'success': False, 
+            'error': 'У вас нет прав для генерации QR кода этого маршрута'
+        })
+    
+    try:
+        qr_url = route.generate_qr_code(request)
+        return JsonResponse({
+            'success': True, 
+            'qr_url': qr_url,
+            'route_url': request.build_absolute_uri(route.get_absolute_url())
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False, 
+            'error': f'Ошибка генерации QR кода: {str(e)}'
+        })
+
+def route_qr_code(request, route_id):
+    """Страница с QR кодом маршрута"""
+    route = get_object_or_404(Route, id=route_id)
+    
+    # Проверка доступа к маршруту
+    if not can_view_route(request.user, route):
+        messages.error(request, "У вас нет доступа к этому маршруту")
+        return redirect("home")
+    
+    # Генерируем QR код если его нет
+    qr_url = route.qr_code.url if route.qr_code else None
+    if not qr_url:
+        qr_url = route.generate_qr_code(request)
+    
+    route_url = request.build_absolute_uri(route.get_absolute_url())
+    
+    context = {
+        'route': route,
+        'qr_url': qr_url,
+        'route_url': route_url,
+    }
+    
+    if request.user.is_authenticated:
+        context["pending_friend_requests"] = Friendship.objects.filter(
+            to_user=request.user, status="pending"
+        )[:5]
+        context["pending_requests_count"] = Friendship.objects.filter(
+            to_user=request.user, status="pending"
+        ).count()
+    
+    return render(request, 'routes/route_qr_code.html', context)
+
+@login_required
+@csrf_exempt
+def share_route_access(request, route_id):
+    """Предоставление доступа к маршруту по email"""
+    route = get_object_or_404(Route, id=route_id)
+    
+    # Проверяем права доступа
+    if route.author != request.user and not request.user.is_staff:
+        return JsonResponse({
+            'success': False, 
+            'error': 'У вас нет прав для предоставления доступа к этому маршруту'
+        })
+    
+    try:
+        data = json.loads(request.body)
+        email = data.get('email', '').strip()
+        access_level = data.get('access_level', 'view')
+        
+        if not email:
+            return JsonResponse({
+                'success': False, 
+                'error': 'Email не указан'
+            })
+        
+        try:
+            target_user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return JsonResponse({
+                'success': False, 
+                'error': 'Пользователь с таким email не зарегистрирован'
+            })
+        
+        if target_user == request.user:
+            return JsonResponse({
+                'success': False, 
+                'error': 'Нельзя предоставить доступ самому себе'
+            })
+        
+        # Предоставляем доступ
+        route.privacy = "personal"
+        route.shared_with.add(target_user)
+        route.save()
+        
+        return JsonResponse({
+            'success': True, 
+            'message': f'Доступ к маршруту «{route.name}» предоставлен пользователю {email}'
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False, 
+            'error': 'Неверный формат данных'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False, 
+            'error': f'Ошибка: {str(e)}'
+        })
+
+# views.py
+@login_required
+@csrf_exempt
+def get_friends_list(request):
+    """Получение списка друзей пользователя"""
+    try:
+        # Предполагая, что у вас есть модель Friendship
+        friends = Friendship.objects.filter(
+            Q(from_user=request.user, status='accepted') |
+            Q(to_user=request.user, status='accepted')
+        ).select_related('from_user', 'to_user')
+        
+        friends_list = []
+        for friendship in friends:
+            if friendship.from_user == request.user:
+                friend = friendship.to_user
+            else:
+                friend = friendship.from_user
+            
+            friends_list.append({
+                'id': friend.id,
+                'username': friend.username,
+                'first_name': friend.first_name,
+                'last_name': friend.last_name,
+                'email': friend.email
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'friends': friends_list
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+@login_required
+@csrf_exempt
+def send_to_friend(request, route_id):
+    """Отправка маршрута другу"""
+    route = get_object_or_404(Route, id=route_id)
+    
+    try:
+        data = json.loads(request.body)
+        friend_id = data.get('friend_id')
+        message = data.get('message', '')
+        
+        if not friend_id:
+            return JsonResponse({
+                'success': False,
+                'error': 'Не выбран друг'
+            })
+        
+        try:
+            friend = User.objects.get(id=friend_id)
+            friendship = Friendship.objects.filter(
+                (Q(from_user=request.user, to_user=friend) |
+                 Q(from_user=friend, to_user=request.user)),
+                status='accepted'
+            ).first()
+            
+            if not friendship:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Пользователь не является вашим другом'
+                })
+                
+        except User.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': 'Друг не найден'
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Маршрут отправлен другу {friend.first_name} {friend.last_name}'
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Неверный формат данных'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })

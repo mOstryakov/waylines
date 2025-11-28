@@ -73,18 +73,119 @@
                         <input type="text" id="point-tags" class="form-control" placeholder="тег1, тег2, тег3...">
                         <div class="form-text">Введите теги через запятую</div>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Фотографии</label>
-                        <div class="photo-upload-area border rounded p-4 text-center" onclick="document.getElementById('point-photo-upload').click()">
-                            <i class="fas fa-camera fa-2x text-muted mb-2"></i>
-                            <div class="text-muted">Нажмите для загрузки фото</div>
-                            <small class="text-muted">Можно загрузить несколько файлов</small>
-                        </div>
-                        <input type="file" id="point-photo-upload" multiple accept="image/*" style="display: none;">
+
+                    <!-- СЕКЦИЯ ФОТОГРАФИЙ -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold mb-3">Фотографии места</label>
                         
-                        <div class="photo-preview-container mt-2" id="point-photo-preview">
-                            <!-- Преviews будут добавляться здесь -->
+                        <!-- Основное фото -->
+                        <div class="main-photo-section mb-3">
+                            <div class="main-photo-upload position-relative border rounded bg-light" 
+                                 style="height: 200px; cursor: pointer;"
+                                 onclick="document.getElementById('main-photo-upload').click()">
+                                <div class="h-100 d-flex flex-column align-items-center justify-content-center text-muted">
+                                    <i class="fas fa-camera fa-2x mb-2"></i>
+                                    <div>Главное фото</div>
+                                    <small>Рекомендуется горизонтальное фото</small>
+                                </div>
+                                <div class="main-photo-preview h-100" style="display: none;">
+                                    <img src="" class="w-100 h-100 object-fit-cover rounded">
+                                    <button type="button" class="btn btn-sm btn-light position-absolute top-0 end-0 m-2 photo-remove-btn">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <input type="file" id="main-photo-upload" accept="image/*" style="display: none;">
+                        </div>
+
+                        <!-- Дополнительные фото -->
+                        <div class="additional-photos-section">
+                            <label class="form-label small fw-bold mb-2">Дополнительные фото</label>
+                            <div class="additional-photos-grid d-grid gap-2" style="grid-template-columns: repeat(4, 1fr);">
+                                <!-- Плейсхолдер для загрузки -->
+                                <div class="additional-photo-upload border rounded bg-light d-flex align-items-center justify-content-center" 
+                                     style="height: 80px; cursor: pointer;"
+                                     onclick="document.getElementById('additional-photos-upload').click()">
+                                    <i class="fas fa-plus text-muted"></i>
+                                </div>
+                            </div>
+                            <input type="file" id="additional-photos-upload" multiple accept="image/*" style="display: none;">
+                        </div>
+                    </div>
+
+                    <!-- СЕКЦИЯ АУДИОГИДА -->
+                    <div class="mb-4">
+                        <div class="audio-guide-section p-4 border rounded">
+                            <div class="d-flex align-items-center justify-content-between mb-3">
+                                <div>
+                                    <h6 class="mb-1">
+                                        <i class="fas fa-headphones me-2"></i>Аудиогид
+                                    </h6>
+                                    <p class="small text-muted mb-0">Запишите рассказ об этом месте</p>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="enable-audio-guide">
+                                    <label class="form-check-label small" for="enable-audio-guide">
+                                        Включить
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Аудиоплеер -->
+                            <div class="audio-player mb-3" id="audio-player" style="display: none;">
+                                <div class="d-flex align-items-center gap-3">
+                                    <button class="btn btn-outline-primary btn-sm rounded-circle audio-play-btn" style="width: 40px; height: 40px;">
+                                        <i class="fas fa-play"></i>
+                                    </button>
+                                    <div class="flex-grow-1">
+                                        <div class="audio-waveform mb-1" id="audio-waveform">
+                                            <div class="audio-visualizer" id="audio-visualizer"></div>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="audio-time small" id="audio-current-time">0:00</span>
+                                            <span class="audio-time small" id="audio-duration">0:00</span>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex gap-1">
+                                        <button class="btn btn-outline-secondary btn-sm" id="re-record-audio" title="Перезаписать">
+                                            <i class="fas fa-redo"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger btn-sm" id="remove-audio" title="Удалить аудио">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Запись аудио -->
+                            <div class="audio-recorder" id="audio-recorder">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <button class="btn btn-primary btn-sm rounded-pill px-3" id="start-audio-record">
+                                            <i class="fas fa-microphone me-2"></i>Записать
+                                        </button>
+                                        <div class="recording-indicator" id="recording-indicator" style="display: none;">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="recording-pulse rounded-circle bg-danger" 
+                                                     style="width: 12px; height: 12px;"></div>
+                                                <span class="small" id="recording-timer">00:00</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <button class="btn btn-outline-secondary btn-sm" id="upload-audio-file">
+                                        <i class="fas fa-upload me-1"></i>Загрузить
+                                    </button>
+                                    <input type="file" id="audio-file-input" accept="audio/*" style="display: none;">
+                                </div>
+                                
+                                <!-- Визуализатор при записи -->
+                                <div class="recording-visualizer mt-3" id="recording-visualizer" style="display: none;">
+                                    <div class="audio-waveform">
+                                        <div class="audio-visualizer" id="live-visualizer"></div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </form>

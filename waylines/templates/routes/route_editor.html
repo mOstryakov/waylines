@@ -491,6 +491,118 @@
         object-fit: cover;
         border: 1px solid #e5e7eb;
     }
+
+    /* Стили для фотографий */
+    .object-fit-cover {
+        object-fit: cover;
+    }
+
+    .photo-remove-btn {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(10px);
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        font-size: 12px;
+    }
+
+    .additional-photo-item {
+        position: relative;
+        border-radius: 8px;
+        overflow: hidden;
+        height: 80px;
+    }
+
+    .additional-photo-item img {
+        transition: transform 0.2s ease;
+    }
+
+    .additional-photo-item:hover img {
+        transform: scale(1.05);
+    }
+
+    /* Стили для аудиогида */
+    .audio-waveform {
+        height: 40px;
+        background: #f8f9fa;
+        border-radius: 20px;
+        overflow: hidden;
+        border: 1px solid #e9ecef;
+    }
+
+    .audio-time {
+        font-feature-settings: "tnum";
+        font-variant-numeric: tabular-nums;
+        color: #6c757d;
+        font-size: 12px;
+    }
+
+    .recording-pulse {
+        animation: recording-pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes recording-pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+
+    .audio-visualizer {
+        display: flex;
+        align-items: end;
+        gap: 2px;
+        height: 100%;
+        padding: 0 10px;
+    }
+
+    .audio-bar {
+        width: 3px;
+        background: linear-gradient(to top, #007bff, #66b3ff);
+        border-radius: 2px;
+        transition: height 0.1s ease;
+    }
+
+    .audio-guide-section {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+    }
+
+    .recording-active {
+        background-color: #fff3cd !important;
+        border-color: #ffeaa7 !important;
+    }
+
+    .audio-play-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid #007bff;
+    }
+
+    /* Адаптивность для мобильных устройств */
+    @media (max-width: 768px) {
+        .additional-photos-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+        }
+        
+        .audio-recorder .d-flex {
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .audio-recorder .d-flex > div {
+            width: 100%;
+            justify-content: center;
+        }
+    }
 </style>
 {% endblock %}
 

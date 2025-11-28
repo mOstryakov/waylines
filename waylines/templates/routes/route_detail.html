@@ -156,28 +156,22 @@
                         
                         <div class="route-stats mt-4 pt-3 border-top">
                             <div class="row g-3">
-                                <div class="col-sm-3">
+                                <div class="col-sm-4">
                                     <div class="stat-item text-center">
                                         <div class="stat-value text-primary">{{ route.total_distance|floatformat:1 }} км</div>
                                         <div class="stat-label text-muted small">Дистанция</div>
                                     </div>
                                 </div>
-                                <div class="col-sm-3">
+                                <div class="col-sm-4">
                                     <div class="stat-item text-center">
                                         <div class="stat-value text-success">{{ route.duration_minutes }} мин</div>
                                         <div class="stat-label text-muted small">Время</div>
                                     </div>
                                 </div>
-                                <div class="col-sm-3">
+                                <div class="col-sm-4">
                                     <div class="stat-item text-center">
                                         <div class="stat-value text-info">{{ route.points.count }}</div>
                                         <div class="stat-label text-muted small">Точек</div>
-                                    </div>
-                                </div>
-                                <div class="col-sm-3">
-                                    <div class="stat-item text-center">
-                                        <div class="stat-value text-warning">{{ route.elevation_gain|default:0 }} м</div>
-                                        <div class="stat-label text-muted small">Набор высоты</div>
                                     </div>
                                 </div>
                             </div>
@@ -590,69 +584,390 @@
 {% block extra_js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-// Инициализация карты
+// Конфигурация
+const ORS_API_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjYyMzA1OTQzOTI2NzQ1MDBiMTUwOGUxYmVhZTUwMGM4IiwiaCI6Im11cm11cjY0In0=';
+
 function initMap() {
-    const map = L.map('route-map').setView([{{ points.0.latitude|default:55.7558 }}, {{ points.0.longitude|default:37.6176 }}], 13);
-    
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
-    
     const points = [
         {% for point in points %}
         {
-            lat: {{ point.latitude }},
-            lng: {{ point.longitude }},
+            lat: parseFloat("{{ point.latitude }}".replace(",", ".")),
+            lng: parseFloat("{{ point.longitude }}".replace(",", ".")),
             name: "{{ point.name|escapejs }}",
-            address: "{{ point.address|escapejs }}"
-        },
+            address: "{{ point.address|escapejs|default:'' }}",
+            order: {{ point.order|default:forloop.counter0 }}
+        }{% if not forloop.last %},{% endif %}
         {% endfor %}
     ];
+
+    console.log('Точки маршрута:', points);
+
+    // Сортируем точки по порядку
+    points.sort((a, b) => a.order - b.order);
+
+    // Создаем карту
+    const map = L.map('route-map').setView([points[0].lat, points[0].lng], 13);
     
-    // Маркеры
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+    }).addTo(map);
+
+    // Добавляем маркеры с номерами
     points.forEach((point, index) => {
-        const marker = L.marker([point.lat, point.lng]).addTo(map);
-        marker.bindPopup(`
-            <div>
+        const marker = L.marker([point.lat, point.lng], {
+            icon: createNumberedIcon(index + 1, points.length)
+        }).addTo(map);
+        
+        const popupContent = `
+            <div style="min-width: 200px; text-align: center;">
                 <strong>Точка ${index + 1}: ${point.name}</strong><br>
                 <small>${point.address}</small>
             </div>
-        `);
+        `;
+        marker.bindPopup(popupContent);
     });
+
+    // Строим маршрут через OpenRouteService
+    buildRouteWithORS(points, map, '{{ route.route_type|default:"walking" }}');
+}
+
+// Функция для создания маркеров с номерами
+function createNumberedIcon(index, total) {
+    const isStart = index === 1;
+    const isEnd = index === total;
     
-    // Линия маршрута
-    if (points.length > 1) {
-        const routeLine = L.polyline(points.map(p => [p.lat, p.lng]), {
-            color: '#2563eb',
-            weight: 4,
-            opacity: 0.7
-        }).addTo(map);
+    let backgroundColor = '#2563eb';
+    if (isStart) backgroundColor = '#48bb78';
+    if (isEnd) backgroundColor = '#f56565';
+
+    const content = isStart ? 'A' : isEnd ? 'B' : index.toString();
+
+    return L.divIcon({
+        className: 'custom-marker',
+        html: `
+            <div style="width: 24px; height: 24px; border-radius: 50%; 
+                      display: flex; align-items: center; justify-content: center; 
+                      font-size: 12px; color: white; font-weight: bold; 
+                      background: ${backgroundColor}; border: 3px solid white; 
+                      box-shadow: 0 2px 6px rgba(0,0,0,0.3);">
+                ${content}
+            </div>
+        `,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+    });
+}
+
+// Основная функция построения маршрута через OpenRouteService
+async function buildRouteWithORS(points, map, routeType) {
+    if (points.length < 2) {
+        map.setView([points[0].lat, points[0].lng], 15);
+        return;
+    }
+
+    try {
+        console.log('Начинаем построение маршрута через ORS...');
         
-        map.fitBounds(routeLine.getBounds());
+        // Определяем тип маршрута для OpenRouteService с правильными профилями
+        const profiles = {
+            'walking': 'foot-walking',
+            'driving': 'driving-car', 
+            'cycling': 'cycling-regular'
+        };
+        
+        const profile = profiles[routeType] || 'foot-walking';
+        
+        // Подготавливаем координаты в правильном формате [долгота, широта]
+        const coordinates = points.map(point => [point.lng, point.lat]);
+        
+        console.log('Отправляем запрос к ORS:', { 
+            profile, 
+            routeType,
+            coordinates: coordinates,
+            pointsCount: coordinates.length
+        });
+
+        // Формируем тело запроса
+        const requestBody = {
+            coordinates: coordinates,
+            instructions: false,
+            preference: 'recommended',
+            units: 'km',
+            language: 'ru'
+        };
+
+        console.log('Request body:', JSON.stringify(requestBody, null, 2));
+
+        const response = await fetch(`https://api.openrouteservice.org/v2/directions/${profile}/geojson`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': ORS_API_KEY,
+                'Accept': 'application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8'
+            },
+            body: JSON.stringify(requestBody)
+        });
+        
+        console.log('ORS Response status:', response.status, response.statusText);
+        
+        if (!response.ok) {
+            let errorText = 'Unknown error';
+            try {
+                errorText = await response.text();
+            } catch (e) {
+                errorText = 'Cannot read error response';
+            }
+            console.error('ORS Error Response:', errorText);
+            throw new Error(`ORS API ошибка ${response.status}: ${errorText}`);
+        }
+        
+        const data = await response.json();
+        console.log('ORS Response data:', data);
+        
+        // Проверяем структуру ответа - ИСПРАВЛЕННАЯ ПРОВЕРКА
+        if (data.features && data.features.length > 0 && data.features[0].geometry) {
+            const route = data.features[0];
+            const routeGeometry = route.geometry;
+            
+            // Получаем информацию о маршруте - ИСПРАВЛЕННАЯ ЛОГИКА
+            const routeInfo = route.properties;
+            console.log('Route properties:', routeInfo);
+            
+            let distanceKm = 0;
+            let durationMinutes = 0;
+            
+            // Разные способы получения информации о маршруте
+            if (routeInfo.segments && routeInfo.segments.length > 0) {
+                // Стандартный случай - есть сегменты
+                const segment = routeInfo.segments[0];
+                distanceKm = (segment.distance / 1000).toFixed(2);
+                durationMinutes = Math.round(segment.duration / 60);
+            } else if (routeInfo.summary) {
+                // Альтернативный случай - есть summary
+                distanceKm = (routeInfo.summary.distance / 1000).toFixed(2);
+                durationMinutes = Math.round(routeInfo.summary.duration / 60);
+            } else {
+                // Если нет стандартной информации, рассчитываем самостоятельно
+                console.warn('Нет стандартной информации о маршруте, используем расчеты');
+                distanceKm = calculateStraightDistance(points).toFixed(2);
+                durationMinutes = estimateDuration(distanceKm, routeType);
+            }
+            
+            console.log(`Маршрут построен: ${distanceKm} км, ${durationMinutes} мин`);
+            
+            // Конвертируем координаты из [lng, lat] в [lat, lng] для Leaflet
+            const routeCoordinates = routeGeometry.coordinates.map(coord => [coord[1], coord[0]]);
+            
+            // Отображаем маршрут на карте
+            displayRouteOnMap(routeCoordinates, map, routeType, distanceKm, durationMinutes);
+            
+        } else {
+            console.error('Invalid ORS response structure:', data);
+            throw new Error('Неверная структура ответа ORS API');
+        }
+        
+    } catch (error) {
+        console.error('Ошибка построения маршрута через ORS:', error);
+        
+        // Показываем пользователю понятное сообщение об ошибке
+        let userMessage = 'Не удалось построить маршрут по дорогам. ';
+        
+        if (error.message.includes('авторизации') || error.message.includes('ключ')) {
+            userMessage += 'Проблема с API ключом.';
+        } else if (error.message.includes('лимит')) {
+            userMessage += 'Превышен лимит запросов. Попробуйте позже.';
+        } else if (error.message.includes('координаты') || error.message.includes('запрос')) {
+            userMessage += 'Проблема с координатами точек.';
+        } else if (error.message.includes('сегментов')) {
+            userMessage += 'Маршрут не может быть построен между указанными точками.';
+        } else {
+            userMessage += 'Используется прямое соединение точек.';
+        }
+        
+        showToast(userMessage, 'warning');
+        
+        // Резервный вариант - прямая линия
+        buildStraightRoute(points, map, routeType);
     }
 }
 
-// Рейтинг
-document.addEventListener('DOMContentLoaded', function() {
-    initMap();
+// Функция оценки времени в пути на основе расстояния и типа маршрута
+function estimateDuration(distanceKm, routeType) {
+    const averageSpeeds = {
+        'walking': 5,    // км/ч
+        'cycling': 15,   // км/ч  
+        'driving': 50    // км/ч
+    };
     
-    // Исправление ошибки с рейтингом
-    const starButtons = document.querySelectorAll('.star-btn');
-    if (starButtons.length > 0) {
-        starButtons.forEach(btn => {
-            btn.addEventListener('click', function() {
-                const rating = this.getAttribute('data-rating');
-                document.getElementById('rating-score').value = rating;
-                document.getElementById('rating-form').submit();
-            });
-        });
+    const speed = averageSpeeds[routeType] || 5;
+    const durationHours = distanceKm / speed;
+    return Math.round(durationHours * 60);
+}
+
+// Функция отображения маршрута на карте
+function displayRouteOnMap(coordinates, map, routeType, distance, duration) {
+    // Определяем цвет и толщину линии в зависимости от типа маршрута
+    const routeStyles = {
+        'walking': { color: '#48bb78', weight: 4, opacity: 0.8 },
+        'driving': { color: '#2563eb', weight: 6, opacity: 0.8 },
+        'cycling': { color: '#f59e0b', weight: 5, opacity: 0.8 }
+    };
+    
+    const style = routeStyles[routeType] || routeStyles.walking;
+    
+    // Создаем линию маршрута
+    const routeLine = L.polyline(coordinates, {
+        color: style.color,
+        weight: style.weight,
+        opacity: style.opacity,
+        lineJoin: 'round',
+        lineCap: 'round'
+    }).addTo(map);
+    
+    // Добавляем popup с информацией о маршруте
+    routeLine.bindPopup(`
+        <div style="min-width: 200px; text-align: center;">
+            <strong>${getRouteTypeName(routeType)} маршрут</strong><br>
+            <small>Расстояние: ${distance} км</small><br>
+            <small>Время: ${duration} мин</small><br>
+            <small>Точек: ${coordinates.length}</small>
+        </div>
+    `);
+    
+    // Подгоняем карту под маршрут
+    map.fitBounds(routeLine.getBounds(), { padding: [20, 20] });
+    
+    console.log('Маршрут отображен на карте');
+}
+
+// Резервная функция для прямого маршрута
+function buildStraightRoute(points, map, routeType) {
+    console.log('Используем прямой маршрут (резервный вариант)');
+    
+    const coordinates = points.map(point => [point.lat, point.lng]);
+    const routeStyles = {
+        'walking': { color: '#48bb78', weight: 3, opacity: 0.6 },
+        'driving': { color: '#2563eb', weight: 4, opacity: 0.6 },
+        'cycling': { color: '#f59e0b', weight: 3, opacity: 0.6 }
+    };
+    
+    const style = routeStyles[routeType] || routeStyles.walking;
+    
+    const routeLine = L.polyline(coordinates, {
+        color: style.color,
+        weight: style.weight,
+        opacity: style.opacity,
+        dashArray: '10, 10',
+        lineJoin: 'round'
+    }).addTo(map);
+    
+    // Рассчитываем расстояние для прямого маршрута
+    const distance = calculateStraightDistance(points).toFixed(2);
+    const duration = estimateDuration(distance, routeType);
+    
+    routeLine.bindPopup(`
+        <div style="min-width: 200px; text-align: center;">
+            <strong>Прямой ${getRouteTypeName(routeType)} маршрут</strong><br>
+            <small>Расстояние: ${distance} км</small><br>
+            <small>Время: ${duration} мин</small><br>
+            <small><em>Маршрут по дорогам недоступен</em></small>
+        </div>
+    `);
+    
+    map.fitBounds(routeLine.getBounds(), { padding: [20, 20] });
+}
+
+// Вспомогательные функции
+function getRouteTypeName(routeType) {
+    const names = {
+        'walking': 'Пеший',
+        'driving': 'Автомобильный', 
+        'cycling': 'Велосипедный'
+    };
+    return names[routeType] || 'Пеший';
+}
+
+function calculateStraightDistance(points) {
+    let totalDistance = 0;
+    for (let i = 1; i < points.length; i++) {
+        const prev = points[i - 1];
+        const curr = points[i];
+        totalDistance += calculateDistance(prev.lat, prev.lng, curr.lat, curr.lng);
     }
+    return totalDistance;
+}
+
+function calculateDistance(lat1, lng1, lat2, lng2) {
+    const R = 6371; // Радиус Земли в км
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+function showToast(message, type = 'info') {
+    // Создаем простой toast
+    const toast = document.createElement('div');
+    toast.className = `toast-message toast-${type}`;
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 2000;
+        padding: 12px 20px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 500;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        max-width: 300px;
+        word-wrap: break-word;
+    `;
     
-    // Инициализация tooltips
-    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
+    const colors = {
+        'success': '#10b981',
+        'warning': '#f59e0b', 
+        'danger': '#ef4444',
+        'info': '#3b82f6'
+    };
+    
+    toast.style.backgroundColor = colors[type] || colors.info;
+    toast.textContent = message;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+    }, 5000);
+}
+
+// Инициализация после загрузки DOM
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Инициализация карты маршрута...');
+    setTimeout(initMap, 100);
 });
 </script>
+
+<style>
+.custom-marker {
+    text-align: center;
+}
+
+.route-distance,
+.route-duration {
+    font-weight: bold;
+    color: #2563eb;
+}
+
+/* Стили для разных типов маршрутов */
+.route-walking { border-left: 4px solid #48bb78; }
+.route-driving { border-left: 4px solid #2563eb; }
+.route-cycling { border-left: 4px solid #f59e0b; }
+</style>
 {% endblock %}

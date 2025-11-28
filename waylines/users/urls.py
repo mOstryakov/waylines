@@ -22,6 +22,16 @@ urlpatterns = [
         views.reject_friend_request,
         name="reject_friend_request",
     ),
+    path(
+        "friends/remove/<int:friend_id>/",
+        views.remove_friend,
+        name="remove_friend",
+    ),
+    path(
+        "messages/send/<int:user_id>/",
+        views.send_message,
+        name="send_message",
+    ),
     # Профиль
     path("profile/", views.profile, name="profile"),
     path("profile/<str:username>/", views.user_profile, name="user_profile"),

@@ -40,6 +40,12 @@ urlpatterns = [
     # Карта
     path("map/", views.map_view, name="map_view"),
 
+    path("<int:route_id>/generate-qr/", views.generate_qr_code, name="generate_qr_code"),
+    path("<int:route_id>/qr-code/", views.route_qr_code, name="route_qr_code"),
+    path("<int:route_id>/share-access/", views.share_route_access, name="share_route_access"),
+
+    path("<int:route_id>/send-to-friend/", views.send_to_friend, name="send_to_friend"),
+    path("api/friends/", views.get_friends_list, name="get_friends_list"),
     # Поиск
     path("search/", views.search_routes, name="search"),
 ]

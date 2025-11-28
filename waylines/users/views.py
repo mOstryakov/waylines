@@ -12,7 +12,6 @@ from users.models import Friendship, UserProfile, User
 
 @login_required
 def friends(request):
-    """Страница друзей"""
     friendships = Friendship.objects.filter(
         Q(from_user=request.user) | Q(to_user=request.user), status="accepted"
     )
@@ -20,9 +19,16 @@ def friends(request):
     friends = []
     for friendship in friendships:
         if friendship.from_user == request.user:
-            friends.append(friendship.to_user)
+            friend = friendship.to_user
         else:
-            friends.append(friendship.from_user)
+            friend = friendship.from_user
+        
+        friend.public_active_route_count = Route.objects.filter(
+            author=friend, 
+            privacy="public", 
+            is_active=True
+        ).count()
+        friends.append(friend)
 
     context = {
         "friends": friends,
@@ -32,8 +38,45 @@ def friends(request):
         "pending_requests_count": Friendship.objects.filter(
             to_user=request.user, status="pending"
         ).count(),
+        "shared_routes_count": 0,
     }
     return render(request, "friends/friends.html", context)
+
+
+@login_required
+def remove_friend(request, friend_id):
+    friend = get_object_or_404(User, id=friend_id)
+    
+    friendship = Friendship.objects.filter(
+        (Q(from_user=request.user, to_user=friend) | Q(from_user=friend, to_user=request.user)),
+        status="accepted"
+    ).first()
+    
+    if friendship:
+        friendship.delete()
+        messages.success(request, f"Пользователь {friend.username} удален из друзей")
+    else:
+        messages.error(request, "Дружба не найдена")
+    
+    return redirect("friends")
+
+
+@login_required
+def send_message(request, user_id):
+    recipient = get_object_or_404(User, id=user_id)
+    
+    # Проверяем, что пользователь действительно друг
+    is_friend = Friendship.objects.filter(
+        (Q(from_user=request.user, to_user=recipient) | Q(from_user=recipient, to_user=request.user)),
+        status="accepted"
+    ).exists()
+    
+    if not is_friend:
+        messages.error(request, "Вы можете отправлять сообщения только своим друзьям")
+        return redirect("friends")
+    
+    # Перенаправляем в личный чат с другом
+    return redirect('chat:private_chat', user_id=user_id)
 
 
 @login_required
@@ -49,9 +92,8 @@ def find_friends(request):
             | Q(last_name__icontains=search_query)
         )
 
-    # Помечаем существующие запросы дружбы
     user_data = []
-    for user in users[:20]:  # Ограничиваем результаты
+    for user in users[:20]:
         friendship = Friendship.objects.filter(
             Q(from_user=request.user, to_user=user)
             | Q(from_user=user, to_user=request.user)
@@ -78,10 +120,8 @@ def find_friends(request):
 
 @login_required
 def send_friend_request(request, user_id):
-    """Отправка запроса в друзья"""
     to_user = get_object_or_404(User, id=user_id)
 
-    # Проверяем, не существует ли уже запрос
     existing_request = Friendship.objects.filter(
         Q(from_user=request.user, to_user=to_user)
         | Q(from_user=to_user, to_user=request.user)
@@ -101,7 +141,6 @@ def send_friend_request(request, user_id):
 
 @login_required
 def accept_friend_request(request, request_id):
-    """Принятие запроса в друзья"""
     friend_request = get_object_or_404(Friendship, id=request_id, to_user=request.user)
     friend_request.status = "accepted"
     friend_request.save()
@@ -115,7 +154,6 @@ def accept_friend_request(request, request_id):
 
 @login_required
 def reject_friend_request(request, request_id):
-    """Отклонение запроса в друзья"""
     friend_request = get_object_or_404(Friendship, id=request_id, to_user=request.user)
     friend_request.status = "rejected"
     friend_request.save()
@@ -127,10 +165,8 @@ def reject_friend_request(request, request_id):
     return redirect("friends")
 
 
-# Профиль пользователя
 @login_required
 def profile(request):
-    """Профиль пользователя"""
     profile, created = UserProfile.objects.get_or_create(user=request.user)
 
     if request.method == "POST":
@@ -142,7 +178,6 @@ def profile(request):
     else:
         form = UserProfileForm(instance=profile)
 
-    # Статистика пользователя
     user_routes = Route.objects.filter(author=request.user)
     user_favorites = RouteFavorite.objects.filter(user=request.user)
 
@@ -152,8 +187,8 @@ def profile(request):
         "routes_count": user_routes.count(),
         "favorites_count": user_favorites.count(),
         "total_distance": sum(route.total_distance for route in user_routes),
-        "recent_routes": user_routes.order_by('-created_at')[:5],  # Добавьте это для недавних маршрутов
-        "friends_count": Friendship.objects.filter(  # Добавьте это для счетчика друзей
+        "recent_routes": user_routes.order_by('-created_at')[:5],
+        "friends_count": Friendship.objects.filter(
             Q(from_user=request.user) | Q(to_user=request.user),
             status="accepted"
         ).count(),
@@ -168,7 +203,6 @@ def profile(request):
 
 
 def user_profile(request, username):
-    """Публичный профиль пользователя"""
     user = get_object_or_404(User, username=username)
     public_routes = Route.objects.filter(author=user, privacy="public", is_active=True)
 
@@ -188,10 +222,8 @@ def user_profile(request, username):
     return render(request, "profile/user_profile.html", context)
 
 
-
 # Аутентификация
 def register(request):
-    """Регистрация"""
     if request.method == "POST":
         form = UserRegistrationForm(request.POST)
         if form.is_valid():
@@ -206,7 +238,6 @@ def register(request):
 
 
 def login_view(request):
-    """Вход"""
     if request.method == "POST":
         form = AuthenticationForm(request, data=request.POST)
         if form.is_valid():
@@ -221,7 +252,6 @@ def login_view(request):
 
 
 def logout_view(request):
-    """Выход"""
     logout(request)
     messages.info(request, "Вы вышли из системы")
     return redirect("home")

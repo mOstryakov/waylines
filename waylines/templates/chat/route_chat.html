@@ -220,19 +220,32 @@ const ROUTE_CHAT_CONFIG = {
     }
 };
 
-// Инициализация чата маршрута
-function initializeChat() {
+// Переопределяем базовую инициализацию
+const originalInitializeChat = window.initializeChat;
+
+window.initializeChat = function() {
     console.log('🔧 Инициализация чата маршрута...');
     
-    // Вызов родительской инициализации
-    superInitializeChat();
+    // Вызываем базовую инициализацию
+    if (typeof originalInitializeChat === 'function') {
+        originalInitializeChat();
+    }
     
-    // Специфичная инициализация чата маршрута
+    // Инициализация чата маршрута
     initializeRouteChat();
-}
+};
 
 function initializeRouteChat() {
     try {
+        console.log('🚀 Запуск инициализации чата маршрута...');
+        
+        // Проверяем доступность Firebase
+        if (typeof firebase === 'undefined') {
+            console.error('❌ Firebase не загружен');
+            showError('Ошибка инициализации чата. Проверьте подключение.');
+            return;
+        }
+        
         // Инициализация Firebase чата
         firebaseChat = new RouteFirebaseChat(
             ROUTE_CHAT_CONFIG.routeId,
@@ -244,23 +257,142 @@ function initializeRouteChat() {
         // Настройка специфичных обработчиков
         setupRouteChatEventListeners();
         
+        // Загружаем историю сообщений
+        setTimeout(() => {
+            if (firebaseChat && typeof firebaseChat.loadMessageHistory === 'function') {
+                firebaseChat.loadMessageHistory();
+            }
+        }, 1000);
+        
     } catch (error) {
         console.error('❌ Ошибка инициализации чата маршрута:', error);
-        NotificationSystem.error('Ошибка инициализации чата маршрута');
+        showError('Ошибка инициализации чата маршрута: ' + error.message);
+        
+        // Показываем существующие сообщения из Django
+        showExistingMessages();
+    }
+}
+
+// Показываем сообщения, загруженные из Django
+function showExistingMessages() {
+    const messagesContainer = document.querySelector('#chat-messages');
+    if (!messagesContainer) return;
+    
+    const existingMessages = messagesContainer.querySelectorAll('.message-wrapper');
+    console.log(`📨 Найдено ${existingMessages.length} существующих сообщений`);
+    
+    if (existingMessages.length === 0) {
+        // Показываем пустое состояние
+        ChatUI.showEmptyChatMessage('#chat-messages', {
+            title: 'Начните обсуждение маршрута',
+            subtitle: 'Отправьте первое сообщение в чат маршрута'
+        });
     }
 }
 
 // Класс чата маршрута
-class RouteFirebaseChat extends BaseFirebaseChat {
+class RouteFirebaseChat {
     constructor(routeId, currentUser) {
-        super(`route_chats/${routeId}`, currentUser);
         this.routeId = routeId;
+        this.currentUser = currentUser;
+        this.isSending = false;
+        this.messagesRef = null;
+        this.typingRef = null;
+        
         this.init();
+    }
+    
+    init() {
+        try {
+            // Инициализируем Firebase ссылки
+            const database = firebase.database();
+            this.messagesRef = database.ref(`route_chats/${this.routeId}/messages`);
+            this.typingRef = database.ref(`route_chats/${this.routeId}/typing`);
+            
+            console.log('🔥 Firebase инициализирован для маршрута:', this.routeId);
+            
+            // Слушаем новые сообщения
+            this.setupMessageListener();
+            
+            // Слушаем индикаторы печати
+            this.setupTypingListener();
+            
+        } catch (error) {
+            console.error('❌ Ошибка инициализации Firebase:', error);
+            throw error;
+        }
+    }
+    
+    setupMessageListener() {
+        if (!this.messagesRef) return;
+        
+        this.messagesRef.orderByChild('timestamp').on('child_added', (snapshot) => {
+            const messageData = snapshot.val();
+            console.log('📨 Получено новое сообщение:', messageData);
+            this.displayMessage(messageData);
+        });
+    }
+    
+    setupTypingListener() {
+        if (!this.typingRef) return;
+        
+        this.typingRef.on('value', (snapshot) => {
+            const typingData = snapshot.val();
+            this.handleTypingIndicator(typingData);
+        });
+    }
+    
+    displayMessage(messageData) {
+        if (!messageData) return;
+        
+        const isOwn = messageData.user_id === this.currentUser.id;
+        
+        // Скрываем пустое состояние
+        const emptyState = document.querySelector('#empty-chat-message');
+        if (emptyState) {
+            emptyState.style.display = 'none';
+        }
+        
+        // Добавляем сообщение в чат
+        ChatUI.addMessageToChat(messageData, '#chat-messages', {
+            isOwn: isOwn,
+            showSender: !isOwn,
+            animate: true
+        });
+        
+        // Прокручиваем вниз
+        scrollToBottom();
+    }
+    
+    handleTypingIndicator(typingData) {
+        const typingIndicator = document.querySelector('#typing-indicator');
+        const typingUser = document.querySelector('#typing-user');
+        
+        if (!typingData || !typingIndicator) return;
+        
+        // Находим пользователей, которые печатают (кроме текущего)
+        const typingUsers = Object.keys(typingData).filter(userId => {
+            return userId != this.currentUser.id && typingData[userId] === true;
+        });
+        
+        if (typingUsers.length > 0) {
+            // Показываем индикатор
+            if (typingUser) {
+                typingUser.textContent = typingUsers.map(userId => {
+                    // Здесь нужно получить username по ID, пока используем ID
+                    return `Пользователь ${userId}`;
+                }).join(', ');
+            }
+            typingIndicator.style.display = 'block';
+        } else {
+            // Скрываем индикатор
+            typingIndicator.style.display = 'none';
+        }
     }
     
     async sendMessage(messageText) {
         if (this.isSending) {
-            NotificationSystem.warning('Сообщение отправляется...');
+            showWarning('Сообщение отправляется...');
             return false;
         }
         
@@ -277,20 +409,18 @@ class RouteFirebaseChat extends BaseFirebaseChat {
         
         try {
             const messageData = {
-                id: ChatUtils.generateId(),
+                id: this.generateMessageId(),
                 message: messageText,
                 user: this.currentUser.username,
                 user_id: this.currentUser.id,
                 timestamp: Date.now(),
-                created_at: ChatUtils.formatTime()
+                created_at: new Date().toLocaleTimeString('ru-RU', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                })
             };
             
-            // Добавляем локально для мгновенного отображения
-            this._addLocalMessage({
-                ...messageData,
-                is_own: true,
-                is_temp: true
-            });
+            console.log('📤 Отправка сообщения:', messageData);
             
             // Отправляем в Firebase
             await this.messagesRef.child(messageData.id).set(messageData);
@@ -298,15 +428,19 @@ class RouteFirebaseChat extends BaseFirebaseChat {
             console.log('✅ Сообщение отправлено в чат маршрута');
             
             // Очищаем поле ввода
-            if (messageInput) messageInput.value = '';
-            ChatUI.updateCharCounter();
+            if (messageInput) {
+                messageInput.value = '';
+                messageInput.focus();
+            }
+            
+            this.updateCharCounter();
             this.setTyping(false);
             
             return true;
             
         } catch (error) {
             console.error('❌ Ошибка отправки:', error);
-            NotificationSystem.error('Ошибка отправки сообщения');
+            showError('Ошибка отправки сообщения: ' + error.message);
             return false;
             
         } finally {
@@ -319,21 +453,47 @@ class RouteFirebaseChat extends BaseFirebaseChat {
         }
     }
     
-    _addLocalMessage(messageData) {
-        const isOwn = messageData.is_own || messageData.user_id === this.currentUser.id;
+    setTyping(isTyping) {
+        if (!this.typingRef) return;
         
-        ChatUI.addMessageToChat(messageData, '#chat-messages', {
-            isOwn: isOwn,
-            showSender: !isOwn,
-            animate: true
-        });
+        try {
+            this.typingRef.child(this.currentUser.id).set(isTyping);
+        } catch (error) {
+            console.error('❌ Ошибка установки индикатора печати:', error);
+        }
     }
     
-    _showEmptyState() {
-        ChatUI.showEmptyChatMessage('#chat-messages', {
-            title: 'Начните обсуждение маршрута',
-            subtitle: 'Отправьте первое сообщение в чат маршрута'
-        });
+    generateMessageId() {
+        return `${this.currentUser.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+    
+    updateCharCounter() {
+        const input = document.querySelector('#chat-message-input');
+        const counter = document.querySelector('#char-counter');
+        
+        if (input && counter) {
+            const length = input.value.length;
+            counter.textContent = `${length}/1000`;
+            counter.className = length > 950 ? 'text-danger' : 
+                              length > 800 ? 'text-warning' : 
+                              length > 0 ? 'text-success' : 'text-muted';
+        }
+    }
+    
+    loadMessageHistory() {
+        console.log('📖 Загрузка истории сообщений...');
+        // Firebase автоматически загружает историю через слушатель child_added
+    }
+    
+    destroy() {
+        // Очистка ресурсов
+        if (this.messagesRef) {
+            this.messagesRef.off();
+        }
+        if (this.typingRef) {
+            this.typingRef.off();
+            this.setTyping(false);
+        }
     }
 }
 
@@ -344,6 +504,7 @@ function setupRouteChatEventListeners() {
     // Отслеживание ввода для индикатора печати
     if (messageInput) {
         let typingTimer;
+        
         messageInput.addEventListener('input', function() {
             if (firebaseChat && messageInput.value.trim().length > 0) {
                 firebaseChat.setTyping(true);
@@ -355,66 +516,72 @@ function setupRouteChatEventListeners() {
                 }, 1000);
             }
         });
-    }
-}
-
-// Управление сайдбаром информации о маршруте
-function toggleRouteInfo() {
-    const sidebar = document.getElementById('route-info-sidebar');
-    const overlay = document.getElementById('route-info-overlay');
-    const body = document.body;
-    
-    if (sidebar.classList.contains('active')) {
-        // Закрываем сайдбар
-        sidebar.classList.remove('active');
-        overlay.style.display = 'none';
-        body.classList.remove('sidebar-open');
-    } else {
-        // Открываем сайдбар
-        sidebar.classList.add('active');
-        overlay.style.display = 'block';
-        body.classList.add('sidebar-open');
         
-        // Закрываем сайдбар при клике на оверлей
-        overlay.onclick = function() {
-            toggleRouteInfo();
-        };
+        // Сбрасываем индикатор при потере фокуса
+        messageInput.addEventListener('blur', function() {
+            if (firebaseChat) {
+                firebaseChat.setTyping(false);
+            }
+        });
     }
-}
-
-// Переопределение базовой функции отправки сообщения
-function handleMessageSubmit(e) {
-    e.preventDefault();
-    
-    const messageInput = document.querySelector('#chat-message-input');
-    const message = messageInput ? messageInput.value.trim() : '';
-    
-    if (!message) {
-        NotificationSystem.warning('Введите сообщение');
-        if (messageInput) messageInput.focus();
-        return;
-    }
-    
-    if (!firebaseChat) {
-        NotificationSystem.error('Чат не инициализирован. Обновите страницу.');
-        return;
-    }
-    
-    // Отправка сообщения
-    firebaseChat.sendMessage(message);
 }
 
 // Переопределение функции переключения сайдбара
 function toggleInfoSidebar() {
-    toggleRouteInfo();
+    const sidebar = document.getElementById('route-info-sidebar');
+    const overlay = document.getElementById('route-info-overlay');
+    const body = document.body;
+    
+    if (sidebar && overlay) {
+        if (sidebar.classList.contains('active')) {
+            // Закрываем сайдбар
+            sidebar.classList.remove('active');
+            overlay.style.display = 'none';
+            body.classList.remove('sidebar-open');
+        } else {
+            // Открываем сайдбар
+            sidebar.classList.add('active');
+            overlay.style.display = 'block';
+            body.classList.add('sidebar-open');
+            
+            // Закрываем сайдбар при клике на оверлей
+            overlay.onclick = function() {
+                toggleInfoSidebar();
+            };
+        }
+    }
 }
 
-// Алиас для обратной совместимости
-function superInitializeChat() {
-    // Вызов родительской инициализации из base_chat.html
-    console.log('Вызов родительской инициализации');
+// Утилиты для уведомлений
+function showSuccess(message) {
+    console.log('✅ ' + message);
+    // Используем вашу систему уведомлений
+    if (typeof NotificationSystem !== 'undefined') {
+        NotificationSystem.success(message);
+    }
 }
 
-console.log('🎉 Чат маршрута инициализирован!');
+function showError(message) {
+    console.error('❌ ' + message);
+    if (typeof NotificationSystem !== 'undefined') {
+        NotificationSystem.error(message);
+    }
+}
+
+function showWarning(message) {
+    console.warn('⚠️ ' + message);
+    if (typeof NotificationSystem !== 'undefined') {
+        NotificationSystem.warning(message);
+    }
+}
+
+function showInfo(message) {
+    console.log('ℹ️ ' + message);
+    if (typeof NotificationSystem !== 'undefined') {
+        NotificationSystem.info(message);
+    }
+}
+
+console.log('🎉 Чат маршрута загружен!');
 </script>
 {% endblock %}
