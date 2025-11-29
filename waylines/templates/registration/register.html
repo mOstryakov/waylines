@@ -1,5 +1,204 @@
-<form method="post">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">Зарегистрироваться</button>
-</form>
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Регистрация{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-100 py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-8">
+        <!-- Заголовок -->
+        <div class="text-center">
+            <div class="mx-auto h-16 w-16 bg-blue-600 rounded-full flex items-center justify-center">
+                <svg class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+            </div>
+            <h2 class="mt-6 text-3xl font-extrabold text-gray-900">
+                Создать аккаунт
+            </h2>
+            <p class="mt-2 text-sm text-gray-600">
+                Или 
+                <a href="{% url 'login' %}" class="font-medium text-blue-600 hover:text-blue-500 transition duration-150">
+                    войдите в существующий
+                </a>
+            </p>
+        </div>
+
+        <!-- Форма -->
+        <form class="mt-8 space-y-6 bg-white p-8 rounded-2xl shadow-lg border border-gray-100" method="POST">
+            {% csrf_token %}
+            
+            <!-- Сообщения -->
+            {% if messages %}
+                <div class="space-y-2">
+                    {% for message in messages %}
+                        <div class="p-3 rounded-lg text-sm font-medium {% if message.tags == 'error' %}bg-red-100 text-red-800{% else %}bg-green-100 text-green-800{% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <!-- Поля формы -->
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="first_name" class="block text-sm font-medium text-gray-700 mb-1">
+                            Имя
+                        </label>
+                        <input 
+                            id="first_name" 
+                            name="first_name" 
+                            type="text" 
+                            class="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150"
+                            placeholder="Ваше имя"
+                            value="{{ form.first_name.value|default:'' }}"
+                        >
+                        {% if form.first_name.errors %}
+                            <div class="mt-1 text-sm text-red-600">
+                                {{ form.first_name.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div>
+                        <label for="last_name" class="block text-sm font-medium text-gray-700 mb-1">
+                            Фамилия
+                        </label>
+                        <input 
+                            id="last_name" 
+                            name="last_name" 
+                            type="text" 
+                            class="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150"
+                            placeholder="Ваша фамилия"
+                            value="{{ form.last_name.value|default:'' }}"
+                        >
+                        {% if form.last_name.errors %}
+                            <div class="mt-1 text-sm text-red-600">
+                                {{ form.last_name.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div>
+                    <label for="username" class="block text-sm font-medium text-gray-700 mb-1">
+                        Имя пользователя *
+                    </label>
+                    <input 
+                        id="username" 
+                        name="username" 
+                        type="text" 
+                        required 
+                        class="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150"
+                        placeholder="Придумайте имя пользователя"
+                        value="{{ form.username.value|default:'' }}"
+                    >
+                    {% if form.username.errors %}
+                        <div class="mt-1 text-sm text-red-600">
+                            {{ form.username.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
+                        Email адрес *
+                    </label>
+                    <input 
+                        id="email" 
+                        name="email" 
+                        type="email" 
+                        required 
+                        class="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150"
+                        placeholder="your@email.com"
+                        value="{{ form.email.value|default:'' }}"
+                    >
+                    {% if form.email.errors %}
+                        <div class="mt-1 text-sm text-red-600">
+                            {{ form.email.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="password1" class="block text-sm font-medium text-gray-700 mb-1">
+                        Пароль *
+                    </label>
+                    <input 
+                        id="password1" 
+                        name="password1" 
+                        type="password" 
+                        required 
+                        class="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150"
+                        placeholder="Создайте надежный пароль"
+                    >
+                    {% if form.password1.errors %}
+                        <div class="mt-1 text-sm text-red-600">
+                            {{ form.password1.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="password2" class="block text-sm font-medium text-gray-700 mb-1">
+                        Подтверждение пароля *
+                    </label>
+                    <input 
+                        id="password2" 
+                        name="password2" 
+                        type="password" 
+                        required 
+                        class="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150"
+                        placeholder="Повторите ваш пароль"
+                    >
+                    {% if form.password2.errors %}
+                        <div class="mt-1 text-sm text-red-600">
+                            {{ form.password2.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Соглашение -->
+            <div class="flex items-center">
+                <input 
+                    id="agree-terms" 
+                    name="agree-terms" 
+                    type="checkbox" 
+                    required
+                    class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                >
+                <label for="agree-terms" class="ml-2 block text-sm text-gray-700">
+                    Я соглашаюсь с 
+                    <a href="#" class="text-blue-600 hover:text-blue-500">условиями использования</a>
+                    и 
+                    <a href="#" class="text-blue-600 hover:text-blue-500">политикой конфиденциальности</a>
+                </label>
+            </div>
+
+            <!-- Кнопка регистрации -->
+            <div>
+                <button type="submit" class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 transform hover:-translate-y-0.5">
+                    <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+                        <svg class="h-5 w-5 text-blue-500 group-hover:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                        </svg>
+                    </span>
+                    Создать аккаунт
+                </button>
+            </div>
+
+            <!-- Уже есть аккаунт -->
+            <div class="text-center">
+                <p class="text-sm text-gray-600">
+                    Уже есть аккаунт?
+                    <a href="{% url 'login' %}" class="font-medium text-blue-600 hover:text-blue-500 transition duration-150">
+                        Войдите здесь
+                    </a>
+                </p>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

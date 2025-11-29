@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth import login, logout
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm
 from django.db.models import Q
@@ -255,3 +256,175 @@ def logout_view(request):
     logout(request)
     messages.info(request, "Вы вышли из системы")
     return redirect("home")
+
+@login_required
+@csrf_exempt
+def send_to_friend(request, route_id):
+    """Отправка маршрута другу"""
+    route = get_object_or_404(Route, id=route_id)
+    
+    if route.author != request.user and not request.user.is_staff:
+        return JsonResponse({
+            'success': False,
+            'error': 'У вас нет прав для отправки этого маршрута'
+        })
+    
+    try:
+        data = json.loads(request.body)
+        friend_id = data.get('friend_id')
+        message = data.get('message', '')
+        
+        if not friend_id:
+            return JsonResponse({
+                'success': False,
+                'error': 'Не выбран друг'
+            })
+        
+        try:
+            from users.models import Friendship
+            friend = User.objects.get(id=friend_id)
+            
+            # Проверяем дружбу
+            friendship = Friendship.objects.filter(
+                (Q(from_user=request.user, to_user=friend) |
+                 Q(from_user=friend, to_user=request.user)),
+                status='accepted'
+            ).first()
+            
+            if not friendship:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Пользователь не является вашим другом'
+                })
+            
+            # Добавляем маршрут в общий доступ
+            route.shared_with.add(friend)
+            route.save()
+            
+            # Создаем уведомление (если есть модель Notification)
+            try:
+                from notifications.models import Notification
+                Notification.objects.create(
+                    user=friend,
+                    title='Вам отправили маршрут',
+                    message=f'{request.user.username} отправил(а) вам маршрут "{route.name}"',
+                    notification_type='route_shared',
+                    related_object_id=route.id,
+                    related_object_type='route'
+                )
+            except ImportError:
+                # Модель уведомлений не найдена - пропускаем
+                pass
+            
+            friend_name = friend.first_name or friend.username
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Маршрут "{route.name}" отправлен другу {friend_name}'
+            })
+            
+        except User.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': 'Друг не найден'
+            })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Неверный формат данных'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Ошибка отправки: {str(e)}'
+        })
+ 
+
+@login_required
+@csrf_exempt
+def get_friends_list(request):
+    try:
+        friends = Friendship.objects.filter(
+            Q(from_user=request.user, status='accepted') |
+            Q(to_user=request.user, status='accepted')
+        ).select_related('from_user', 'to_user')
+        
+        friends_list = []
+        for friendship in friends:
+            if friendship.from_user == request.user:
+                friend = friendship.to_user
+            else:
+                friend = friendship.from_user
+            
+            friends_list.append({
+                'id': friend.id,
+                'username': friend.username,
+                'first_name': friend.first_name,
+                'last_name': friend.last_name,
+                'email': friend.email
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'friends': friends_list
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+@login_required
+@csrf_exempt
+def send_to_friend(request, route_id):
+    """Отправка маршрута другу"""
+    route = get_object_or_404(Route, id=route_id)
+    
+    try:
+        data = json.loads(request.body)
+        friend_id = data.get('friend_id')
+        message = data.get('message', '')
+        
+        if not friend_id:
+            return JsonResponse({
+                'success': False,
+                'error': 'Не выбран друг'
+            })
+        
+        try:
+            friend = User.objects.get(id=friend_id)
+            friendship = Friendship.objects.filter(
+                (Q(from_user=request.user, to_user=friend) |
+                 Q(from_user=friend, to_user=request.user)),
+                status='accepted'
+            ).first()
+            
+            if not friendship:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Пользователь не является вашим другом'
+                })
+                
+        except User.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': 'Друг не найден'
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Маршрут отправлен другу {friend.first_name} {friend.last_name}'
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Неверный формат данных'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })

@@ -12,9 +12,16 @@ class RouteEditor {
         this.tempMarker = null;
         this.addressQueue = [];
         
+        this.defaultCenter = [55.7558, 37.6176];
+        this.userLocation = null;
+
         // Медиа данные для фото и аудио
-        this.mainPhotoFile = null;
-        this.additionalPhotoFiles = [];
+        this.routeMainPhotoFile = null;
+        this.routeAdditionalPhotoFiles = [];
+
+        this.pointMainPhotoFile = null;
+        this.pointAdditionalPhotoFiles = [];
+
         this.currentAudioFile = null;
         this.mediaRecorder = null;
         this.audioChunks = [];
@@ -45,9 +52,9 @@ class RouteEditor {
     }
 
     initMap() {
-        // Получаем начальные координаты из существующего маршрута или используем Москву по умолчанию
+        // Используем существующие координаты или Москву по умолчанию
         const initialCoords = this.points.length > 0 ? 
-            [this.points[0].lat, this.points[0].lng] : [55.7558, 37.6176];
+            [this.points[0].lat, this.points[0].lng] : this.defaultCenter;
         
         // Проверяем существование элемента карты
         const mapElement = document.getElementById('map');
@@ -138,16 +145,9 @@ class RouteEditor {
     initMediaHandlers() {
         console.log('Initializing media handlers...');
         
-        // Фотографии
-        this.safeAddEventListener('main-photo-upload', 'change', (e) => {
-            this.handleMainPhotoUpload(e.target.files[0]);
-        });
-        
-        this.safeAddEventListener('additional-photos-upload', 'change', (e) => {
-            this.handleAdditionalPhotosUpload(e.target.files);
-        });
-
-        // Аудио - исправленная инициализация
+        // Разделяем обработчики фото маршрута и фото точек
+        this.initRoutePhotoHandlers();
+        this.initPointPhotoHandlers();
         this.initAudioHandlers();
         
         // Аудиоплеер
@@ -777,7 +777,128 @@ class RouteEditor {
         });
     }
 
-    // Редактирование точки
+    // Методы для управления фото точек в модальном окне
+    openPointMainPhotoUpload() {
+        const fileInput = document.getElementById('main-photo-upload');
+        if (fileInput) {
+            fileInput.click();
+        } else {
+            console.warn('Element main-photo-upload not found');
+        }
+    }
+
+    openPointAdditionalPhotosUpload() {
+        const fileInput = document.getElementById('additional-photos-upload');
+        if (fileInput) {
+            fileInput.click();
+        } else {
+            console.warn('Element additional-photos-upload not found');
+        }
+    }
+
+    removePointMainPhoto() {
+        const uploadSection = document.querySelector('#point-editor-modal .main-photo-upload');
+        const preview = uploadSection?.querySelector('.main-photo-preview');
+        const placeholder = uploadSection?.querySelector('.h-100');
+        const fileInput = document.getElementById('main-photo-upload');
+        
+        if (preview) preview.style.display = 'none';
+        if (placeholder) placeholder.style.display = 'flex';
+        if (fileInput) fileInput.value = '';
+        this.pointMainPhotoFile = null;
+    }
+
+    // Обновите метод handlePointMainPhotoUpload:
+    handlePointMainPhotoUpload(file) {
+        if (!file || !this.validateImageFile(file)) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const uploadSection = document.querySelector('#point-editor-modal .main-photo-upload');
+            if (!uploadSection) return;
+            
+            const preview = uploadSection.querySelector('.main-photo-preview');
+            const placeholder = uploadSection.querySelector('.h-100');
+            
+            if (placeholder) placeholder.style.display = 'none';
+            if (preview) {
+                preview.style.display = 'block';
+                const img = preview.querySelector('img');
+                if (img) img.src = e.target.result;
+            }
+            
+            this.pointMainPhotoFile = file;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // Обновите метод handlePointAdditionalPhotosUpload:
+    handlePointAdditionalPhotosUpload(files) {
+        const grid = document.querySelector('#point-editor-modal .additional-photos-grid');
+        if (!grid) return;
+        
+        const currentCount = grid.querySelectorAll('.additional-photo-item').length;
+        
+        if (currentCount + files.length > 4) {
+            this.showToast('Максимум можно загрузить 4 дополнительных фото', 'warning');
+            return;
+        }
+
+        Array.from(files).forEach(file => {
+            if (!this.validateImageFile(file)) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const photoItem = this.createPointAdditionalPhotoItem(e.target.result);
+                // Вставляем перед кнопкой загрузки
+                grid.insertBefore(photoItem, grid.lastElementChild);
+                this.pointAdditionalPhotoFiles.push(file);
+                this.updatePointAdditionalPhotosCount();
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    createPointAdditionalPhotoItem(src) {
+        const div = document.createElement('div');
+        div.className = 'additional-photo-item';
+        div.innerHTML = `
+            <img src="${src}" class="w-100 h-100 object-fit-cover">
+            <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 photo-remove-btn shadow-sm" 
+                    style="width: 20px; height: 20px; padding: 0; display: flex; align-items: center; justify-content: center;"
+                    onclick="routeEditor?.removePointAdditionalPhoto(this)">
+                <i class="fas fa-times" style="font-size: 10px;"></i>
+            </button>
+        `;
+        return div;
+    }
+
+    removePointAdditionalPhoto(button) {
+        const photoItem = button.closest('.additional-photo-item');
+        if (photoItem) {
+            const index = Array.from(photoItem.parentNode.children).indexOf(photoItem);
+            this.pointAdditionalPhotoFiles.splice(index, 1);
+            photoItem.remove();
+            this.updatePointAdditionalPhotosCount();
+        }
+    }
+
+    updatePointAdditionalPhotosCount() {
+        const grid = document.querySelector('#point-editor-modal .additional-photos-grid');
+        const countElement = document.getElementById('additional-photos-count');
+        if (grid && countElement) {
+            const photoCount = grid.querySelectorAll('.additional-photo-item').length;
+            countElement.textContent = `${photoCount}/4`;
+            
+            // Скрываем кнопку загрузки если достигнут лимит
+            const uploadButton = grid.querySelector('.additional-photo-upload');
+            if (uploadButton) {
+                uploadButton.style.display = photoCount >= 4 ? 'none' : 'flex';
+            }
+        }
+    }
+
+    // Обновите метод editPoint для настройки обработчиков:
     editPoint(index) {
         this.currentEditIndex = index;
         const point = this.points[index];
@@ -789,7 +910,6 @@ class RouteEditor {
         document.getElementById('point-description').value = point.description;
         document.getElementById('point-category').value = point.category;
         
-        // ИСПРАВЛЕНИЕ: Сохраняем теги через запятую
         document.getElementById('point-tags').value = Array.isArray(point.tags) ? 
             point.tags.join(', ') : (point.tags || '');
         
@@ -803,6 +923,9 @@ class RouteEditor {
         // Загрузка аудио данных
         this.loadAudioData(point);
         
+        // Настройка обработчиков для модального окна
+        this.setupPointModalHandlers();
+        
         // Показ модального окна
         const modalElement = document.getElementById('point-editor-modal');
         if (modalElement) {
@@ -811,30 +934,76 @@ class RouteEditor {
         }
     }
 
-    loadPhotoData(point) {
-        // Сброс фото данных
-        this.mainPhotoFile = null;
-        this.additionalPhotoFiles = [];
+    // Добавьте метод для настройки обработчиков модального окна:
+    setupPointModalHandlers() {
+        // Обработчики для файловых инпутов
+        const mainPhotoInput = document.getElementById('main-photo-upload');
+        const additionalPhotosInput = document.getElementById('additional-photos-upload');
         
-        const mainUpload = document.querySelector('.main-photo-upload');
+        if (mainPhotoInput) {
+            mainPhotoInput.onchange = (e) => {
+                this.handlePointMainPhotoUpload(e.target.files[0]);
+            };
+        }
+        
+        if (additionalPhotosInput) {
+            additionalPhotosInput.onchange = (e) => {
+                this.handlePointAdditionalPhotosUpload(e.target.files);
+            };
+        }
+        
+        // Обработчик закрытия модального окна для очистки
+        const modalElement = document.getElementById('point-editor-modal');
+        if (modalElement) {
+            modalElement.addEventListener('hidden.bs.modal', () => {
+                this.cleanupPointModal();
+            });
+        }
+    }
+
+    // Метод для очистки модального окна
+    cleanupPointModal() {
+        // Сбрасываем фото
+        this.removePointMainPhoto();
+        
+        const grid = document.querySelector('#point-editor-modal .additional-photos-grid');
+        if (grid) {
+            const photoItems = grid.querySelectorAll('.additional-photo-item');
+            photoItems.forEach(item => item.remove());
+            this.updatePointAdditionalPhotosCount();
+        }
+        
+        // Сбрасываем файловые инпуты
+        const additionalInput = document.getElementById('additional-photos-upload');
+        if (additionalInput) additionalInput.value = '';
+        
+        this.pointAdditionalPhotoFiles = [];
+    }
+
+    loadPhotoData(point) {
+        // Сброс фото данных ТОЧКИ
+        this.pointMainPhotoFile = null;
+        this.pointAdditionalPhotoFiles = [];
+        
+        const mainUpload = document.querySelector('#point-editor-modal .main-photo-upload');
         if (!mainUpload) return;
         
         const mainPreview = mainUpload.querySelector('.main-photo-preview');
         const mainPlaceholder = mainUpload.querySelector('.h-100');
-        const additionalGrid = document.querySelector('.additional-photos-grid');
+        const additionalGrid = document.querySelector('#point-editor-modal .additional-photos-grid');
         
-        // Сбрасываем основное фото
+        // Сбрасываем основное фото точки
         if (mainPlaceholder) mainPlaceholder.style.display = 'flex';
         if (mainPreview) mainPreview.style.display = 'none';
         
-        // Сбрасываем дополнительные фото
+        // Сбрасываем дополнительные фото точки
         if (additionalGrid) {
             const uploadButton = additionalGrid.lastElementChild;
             additionalGrid.innerHTML = '';
             if (uploadButton) additionalGrid.appendChild(uploadButton);
         }
         
-        // Загружаем существующие фото если есть
+        // Загружаем существующие фото точки если есть
         if (point.photos && point.photos.length > 0) {
             // Первое фото - основное
             if (mainPlaceholder) mainPlaceholder.style.display = 'none';
@@ -966,21 +1135,19 @@ class RouteEditor {
 
         this.saveToHistory();
         
-        // Собираем все фото
-        const allPhotos = [];
-        if (this.mainPhotoFile) {
-            const mainPreview = document.querySelector('.main-photo-preview img');
-            if (mainPreview && mainPreview.src) {
-                allPhotos.push(mainPreview.src);
-            }
+        // Собираем фото ТОЧКИ (только из модального окна точки)
+        const pointPhotos = [];
+        const mainPreview = document.querySelector('#point-editor-modal .main-photo-preview img');
+        if (mainPreview && mainPreview.src && mainPreview.src.startsWith('data:')) {
+            pointPhotos.push(mainPreview.src);
         }
         
-        // Добавляем дополнительные фото
-        const additionalItems = document.querySelectorAll('.additional-photo-item');
+        // Добавляем дополнительные фото точки
+        const additionalItems = document.querySelectorAll('#point-editor-modal .additional-photo-item');
         additionalItems.forEach(item => {
             const img = item.querySelector('img');
-            if (img && img.src) {
-                allPhotos.push(img.src);
+            if (img && img.src && img.src.startsWith('data:')) {
+                pointPhotos.push(img.src);
             }
         });
 
@@ -995,9 +1162,9 @@ class RouteEditor {
             address: document.getElementById('point-address')?.value || '',
             description: document.getElementById('point-description')?.value || '',
             category: document.getElementById('point-category')?.value || '',
-            tags: tags, // Исправленный массив тегов
+            tags: tags,
             hint_author: document.getElementById('point-hint-author')?.value || '',
-            photos: allPhotos,
+            photos: pointPhotos, // Только фото точки
             has_audio: !!this.currentAudioFile,
             audio_file: this.currentAudioFile,
             lat: this.normalizeCoordinate(document.getElementById('point-lat')?.value || 0),
@@ -1012,6 +1179,27 @@ class RouteEditor {
             const modal = bootstrap.Modal.getInstance(modalElement);
             if (modal) modal.hide();
         }
+    }
+
+    getRoutePhotos() {
+        const routePhotos = [];
+        
+        // Основное фото маршрута
+        const mainPreview = document.querySelector('.main-photo-section .main-photo-preview img');
+        if (mainPreview && mainPreview.src && mainPreview.src.startsWith('data:')) {
+            routePhotos.push(mainPreview.src);
+        }
+        
+        // Дополнительные фото маршрута
+        const additionalItems = document.querySelectorAll('.additional-photos-grid .additional-photo-item');
+        additionalItems.forEach(item => {
+            const img = item.querySelector('img');
+            if (img && img.src && img.src.startsWith('data:')) {
+                routePhotos.push(img.src);
+            }
+        });
+        
+        return routePhotos;
     }
 
     // Аудио функциональность - ИСПРАВЛЕННАЯ ВЕРСИЯ
@@ -1542,6 +1730,9 @@ class RouteEditor {
         if (routeLoading) routeLoading.style.display = 'flex';
 
         try {
+            // Получаем фото маршрута отдельно
+            const routePhotos = this.getRoutePhotos();
+            
             const routeData = {
                 name: name,
                 short_description: document.getElementById('short_description')?.value || '',
@@ -1555,6 +1746,7 @@ class RouteEditor {
                 has_audio_guide: document.getElementById('has_audio_guide')?.checked || false,
                 is_elderly_friendly: document.getElementById('is_elderly_friendly')?.checked || false,
                 is_active: document.getElementById('is_active') ? document.getElementById('is_active').checked : true,
+                route_photos: routePhotos, // Фото маршрута
                 waypoints: this.points.map((point, index) => ({
                     name: point.name,
                     description: point.description || '',
@@ -1563,7 +1755,8 @@ class RouteEditor {
                     lng: this.normalizeCoordinate(point.lng),
                     category: point.category || '',
                     hint_author: point.hint_author || '',
-                    tags: point.tags || []
+                    tags: point.tags || [],
+                    photos: point.photos || [] // Фото точки
                 }))
             };
 
@@ -1844,34 +2037,94 @@ class RouteEditor {
 
     locateUser() {
         if (!navigator.geolocation) {
-            this.showToast('Геолокация не поддерживается', 'warning');
+            this.showToast('Геолокация не поддерживается вашим браузером', 'warning');
+            // Центрируем на Москве
+            this.map.setView(this.defaultCenter, 10);
             return;
         }
 
         const routeLoading = document.getElementById('route-loading');
         if (routeLoading) routeLoading.style.display = 'flex';
 
+        // Опции для геолокации
+        const options = {
+            enableHighAccuracy: true,
+            timeout: 10000, // 10 секунд
+            maximumAge: 300000 // 5 минут
+        };
+
         navigator.geolocation.getCurrentPosition(
             (position) => {
+                // Успешное определение местоположения
                 const latlng = [position.coords.latitude, position.coords.longitude];
-                this.map.setView(latlng, 16);
-                if (routeLoading) routeLoading.style.display = 'none';
-                this.showToast('Местоположение определено', 'success');
+                this.userLocation = latlng;
                 
-                L.marker(latlng, {
-                    icon: L.divIcon({
-                        className: 'current-location-marker',
-                        html: '<div style="background: #ff4444; border: 3px solid white; border-radius: 50%; width: 20px; height: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>',
-                        iconSize: [20, 20],
-                        iconAnchor: [10, 10]
-                    })
-                }).addTo(this.map).bindPopup('Ваше местоположение').openPopup();
+                this.map.setView(latlng, 16);
+                
+                if (routeLoading) routeLoading.style.display = 'none';
+                this.showToast('Ваше местоположение определено', 'success');
+                
+                // Добавляем маркер текущего местоположения
+                this.addUserLocationMarker(latlng[0], latlng[1]);
             },
             (error) => {
                 if (routeLoading) routeLoading.style.display = 'none';
-                this.showToast('Не удалось определить местоположение', 'danger');
-            }
+                
+                let errorMessage = 'Не удалось определить ваше местоположение. ';
+                
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMessage += 'Разрешение на доступ к геолокации отклонено. ';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMessage += 'Информация о местоположении недоступна. ';
+                        break;
+                    case error.TIMEOUT:
+                        errorMessage += 'Время ожидания определения местоположения истекло. ';
+                        break;
+                    default:
+                        errorMessage += 'Произошла неизвестная ошибка. ';
+                        break;
+                }
+                
+                errorMessage += 'Карта центрирована на Москве.';
+                
+                // Центрируем карту на Москве
+                this.map.setView(this.defaultCenter, 10);
+                this.showToast(errorMessage, 'info', 5000);
+            },
+            options
         );
+    }
+
+    addUserLocationMarker(lat, lng) {
+        // Удаляем старый маркер, если есть
+        if (this.userLocationMarker) {
+            this.map.removeLayer(this.userLocationMarker);
+        }
+
+        // Создаем красивый маркер местоположения
+        this.userLocationMarker = L.marker([lat, lng], {
+            icon: L.divIcon({
+                className: 'user-location-marker',
+                html: `
+                    <div class="user-location-pulse">
+                        <div class="user-location-dot"></div>
+                    </div>
+                `,
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            }),
+            zIndexOffset: 1000
+        }).addTo(this.map);
+
+        // Добавляем всплывающую подсказку
+        this.userLocationMarker.bindPopup(`
+            <div class="text-center">
+                <strong>Ваше местоположение</strong><br>
+                <small>Определено автоматически</small>
+            </div>
+        `);
     }
 
     showAddPointHint() {
@@ -1977,6 +2230,440 @@ class RouteEditor {
             timeout = setTimeout(later, wait);
         };
     }
+
+    // Улучшенное создание элемента списка точек
+    createPointListItem(point, index) {
+        const item = document.createElement('div');
+        item.className = 'point-card p-3';
+        if (this.currentEditIndex === index) {
+            item.classList.add('active');
+        }
+        
+        item.innerHTML = this.createEnhancedPointCardHTML(point, index);
+        
+        item.addEventListener('click', () => this.showPointDetails(index));
+        item.addEventListener('dblclick', () => this.editPoint(index));
+        
+        return item;
+    }
+
+    createEnhancedPointCardHTML(point, index) {
+        const isStart = index === 0;
+        const isEnd = index === this.points.length - 1;
+        
+        let markerClass = 'marker-waypoint';
+        let markerText = (index + 1).toString();
+        if (isStart) {
+            markerClass = 'marker-start';
+            markerText = 'A';
+        } else if (isEnd) {
+            markerClass = 'marker-end';
+            markerText = 'B';
+        }
+
+        // Превью фото точки
+        const photoPreview = point.photos && point.photos.length > 0 ? 
+            `<img src="${point.photos[0]}" class="point-photo-preview" alt="${point.name}">` :
+            `<div class="point-photo-placeholder">
+                <i class="fas fa-camera text-muted"></i>
+            </div>`;
+
+        // Медиа индикаторы
+        const mediaIndicators = [];
+        if (point.photos && point.photos.length > 0) {
+            mediaIndicators.push(`
+                <div class="media-indicator media-photo" title="${point.photos.length} фото">
+                    <i class="fas fa-camera"></i>
+                </div>
+            `);
+        }
+        if (point.has_audio) {
+            mediaIndicators.push(`
+                <div class="media-indicator media-audio" title="Есть аудио">
+                    <i class="fas fa-headphones"></i>
+                </div>
+            `);
+        }
+        if (point.category) {
+            mediaIndicators.push(`
+                <div class="media-indicator media-category" title="${this.getCategoryName(point.category)}">
+                    <i class="${this.getCategoryFAIcon(point.category)}"></i>
+                </div>
+            `);
+        }
+
+        // Время и расстояние от предыдущей точки
+        const distanceInfo = this.calculateLegDistance(index);
+        const timeInfo = this.calculateLegTime(index);
+
+        return `
+            <div class="d-flex align-items-start gap-3">
+                <!-- Маркер точки -->
+                <div class="point-marker ${markerClass} flex-shrink-0">
+                    ${markerText}
+                </div>
+                
+                <!-- Превью фото -->
+                <div class="flex-shrink-0">
+                    ${photoPreview}
+                </div>
+                
+                <!-- Основная информация -->
+                <div class="flex-grow-1 min-w-0">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="mb-0 fw-bold text-dark line-clamp-1">${point.name}</h6>
+                        <div class="point-media-indicators">
+                            ${mediaIndicators.join('')}
+                        </div>
+                    </div>
+                    
+                    <p class="text-muted small mb-2 line-clamp-2">${point.address}</p>
+                    
+                    <!-- Дополнительная информация -->
+                    <div class="d-flex gap-3 text-xs text-muted mb-2">
+                        ${distanceInfo ? `<div><i class="fas fa-route me-1"></i>${distanceInfo}</div>` : ''}
+                        ${timeInfo ? `<div><i class="fas fa-clock me-1"></i>${timeInfo}</div>` : ''}
+                    </div>
+                    
+                    <!-- Теги и категория -->
+                    <div class="d-flex flex-wrap gap-1">
+                        ${point.category ? `
+                            <span class="badge bg-primary bg-opacity-10 text-primary border-0 px-2 py-1 rounded-pill ultra-small">
+                                <i class="${this.getCategoryFAIcon(point.category)} me-1"></i>${this.getCategoryName(point.category)}
+                            </span>
+                        ` : ''}
+                        
+                        ${point.tags && point.tags.length > 0 ? point.tags.slice(0, 2).map(tag => `
+                            <span class="badge bg-light text-dark border px-2 py-1 rounded-pill ultra-small">
+                                #${tag}
+                            </span>
+                        `).join('') : ''}
+                        
+                        ${point.tags && point.tags.length > 2 ? `
+                            <span class="badge bg-light text-muted border px-2 py-1 rounded-pill ultra-small">
+                                +${point.tags.length - 2}
+                            </span>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Действия -->
+            <div class="d-flex gap-2 mt-3 pt-2 border-top">
+                <button class="btn btn-sm btn-outline-primary flex-fill" onclick="event.stopPropagation(); routeEditor.editPoint(${index})">
+                    <i class="fas fa-edit me-1"></i>Редактировать
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); routeEditor.showDeleteConfirm(${index})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+    }
+
+    getCategoryFAIcon(category) {
+        const icons = {
+            'attraction': 'fas fa-landmark',
+            'nature': 'fas fa-tree',
+            'forest': 'fas fa-tree',
+            'bus_stop': 'fas fa-bus',
+            'viewpoint': 'fas fa-binoculars',
+            'restaurant': 'fas fa-utensils',
+            'hotel': 'fas fa-hotel',
+            'museum': 'fas fa-landmark',
+            'park': 'fas fa-tree',
+            'monument': 'fas fa-monument',
+            'church': 'fas fa-church',
+            'beach': 'fas fa-umbrella-beach'
+        };
+        return icons[category] || 'fas fa-map-marker-alt';
+    }
+
+    calculateLegDistance(index) {
+        if (index === 0) return null;
+        const prevPoint = this.points[index - 1];
+        const currentPoint = this.points[index];
+        
+        const distance = this.calculateDistance(
+            prevPoint.lat, prevPoint.lng,
+            currentPoint.lat, currentPoint.lng
+        );
+        
+        return distance < 1 ? `${(distance * 1000).toFixed(0)}м` : `${distance.toFixed(1)}км`;
+    }
+
+    calculateLegTime(index) {
+        if (index === 0) return null;
+        
+        const distance = this.calculateDistance(
+            this.points[index - 1].lat, this.points[index - 1].lng,
+            this.points[index].lat, this.points[index].lng
+        );
+        
+        // Предполагаемая скорость в зависимости от типа маршрута
+        const speeds = {
+            'walking': 5, // км/ч
+            'cycling': 15, // км/ч
+            'driving': 50  // км/ч
+        };
+        
+        const speed = speeds[this.routeType] || 5;
+        const timeMinutes = Math.round((distance / speed) * 60);
+        
+        if (timeMinutes < 60) {
+            return `${timeMinutes}мин`;
+        } else {
+            const hours = Math.floor(timeMinutes / 60);
+            const minutes = timeMinutes % 60;
+            return minutes > 0 ? `${hours}ч ${minutes}мин` : `${hours}ч`;
+        }
+    }
+
+    // Обновляем метод для расчета общего времени
+    updateStats() {
+        document.getElementById('points-count').textContent = this.points.length;
+        document.getElementById('points-count-display').textContent = this.points.length;
+        
+        const totalDistance = this.calculateTotalDistance();
+        document.getElementById('total-distance').textContent = totalDistance + ' км';
+        
+        // Обновляем время
+        this.updateEstimatedTime();
+        
+        const totalDistanceInput = document.getElementById('total_distance');
+        if (totalDistanceInput) {
+            totalDistanceInput.value = totalDistance;
+        }
+    }
+
+    updateEstimatedTime() {
+        const timeElement = document.getElementById('estimated-time');
+        if (!timeElement) return;
+        
+        if (this.points.length < 2) {
+            timeElement.textContent = '-';
+            return;
+        }
+        
+        const totalDistance = this.calculateTotalDistance();
+        const speeds = {
+            'walking': 5,
+            'cycling': 15,
+            'driving': 50
+        };
+        
+        const speed = speeds[this.routeType] || 5;
+        const totalHours = totalDistance / speed;
+        
+        if (totalHours < 1) {
+            const minutes = Math.round(totalHours * 60);
+            timeElement.textContent = `${minutes} мин`;
+        } else if (totalHours < 3) {
+            const hours = Math.floor(totalHours);
+            const minutes = Math.round((totalHours - hours) * 60);
+            timeElement.textContent = minutes > 0 ? `${hours}ч ${minutes}мин` : `${hours}ч`;
+        } else {
+            timeElement.textContent = `${Math.round(totalHours)}ч`;
+        }
+    }
+
+    // Методы для фото маршрута
+    initRoutePhotoHandlers() {
+        this.safeAddEventListener('route-main-photo', 'change', (e) => {
+            this.handleRouteMainPhotoUpload(e.target.files[0]);
+        });
+        
+        this.safeAddEventListener('route-additional-photos', 'change', (e) => {
+            this.handleRouteAdditionalPhotosUpload(e.target.files);
+        });
+    }
+
+    // Методы для фото точек
+    initPointPhotoHandlers() {
+        const mainPhotoInput = document.getElementById('main-photo-upload');
+        const additionalPhotosInput = document.getElementById('additional-photos-upload');
+        
+        if (mainPhotoInput) {
+            mainPhotoInput.addEventListener('change', (e) => {
+                this.handlePointMainPhotoUpload(e.target.files[0]);
+            });
+        }
+        
+        if (additionalPhotosInput) {
+            additionalPhotosInput.addEventListener('change', (e) => {
+                this.handlePointAdditionalPhotosUpload(e.target.files);
+            });
+        }
+    }
+
+    initPointPhotoHandlers() {
+        const mainPhotoInput = document.getElementById('main-photo-upload');
+        const additionalPhotosInput = document.getElementById('additional-photos-upload');
+        
+        if (mainPhotoInput) {
+            mainPhotoInput.addEventListener('change', (e) => {
+                this.handlePointMainPhotoUpload(e.target.files[0]);
+            });
+        }
+        
+        if (additionalPhotosInput) {
+            additionalPhotosInput.addEventListener('change', (e) => {
+                this.handlePointAdditionalPhotosUpload(e.target.files);
+            });
+        }
+        
+        // Обработчики для удаления фото
+        this.setupPointPhotoRemoveHandlers();
+    }
+
+    setupPointPhotoRemoveHandlers() {
+        // Обработчик для удаления основного фото
+        const mainRemoveBtn = document.querySelector('#point-editor-modal .main-photo-preview .photo-remove-btn');
+        if (mainRemoveBtn) {
+            mainRemoveBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.removePointMainPhoto();
+            });
+        }
+    }
+
+    removePointMainPhoto() {
+        const uploadSection = document.querySelector('#point-editor-modal .main-photo-upload');
+        const preview = uploadSection.querySelector('.main-photo-preview');
+        const placeholder = uploadSection.querySelector('.h-100');
+        const fileInput = document.getElementById('main-photo-upload');
+        
+        if (preview) preview.style.display = 'none';
+        if (placeholder) placeholder.style.display = 'flex';
+        if (fileInput) fileInput.value = '';
+        this.pointMainPhotoFile = null;
+    }
+
+    handleRouteMainPhotoUpload(file) {
+        if (!file || !this.validateImageFile(file)) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const uploadSection = document.querySelector('.main-photo-section .main-photo-upload');
+            if (!uploadSection) return;
+            
+            const preview = uploadSection.querySelector('.main-photo-preview');
+            const placeholder = uploadSection.querySelector('.h-100');
+            
+            if (placeholder) placeholder.style.display = 'none';
+            if (preview) {
+                preview.style.display = 'block';
+                const img = preview.querySelector('img');
+                if (img) img.src = e.target.result;
+            }
+            
+            this.routeMainPhotoFile = file;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    handleRouteAdditionalPhotosUpload(files) {
+        const grid = document.querySelector('.additional-photos-grid');
+        if (!grid) return;
+        
+        Array.from(files).forEach(file => {
+            if (!this.validateImageFile(file)) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const photoItem = this.createAdditionalPhotoItem(e.target.result, file);
+                grid.insertBefore(photoItem, grid.lastElementChild);
+                this.routeAdditionalPhotoFiles.push(file);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    handlePointMainPhotoUpload(file) {
+        if (!file || !this.validateImageFile(file)) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const uploadSection = document.querySelector('#point-editor-modal .main-photo-upload');
+            if (!uploadSection) return;
+            
+            const preview = uploadSection.querySelector('.main-photo-preview');
+            const placeholder = uploadSection.querySelector('.h-100');
+            
+            if (placeholder) placeholder.style.display = 'none';
+            if (preview) {
+                preview.style.display = 'block';
+                const img = preview.querySelector('img');
+                if (img) img.src = e.target.result;
+            }
+            
+            this.pointMainPhotoFile = file;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    handlePointAdditionalPhotosUpload(files) {
+        const grid = document.querySelector('#point-editor-modal .additional-photos-grid');
+        if (!grid) return;
+        
+        const currentCount = grid.querySelectorAll('.additional-photo-item').length;
+        
+        if (currentCount + files.length > 4) {
+            this.showToast('Максимум можно загрузить 4 дополнительных фото', 'warning');
+            return;
+        }
+
+        Array.from(files).forEach(file => {
+            if (!this.validateImageFile(file)) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const photoItem = this.createPointAdditionalPhotoItem(e.target.result);
+                // Вставляем перед кнопкой загрузки
+                grid.insertBefore(photoItem, grid.lastElementChild);
+                this.pointAdditionalPhotoFiles.push(file);
+                this.updatePointAdditionalPhotosCount();
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    createPointAdditionalPhotoItem(src) {
+        const div = document.createElement('div');
+        div.className = 'additional-photo-item';
+        div.innerHTML = `
+            <img src="${src}" class="w-100 h-100 object-fit-cover rounded">
+            <button type="button" class="btn btn-sm btn-danger photo-remove-btn position-absolute top-0 end-0 m-1"
+                    onclick="routeEditor.removePointAdditionalPhoto(this)">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        return div;
+    }
+
+    removePointAdditionalPhoto(button) {
+        const photoItem = button.closest('.additional-photo-item');
+        if (photoItem) {
+            const index = Array.from(photoItem.parentNode.children).indexOf(photoItem);
+            this.pointAdditionalPhotoFiles.splice(index, 1);
+            photoItem.remove();
+            this.updatePointAdditionalPhotosCount();
+        }
+    }
+
+    updatePointAdditionalPhotosCount() {
+        const grid = document.querySelector('#point-editor-modal .additional-photos-grid');
+        const countElement = document.getElementById('additional-photos-count');
+        if (grid && countElement) {
+            const photoCount = grid.querySelectorAll('.additional-photo-item').length;
+            countElement.textContent = `${photoCount}/4`;
+            
+            // Скрываем кнопку загрузки если достигнут лимит
+            const uploadButton = grid.querySelector('.additional-photo-upload');
+            if (uploadButton) {
+                uploadButton.style.display = photoCount >= 4 ? 'none' : 'flex';
+            }
+        }
+    }
 }
 
 // Глобальная переменная для доступа из HTML
@@ -2025,3 +2712,27 @@ document.addEventListener('keydown', function(e) {
         }
     }
 });
+
+window.handleMainPhotoUpload = function(file) {
+    if (routeEditor) {
+        routeEditor.handlePointMainPhotoUpload(file);
+    }
+};
+
+window.handleAdditionalPhotosUpload = function(files) {
+    if (routeEditor) {
+        routeEditor.handlePointAdditionalPhotosUpload(files);
+    }
+};
+
+window.removeMainPhoto = function() {
+    if (routeEditor) {
+        routeEditor.removePointMainPhoto();
+    }
+};
+
+window.removeAdditionalPhoto = function(button) {
+    if (routeEditor) {
+        routeEditor.removePointAdditionalPhoto(button);
+    }
+};

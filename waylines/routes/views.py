@@ -3,6 +3,8 @@ __all__ = ()
 import json
 import math
 from io import BytesIO
+from django.core.files.base import ContentFile
+import base64
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -131,22 +133,25 @@ def my_routes(request):
 
 @login_required
 def shared_routes(request):
-    shared_with_me = Route.objects.filter(
-        shared_with=request.user,
+    # Все в одном запросе с Q объектами
+    routes = Route.objects.filter(
+        Q(shared_with=request.user) | Q(privacy="link"),
         is_active=True
-    ).distinct()
+    ).exclude(author=request.user).distinct().order_by("-created_at")
 
-    link_access_routes = Route.objects.filter(
-        privacy="link",
-        is_active=True
-    ).exclude(author=request.user)
-
-    routes = (shared_with_me | link_access_routes).distinct().order_by("-created_at")
+    # Считаем отдельно для контекста
+    shared_count = Route.objects.filter(
+        shared_with=request.user, is_active=True
+    ).count()
+    
+    link_count = Route.objects.filter(
+        privacy="link", is_active=True
+    ).exclude(author=request.user).count()
 
     context = {
         "routes": routes,
-        "shared_count": shared_with_me.count(),
-        "link_count": link_access_routes.count(),
+        "shared_count": shared_count,
+        "link_count": link_count,
     }
 
     if request.user.is_authenticated:
@@ -170,8 +175,9 @@ def route_detail(request, route_id):
         messages.error(request, "У вас нет доступа к этому маршруту")
         return redirect("home")
 
-    points = route.points.all().order_by("order")
+    points = route.points.all().order_by("order").prefetch_related("photos")
     comments = route.comments.all().order_by("-created_at")[:10]
+    route_photos = route.photos.all().order_by("order")
 
     # Сообщения чата маршрута
     route_chat_messages = []
@@ -200,6 +206,7 @@ def route_detail(request, route_id):
     context = {
         "route": route,
         "points": points,
+        "route_photos": route_photos,
         "comments": comments,
         "route_chat_messages": route_chat_messages,
         "user_favorites_ids": list(user_favorites_ids),
@@ -310,21 +317,18 @@ def create_route(request):
 
             # Валидация обязательных полей
             if not data.get("name"):
-                return JsonResponse(
-                    {
-                        "success": False,
-                        "error": "Название маршрута обязательно",
-                    }
-                )
+                return JsonResponse({
+                    "success": False,
+                    "error": "Название маршрута обязательно",
+                })
 
             if not data.get("points"):
-                return JsonResponse(
-                    {
-                        "success": False,
-                        "error": "Добавьте хотя бы одну точку маршрута",
-                    }
-                )
+                return JsonResponse({
+                    "success": False,
+                    "error": "Добавьте хотя бы одну точку маршрута",
+                })
 
+            # Создаем маршрут
             route = Route.objects.create(
                 author=request.user,
                 name=data.get("name"),
@@ -343,7 +347,7 @@ def create_route(request):
             # Добавляем точки
             points_data = data.get("points", [])
             for i, point_data in enumerate(points_data):
-                RoutePoint.objects.create(
+                point = RoutePoint.objects.create(
                     route=route,
                     name=point_data.get("name", f"Точка {i+1}"),
                     description=point_data.get("description", ""),
@@ -356,23 +360,35 @@ def create_route(request):
                     order=i,
                 )
 
+                # Обрабатываем фото точки если есть
+                point_photos = point_data.get("photos", [])
+                for j, photo_data in enumerate(point_photos):
+                    if photo_data.get("base64"):
+                        save_base64_photo(photo_data, point, PointPhoto, order=j)
+
+            # Обрабатываем фото маршрута если есть
+            route_photos = data.get("route_photos", [])
+            for photo_data in route_photos:
+                if photo_data.get("base64"):
+                    save_base64_photo(photo_data, route, RoutePhoto)
+
             return JsonResponse({"success": True, "route_id": route.id})
 
         except json.JSONDecodeError:
-            return JsonResponse(
-                {"success": False, "error": "Неверный формат JSON"}
-            )
+            return JsonResponse({
+                "success": False, 
+                "error": "Неверный формат JSON"
+            })
         except KeyError as e:
-            return JsonResponse(
-                {
-                    "success": False,
-                    "error": f"Отсутствует обязательное поле: {str(e)}",
-                }
-            )
+            return JsonResponse({
+                "success": False,
+                "error": f"Отсутствует обязательное поле: {str(e)}",
+            })
         except Exception as e:
-            return JsonResponse(
-                {"success": False, "error": f"Ошибка сервера: {str(e)}"}
-            )
+            return JsonResponse({
+                "success": False, 
+                "error": f"Ошибка сервера: {str(e)}"
+            })
 
     # GET запрос - показать форму
     context = {
@@ -420,11 +436,19 @@ def edit_route(request, route_id):
             route.is_active = data.get("is_active", route.is_active)
             route.save()
 
-            # Обновляем точки
+            # Удаляем старые точки и фото
             route.points.all().delete()
+            route.photos.all().delete()
+
+            # Добавляем фото маршрута
+            route_photos = data.get("route_photos", [])
+            for i, photo_data in enumerate(route_photos):
+                if photo_data.get("base64"):
+                    save_base64_photo(photo_data, route, RoutePhoto, order=i)
+
             points_data = data.get("points", [])
             for i, point_data in enumerate(points_data):
-                RoutePoint.objects.create(
+                point = RoutePoint.objects.create(
                     route=route,
                     name=point_data.get("name", f"Точка {i+1}"),
                     description=point_data.get("description", ""),
@@ -436,6 +460,12 @@ def edit_route(request, route_id):
                     tags=point_data.get("tags", []),
                     order=i,
                 )
+
+                # Добавляем фото точки
+                point_photos = point_data.get("photos", [])
+                for j, photo_data in enumerate(point_photos):
+                    if photo_data.get("base64"):
+                        save_base64_photo(photo_data, point, PointPhoto, order=j)
 
             return JsonResponse({"success": True, "route_id": route.id})
         except Exception as e:
@@ -456,6 +486,15 @@ def edit_route(request, route_id):
         "has_audio_guide": route.has_audio_guide,
         "is_elderly_friendly": route.is_elderly_friendly,
         "is_active": route.is_active,
+        "route_photos": [
+            {
+                "id": photo.id,
+                "url": photo.image.url,
+                "caption": photo.caption,
+                "order": photo.order
+            }
+            for photo in route.photos.all().order_by("order")
+        ],
         "points": [
             {
                 "name": point.name,
@@ -466,6 +505,15 @@ def edit_route(request, route_id):
                 "category": point.category,
                 "hint_author": point.hint_author,
                 "tags": point.tags,
+                "photos": [
+                    {
+                        "id": photo.id,
+                        "url": photo.image.url,
+                        "caption": photo.caption,
+                        "order": photo.order
+                    }
+                    for photo in point.photos.all().order_by("order")
+                ]
             }
             for point in route.points.all().order_by("order")
         ],
@@ -483,6 +531,37 @@ def edit_route(request, route_id):
     }
     return render(request, "routes/route_editor.html", context)
 
+# Добавьте вспомогательную функцию для сохранения фото
+def save_base64_photo(photo_data, parent_obj, photo_model, order=0):
+    """Сохранение фото из base64"""
+    try:
+        base64_string = photo_data["base64"]
+        caption = photo_data.get("caption", "")
+        
+        # Убираем префикс data URL если есть
+        if ',' in base64_string:
+            base64_string = base64_string.split(',')[1]
+        
+        # Декодируем base64
+        image_data = base64.b64decode(base64_string)
+        
+        # Создаем имя файла
+        filename = f"{parent_obj.__class__.__name__.lower()}_{parent_obj.id}_{photo_model.__name__.lower()}_{order}.jpg"
+        
+        # Создаем объект фото
+        photo = photo_model.objects.create(
+            **{parent_obj.__class__.__name__.lower(): parent_obj},
+            caption=caption,
+            order=order
+        )
+        
+        # Сохраняем изображение
+        photo.image.save(filename, ContentFile(image_data), save=True)
+        
+        return photo
+    except Exception as e:
+        print(f"Ошибка сохранения фото: {e}")
+        return None
 
 @login_required
 def toggle_route_active(request, route_id):
@@ -623,42 +702,55 @@ def add_saved_place(request):
     return JsonResponse({"success": False, "error": "Only POST allowed"})
 
 
-# Карта всех точек
 def map_view(request):
     routes = Route.objects.filter(
         privacy="public", is_active=True
-    ).prefetch_related("points")
-    routes_json = json.dumps(
-        [
-            {
-                "id": r.id,
-                "title": r.name,
-                "short_description": r.short_description,
-                "description": r.description,
-                "distance": r.total_distance,
-                "rating": r.get_average_rating() or 0,
-                "has_audio": r.has_audio_guide,
-                "difficulty": r.route_type,  # или отдельное поле
-                "category": {"name": r.theme} if r.theme else None,
-                "points": [
-                    {
-                        "lat": p.latitude,
-                        "lng": p.longitude,
-                        "name": p.name,
-                        "address": p.address,
-                        "description": p.description,
-                        "order": p.order,
-                    }
-                    for p in r.points.all()
-                ],
-            }
-            for r in routes
-        ]
+    ).prefetch_related("points", "photos").annotate(
+        avg_rating=Avg("ratings__rating")
     )
+    
+    routes_data = []
+    for route in routes:
+        route_data = {
+            "id": route.id,
+            "title": route.name,  # Используем name вместо title
+            "short_description": route.short_description,
+            "description": route.description,
+            "distance": route.total_distance,  # Используем total_distance
+            "rating": route.avg_rating or 0,
+            "has_audio": route.has_audio_guide,
+            "difficulty": route.route_type,
+            "category": {"name": route.theme} if route.theme else None,
+            "photos": [
+                {
+                    "url": photo.image.url,
+                    "caption": photo.caption
+                }
+                for photo in route.photos.all()[:3]
+            ],
+            "points": [
+                {
+                    "lat": p.latitude,
+                    "lng": p.longitude,
+                    "name": p.name,
+                    "address": p.address,
+                    "description": p.description,
+                    "order": p.order,
+                }
+                for p in route.points.all()
+            ],
+        }
+        routes_data.append(route_data)
+    
+    routes_json = json.dumps(routes_data)
+    
     return render(
         request,
         "map/map_view.html",
-        {"routes_json": routes_json, "routes": routes},
+        {
+            "routes_json": routes_json, 
+            "routes": routes  # Передаем queryset для шаблона
+        },
     )
 
 

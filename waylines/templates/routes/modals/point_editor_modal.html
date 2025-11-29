@@ -74,38 +74,48 @@
                         <div class="form-text">Введите теги через запятую</div>
                     </div>
 
-                    <!-- СЕКЦИЯ ФОТОГРАФИЙ -->
+                    <!-- СЕКЦИЯ ФОТОГРАФИЙ ТОЧКИ (КОМПАКТНАЯ) -->
                     <div class="mb-4">
-                        <label class="form-label fw-bold mb-3">Фотографии места</label>
+                        <label class="form-label fw-bold mb-3">
+                            <i class="fas fa-camera me-2"></i>Фотографии места
+                            <small class="text-muted">(до 5 фото, только для этой точки)</small>
+                        </label>
                         
-                        <!-- Основное фото -->
+                        <!-- Основное фото точки -->
                         <div class="main-photo-section mb-3">
+                            <label class="form-label small fw-bold mb-2">Главное фото</label>
                             <div class="main-photo-upload position-relative border rounded bg-light" 
-                                 style="height: 200px; cursor: pointer;"
-                                 onclick="document.getElementById('main-photo-upload').click()">
+                                 style="height: 120px; cursor: pointer;"
+                                 onclick="routeEditor?.openPointMainPhotoUpload()">
                                 <div class="h-100 d-flex flex-column align-items-center justify-content-center text-muted">
-                                    <i class="fas fa-camera fa-2x mb-2"></i>
-                                    <div>Главное фото</div>
-                                    <small>Рекомендуется горизонтальное фото</small>
+                                    <i class="fas fa-camera fa-lg mb-2"></i>
+                                    <div class="small">Добавить главное фото</div>
+                                    <small class="x-small">Кликните для загрузки</small>
                                 </div>
-                                <div class="main-photo-preview h-100" style="display: none;">
+                                <div class="main-photo-preview position-absolute top-0 start-0 w-100 h-100" style="display: none;">
                                     <img src="" class="w-100 h-100 object-fit-cover rounded">
-                                    <button type="button" class="btn btn-sm btn-light position-absolute top-0 end-0 m-2 photo-remove-btn">
-                                        <i class="fas fa-times"></i>
+                                    <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 photo-remove-btn shadow-sm" 
+                                            style="width: 24px; height: 24px; padding: 0; display: flex; align-items: center; justify-content: center;"
+                                            onclick="event.stopPropagation(); routeEditor?.removePointMainPhoto()">
+                                        <i class="fas fa-times" style="font-size: 12px;"></i>
                                     </button>
                                 </div>
                             </div>
                             <input type="file" id="main-photo-upload" accept="image/*" style="display: none;">
                         </div>
 
-                        <!-- Дополнительные фото -->
+                        <!-- Дополнительные фото точки -->
                         <div class="additional-photos-section">
-                            <label class="form-label small fw-bold mb-2">Дополнительные фото</label>
-                            <div class="additional-photos-grid d-grid gap-2" style="grid-template-columns: repeat(4, 1fr);">
-                                <!-- Плейсхолдер для загрузки -->
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label small fw-bold mb-0">Дополнительные фото</label>
+                                <span class="badge bg-secondary" id="additional-photos-count">0/4</span>
+                            </div>
+                            <div class="additional-photos-grid d-grid gap-2" style="grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));">
+                                <!-- Загруженные фото будут добавляться сюда -->
+                                <!-- Кнопка загрузки всегда последняя -->
                                 <div class="additional-photo-upload border rounded bg-light d-flex align-items-center justify-content-center" 
                                      style="height: 80px; cursor: pointer;"
-                                     onclick="document.getElementById('additional-photos-upload').click()">
+                                     onclick="routeEditor?.openPointAdditionalPhotosUpload()">
                                     <i class="fas fa-plus text-muted"></i>
                                 </div>
                             </div>
@@ -119,7 +129,7 @@
                             <div class="d-flex align-items-center justify-content-between mb-3">
                                 <div>
                                     <h6 class="mb-1">
-                                        <i class="fas fa-headphones me-2"></i>Аудиогид
+                                        <i class="fas fa-headphones me-2"></i>Аудиогид точки
                                     </h6>
                                     <p class="small text-muted mb-0">Запишите рассказ об этом месте</p>
                                 </div>
@@ -138,8 +148,8 @@
                                         <i class="fas fa-play"></i>
                                     </button>
                                     <div class="flex-grow-1">
-                                        <div class="audio-waveform mb-1" id="audio-waveform">
-                                            <div class="audio-visualizer" id="audio-visualizer"></div>
+                                        <div class="progress mb-1" style="height: 6px;">
+                                            <div class="audio-progress progress-bar" role="progressbar" style="width: 0%"></div>
                                         </div>
                                         <div class="d-flex justify-content-between align-items-center">
                                             <span class="audio-time small" id="audio-current-time">0:00</span>
@@ -182,7 +192,7 @@
                                 <!-- Визуализатор при записи -->
                                 <div class="recording-visualizer mt-3" id="recording-visualizer" style="display: none;">
                                     <div class="audio-waveform">
-                                        <div class="audio-visualizer" id="live-visualizer"></div>
+                                        <div class="audio-visualizer d-flex align-items-end justify-content-center gap-1" id="live-visualizer" style="height: 40px;"></div>
                                     </div>
                                 </div>
                             </div>
@@ -197,3 +207,95 @@
         </div>
     </div>
 </div>
+
+<style>
+.recording-pulse {
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.audio-visualizer {
+    display: flex;
+    align-items: end;
+    gap: 2px;
+}
+
+.audio-bar {
+    width: 3px;
+    background: #3b82f6;
+    border-radius: 1px;
+    transition: height 0.1s ease;
+}
+
+.audio-recording-section.recording-active {
+    background: #fef3cd;
+    border-color: #f59e0b;
+}
+
+/* Стили для компактных фото */
+.additional-photo-item {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    aspect-ratio: 1;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.additional-photo-item:hover {
+    border-color: #3b82f6;
+    transform: scale(1.05);
+}
+
+.additional-photo-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.photo-remove-btn {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.additional-photo-item:hover .photo-remove-btn,
+.main-photo-preview:hover .photo-remove-btn {
+    opacity: 1;
+}
+
+.x-small {
+    font-size: 0.75rem;
+}
+
+.additional-photo-upload {
+    border: 2px dashed #dee2e6;
+    transition: all 0.3s ease;
+}
+
+.additional-photo-upload:hover {
+    border-color: #3b82f6;
+    background-color: #f8f9fa;
+}
+
+.main-photo-upload {
+    border: 2px dashed #dee2e6;
+    transition: all 0.3s ease;
+}
+
+.main-photo-upload:hover {
+    border-color: #3b82f6;
+    background-color: #f8f9fa;
+}
+</style>

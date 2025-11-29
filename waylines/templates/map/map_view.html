@@ -76,33 +76,55 @@
             <div id="routes-container">
                 {% for route in routes %}
                 <div class="route-card card mb-2" data-route-id="{{ route.id }}" 
-                     data-category="{{ route.category.name|default:'other' }}"
-                     data-difficulty="{{ route.difficulty|default:'medium' }}"
-                     data-has-audio="{{ route.has_audio|yesno:'true,false' }}">
+                    data-category="{{ route.theme|default:'other' }}"
+                    data-difficulty="{{ route.route_type|default:'medium' }}"
+                    data-has-audio="{{ route.has_audio_guide|yesno:'true,false' }}">
+                    
+                    <!-- Фото маршрута -->
+                    {% if route.photos.all %}
+                    <div class="route-photos" style="height: 120px; overflow: hidden; border-radius: 8px 8px 0 0;">
+                        <img src="{{ route.photos.first.image.url }}" 
+                            alt="{{ route.photos.first.caption|default:route.name }}"
+                            style="width: 100%; height: 100%; object-fit: cover;">
+                    </div>
+                    {% endif %}
+                    
                     <div class="card-body py-2">
                         <div class="d-flex justify-content-between align-items-start mb-1">
-                            <h6 class="route-title mb-0">{{ route.title }}</h6>
+                            <h6 class="route-title mb-0">{{ route.name }}</h6>  <!-- Используем name -->
                             <div class="route-rating">
                                 <i class="fas fa-star text-warning"></i>
-                                <small>{{ route.rating|default:0|floatformat:1 }}</small>
+                                <small>{{ route.avg_rating|default:0|floatformat:1 }}</small>  <!-- Используем avg_rating -->
                             </div>
                         </div>
                         
                         <p class="text-muted small mb-2">{{ route.short_description }}</p>
                         
+                        <!-- Миниатюры фото -->
+                        {% if route.photos.all %}
+                        <div class="route-photo-thumbnails d-flex gap-1 mb-2">
+                            {% for photo in route.photos.all|slice:":3" %}
+                            <img src="{{ photo.image.url }}" 
+                                alt="{{ photo.caption }}"
+                                style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;"
+                                title="{{ photo.caption }}">
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
                         <div class="route-meta d-flex justify-content-between align-items-center">
                             <div class="route-tags">
-                                {% if route.category %}
-                                <span class="badge bg-light text-dark me-1">{{ route.category.name }}</span>
+                                {% if route.theme %}
+                                <span class="badge bg-light text-dark me-1">{{ route.theme }}</span>  <!-- Используем theme -->
                                 {% endif %}
-                                {% if route.has_audio %}
+                                {% if route.has_audio_guide %}
                                 <span class="badge bg-info text-white">🎧 Аудио</span>
                                 {% endif %}
                             </div>
                             
                             <div class="route-stats">
                                 <small class="text-muted">
-                                    <i class="fas fa-route"></i> {{ route.distance|floatformat:1 }} км
+                                    <i class="fas fa-route"></i> {{ route.total_distance|floatformat:1 }} км  <!-- Используем total_distance -->
                                 </small>
                             </div>
                         </div>
@@ -293,6 +315,32 @@
     .search-bar {
         display: flex;
         gap: 8px;
+    }
+
+    .route-photos {
+        height: 120px;
+        overflow: hidden;
+        border-radius: 8px 8px 0 0;
+    }
+
+    .route-photos img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .route-photo-thumbnails {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 8px;
+    }
+
+    .route-photo-thumbnails img {
+        width: 40px;
+        height: 40px;
+        object-fit: cover;
+        border-radius: 4px;
+        border: 1px solid #e5e7eb;
     }
     
     /* Улучшенные стили для маршрутов */
@@ -743,7 +791,7 @@
                     <ul class="list-unstyled">
                         <li><strong>Расстояние:</strong> ${route.distance ? route.distance.toFixed(1) : '?'} км</li>
                         <li><strong>Точек:</strong> ${route.points.length}</li>
-                        <li><strong>Сложность:</strong> ${getDifficultyText(route.difficulty)}</li>
+                        <li><strong>Тип:</strong> ${getRouteTypeText(route.difficulty)}</li>
                         <li><strong>Аудиогид:</strong> ${route.has_audio ? '✅ Есть' : '❌ Нет'}</li>
                     </ul>
                 </div>
@@ -775,15 +823,25 @@
         }
         
         contentHtml += `
-                    </div>
                 </div>
             </div>
+        </div>
         `;
         
         modalContent.innerHTML = contentHtml;
         
         const modal = new bootstrap.Modal(document.getElementById('route-details-modal'));
         modal.show();
+    }
+
+    function getRouteTypeText(routeType) {
+        const types = {
+            'walking': '🚶 Пеший',
+            'driving': '🚗 Автомобильный',
+            'cycling': '🚴 Велосипедный',
+            'mixed': '🔀 Смешанный'
+        };
+        return types[routeType] || routeType;
     }
     
     // Начать маршрут
