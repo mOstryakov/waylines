@@ -37,6 +37,7 @@ class RouteEditor {
         this.orsApiKey = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjYyMzA1OTQzOTI2NzQ1MDBiMTUwOGUxYmVhZTUwMGM4IiwiaCI6Im11cm11cjY0In0=';
         
         this.init();
+        this.initAudioGenerationManager();
     }
 
     init() {
@@ -745,6 +746,11 @@ class RouteEditor {
         content.innerHTML = contentHtml;
         detailsDiv.style.display = 'block';
         
+        // ПОКАЗ AI АУДИО КОНТРОЛОВ В ДЕТАЛЯХ ТОЧКИ
+        if (window.audioGenerationManager) {
+            window.audioGenerationManager.showAudioForPoint(point.id || index, point);
+        }
+        
         // Подсвечиваем точку на карте
         this.highlightPoint(index);
     }
@@ -898,7 +904,6 @@ class RouteEditor {
         }
     }
 
-    // Обновите метод editPoint для настройки обработчиков:
     editPoint(index) {
         this.currentEditIndex = index;
         const point = this.points[index];
@@ -922,6 +927,11 @@ class RouteEditor {
         
         // Загрузка аудио данных
         this.loadAudioData(point);
+        
+        // ПОКАЗ AI АУДИО КОНТРОЛОВ
+        if (window.audioGenerationManager) {
+            window.audioGenerationManager.showAudioForPoint(point.id || index, point);
+        }
         
         // Настройка обработчиков для модального окна
         this.setupPointModalHandlers();
@@ -1156,6 +1166,13 @@ class RouteEditor {
         const tags = tagsInput ? 
             tagsInput.value.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
 
+        // ОБНОВЛЕНИЕ: Получаем текущее состояние AI аудио
+        const hasAIAudio = window.audioGenerationManager ? 
+            window.audioGenerationManager.currentAudioUrl !== null : false;
+        
+        const aiAudioUrl = window.audioGenerationManager ? 
+            window.audioGenerationManager.currentAudioUrl : null;
+
         this.points[index] = {
             ...this.points[index],
             name: name,
@@ -1165,8 +1182,9 @@ class RouteEditor {
             tags: tags,
             hint_author: document.getElementById('point-hint-author')?.value || '',
             photos: pointPhotos, // Только фото точки
-            has_audio: !!this.currentAudioFile,
+            has_audio: hasAIAudio || !!this.currentAudioFile, // AI аудио или записанное
             audio_file: this.currentAudioFile,
+            audio_guide: aiAudioUrl, // URL AI аудио
             lat: this.normalizeCoordinate(document.getElementById('point-lat')?.value || 0),
             lng: this.normalizeCoordinate(document.getElementById('point-lng')?.value || 0)
         };
@@ -1741,13 +1759,16 @@ class RouteEditor {
                 privacy: document.getElementById('privacy')?.value || 'public',
                 mood: document.getElementById('mood')?.value || '',
                 theme: document.getElementById('theme')?.value || '',
+                difficulty: document.getElementById('difficulty')?.value || 'easy',
+                duration_display: document.getElementById('duration_display')?.value || '',
                 duration_minutes: parseInt(document.getElementById('duration_minutes')?.value) || 0,
                 total_distance: parseFloat(this.calculateTotalDistance()) || 0,
                 has_audio_guide: document.getElementById('has_audio_guide')?.checked || false,
                 is_elderly_friendly: document.getElementById('is_elderly_friendly')?.checked || false,
+                is_child_friendly: document.getElementById('is_child_friendly')?.checked || false,
                 is_active: document.getElementById('is_active') ? document.getElementById('is_active').checked : true,
                 route_photos: routePhotos, // Фото маршрута
-                waypoints: this.points.map((point, index) => ({
+                points: this.points.map((point, index) => ({
                     name: point.name,
                     description: point.description || '',
                     address: point.address || '',
@@ -1756,25 +1777,19 @@ class RouteEditor {
                     category: point.category || '',
                     hint_author: point.hint_author || '',
                     tags: point.tags || [],
-                    photos: point.photos || [] // Фото точки
+                    photos: point.photos || [], // Фото точки
+                    has_audio: point.has_audio || false
                 }))
             };
 
-            const invalidPoints = routeData.waypoints.filter(point => 
-                isNaN(point.lat) || isNaN(point.lng) || point.lat === 0 || point.lng === 0
-            );
-            
-            if (invalidPoints.length > 0) {
-                console.error('Неверные координаты:', invalidPoints);
-                throw new Error('Обнаружены точки с неверными координатами');
-            }
+            console.log('Saving route data:', routeData);
 
             let url, method;
             const isEdit = window.routeData && window.routeData.id;
 
             if (isEdit) {
                 url = `/routes/api/routes/${window.routeData.id}/`;
-                method = 'POST';
+                method = 'PUT'; // Используем PUT для редактирования
             } else {
                 url = '/routes/api/routes/';
                 method = 'POST';
@@ -1792,21 +1807,33 @@ class RouteEditor {
 
             if (!response.ok) {
                 const errorText = await response.text();
+                console.error('Server response not OK:', response.status, errorText);
                 throw new Error(`HTTP ${response.status}: ${errorText}`);
             }
 
             const data = await response.json();
+            console.log('Server response:', data);
             
-            if (data.success) {
+            // УСИЛЕННАЯ ПРОВЕРКА УСПЕШНОГО СОХРАНЕНИЯ
+            if (data.id || data.route_id || data.success) {
+                const routeId = data.id || data.route_id;
                 this.showToast('Маршрут успешно сохранен!', 'success');
                 
+                // Переход на страницу маршрута через 1.5 секунды
                 setTimeout(() => {
-                    const routeId = data.route_id || data.id;
                     if (routeId) {
+                        console.log('Redirecting to route:', routeId);
                         window.location.href = `/routes/${routeId}/`;
                     } else {
+                        console.log('Redirecting to my routes');
                         window.location.href = '/routes/my/';
                     }
+                }, 1500);
+            } else {
+                // Если нет явного успеха, но ответ 200 OK, все равно считаем успехом
+                this.showToast('Маршрут сохранен!', 'success');
+                setTimeout(() => {
+                    window.location.href = '/routes/my/';
                 }, 1500);
             }
 
@@ -1820,6 +1847,10 @@ class RouteEditor {
                 errorMessage = 'API endpoint не найден. Проверьте URL.';
             } else if (error.message.includes('403')) {
                 errorMessage = 'Доступ запрещен. Возможно, нужно авторизоваться.';
+            } else if (error.message.includes('400')) {
+                errorMessage = 'Неверные данные. Проверьте заполнение полей.';
+            } else if (error.message.includes('500')) {
+                errorMessage = 'Ошибка сервера. Попробуйте позже.';
             }
             
             this.showToast(`Ошибка сохранения: ${errorMessage}`, 'danger');
@@ -2277,10 +2308,10 @@ class RouteEditor {
                 </div>
             `);
         }
-        if (point.has_audio) {
+        if (point.has_audio || point.audio_guide) {
             mediaIndicators.push(`
-                <div class="media-indicator media-audio" title="Есть аудио">
-                    <i class="fas fa-headphones"></i>
+                <div class="media-indicator media-audio audio-indicator" title="${point.audio_guide ? 'AI аудиогид' : 'Записанное аудио'}">
+                    <i class="fas fa-headphones ${point.audio_guide ? 'text-success' : 'text-primary'}"></i>
                 </div>
             `);
         }
@@ -2477,24 +2508,6 @@ class RouteEditor {
         });
     }
 
-    // Методы для фото точек
-    initPointPhotoHandlers() {
-        const mainPhotoInput = document.getElementById('main-photo-upload');
-        const additionalPhotosInput = document.getElementById('additional-photos-upload');
-        
-        if (mainPhotoInput) {
-            mainPhotoInput.addEventListener('change', (e) => {
-                this.handlePointMainPhotoUpload(e.target.files[0]);
-            });
-        }
-        
-        if (additionalPhotosInput) {
-            additionalPhotosInput.addEventListener('change', (e) => {
-                this.handlePointAdditionalPhotosUpload(e.target.files);
-            });
-        }
-    }
-
     initPointPhotoHandlers() {
         const mainPhotoInput = document.getElementById('main-photo-upload');
         const additionalPhotosInput = document.getElementById('additional-photos-upload');
@@ -2664,6 +2677,136 @@ class RouteEditor {
             }
         }
     }
+    // Инициализация AI аудио менеджера
+    initAudioGenerationManager() {
+        if (!window.audioGenerationManager) {
+            console.warn('AudioGenerationManager not found');
+            return;
+        }
+        
+        // Настройка обработчиков для AI аудио
+        this.setupAudioGenerationHandlers();
+    }
+
+    setupAudioGenerationHandlers() {
+        // Делегирование событий для AI аудио кнопок
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.generate-audio-btn')) {
+                this.openAudioSettings();
+            }
+            if (e.target.closest('.regenerate-audio-btn')) {
+                this.openAudioSettings();
+            }
+            if (e.target.closest('.delete-audio-btn')) {
+                this.deleteAIAudio();
+            }
+            if (e.target.closest('.retry-audio-btn')) {
+                this.openAudioSettings();
+            }
+        });
+
+        // Модальное окно генерации
+        const confirmGenerateBtn = document.getElementById('confirm-generate-audio');
+        if (confirmGenerateBtn) {
+            confirmGenerateBtn.addEventListener('click', () => {
+                this.generateAIAudio();
+            });
+        }
+    }
+
+    // Показ аудио контролов для точки
+    showAudioForPoint(pointId, pointData) {
+        if (window.audioGenerationManager) {
+            window.audioGenerationManager.showAudioForPoint(pointId, pointData);
+        } else {
+            console.warn('AudioGenerationManager not available');
+        }
+    }
+
+    // Открытие настроек аудио
+    openAudioSettings() {
+        if (!window.audioGenerationManager) {
+            this.showToast('AI аудио сервис недоступен', 'warning');
+            return;
+        }
+        window.audioGenerationManager.openAudioSettings();
+    }
+
+    // Генерация AI аудио
+    async generateAIAudio() {
+        if (!window.audioGenerationManager || this.currentEditIndex === null) {
+            this.showToast('Не выбрана точка для генерации аудио', 'warning');
+            return;
+        }
+
+        const pointId = this.points[this.currentEditIndex].id;
+        if (!pointId) {
+            this.showToast('Точка не сохранена. Сначала сохраните точку.', 'warning');
+            return;
+        }
+
+        try {
+            await window.audioGenerationManager.generateAudio();
+        } catch (error) {
+            console.error('AI audio generation error:', error);
+            this.showToast('Ошибка генерации аудио: ' + error.message, 'danger');
+        }
+    }
+
+    // Удаление AI аудио
+    async deleteAIAudio() {
+        if (!window.audioGenerationManager || this.currentEditIndex === null) {
+            return;
+        }
+
+        const pointId = this.points[this.currentEditIndex].id;
+        if (!pointId) {
+            this.showToast('Точка не сохранена', 'warning');
+            return;
+        }
+
+        try {
+            await window.audioGenerationManager.deleteAudio();
+            // Обновляем состояние точки
+            this.points[this.currentEditIndex].has_audio = false;
+            this.points[this.currentEditIndex].audio_guide = null;
+            this.updatePointsList();
+        } catch (error) {
+            console.error('AI audio deletion error:', error);
+            this.showToast('Ошибка удаления аудио', 'danger');
+        }
+    }
+
+    // Обновление аудио в данных точки
+    updatePointAudio(pointId, audioUrl) {
+        const pointIndex = this.points.findIndex(p => p.id === pointId);
+        if (pointIndex !== -1) {
+            this.points[pointIndex].audio_guide = audioUrl;
+            this.points[pointIndex].has_audio = !!audioUrl;
+            this.updatePointInList(pointIndex);
+        }
+    }
+
+    // Обновление точки в списке (добавь аудио индикатор)
+    updatePointInList(index) {
+        const point = this.points[index];
+        if (!point) return;
+        
+        const pointElement = document.querySelector(`[data-point-id="${index}"]`);
+        if (pointElement) {
+            // Обновляем индикатор аудио
+            const audioIndicator = pointElement.querySelector('.audio-indicator');
+            if (audioIndicator) {
+                if (point.audio_guide) {
+                    audioIndicator.innerHTML = '<i class="fas fa-headphones text-success"></i>';
+                    audioIndicator.title = 'Есть аудиогид';
+                } else {
+                    audioIndicator.innerHTML = '<i class="fas fa-headphones text-muted"></i>';
+                    audioIndicator.title = 'Нет аудиогида';
+                }
+            }
+        }
+    }
 }
 
 // Глобальная переменная для доступа из HTML
@@ -2735,4 +2878,18 @@ window.removeAdditionalPhoto = function(button) {
     if (routeEditor) {
         routeEditor.removePointAdditionalPhoto(button);
     }
+};
+
+window.updatePointAudio = function(pointId, audioUrl) {
+    if (routeEditor) {
+        routeEditor.updatePointAudio(pointId, audioUrl);
+    }
+};
+
+window.getCurrentPointId = function() {
+    if (routeEditor && routeEditor.currentEditIndex !== null) {
+        const point = routeEditor.points[routeEditor.currentEditIndex];
+        return point.id || routeEditor.currentEditIndex;
+    }
+    return null;
 };

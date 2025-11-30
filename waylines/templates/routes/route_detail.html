@@ -4,27 +4,41 @@
 {% block title %}{{ route.name }} - Waylines{% endblock %}
 
 {% block content %}
+<div style="background: #e3f2fd; padding: 15px; margin: 10px; border-radius: 8px; border: 2px solid #2196f3;">
+    <h6>🔍 Отладка фото в route_detail:</h6>
+    <p><strong>Route ID:</strong> {{ route.id }}</p>
+    <p><strong>Route Photos:</strong> {{ route.photos.count }} шт.</p>
+    
+    {% for photo in route.photos.all %}
+    <p>📷 Фото {{ forloop.counter }}: <code>{{ photo.image.url }}</code></p>
+    {% empty %}
+    <p>❌ Нет фото маршрута</p>
+    {% endfor %}
+    
+    <p><strong>Points Photos:</strong></p>
+    {% for point in points %}
+    <p>📍 Точка "{{ point.name }}": {{ point.photos.count }} фото</p>
+    {% for photo in point.photos.all %}
+    <p style="margin-left: 20px;">📸 <code>{{ photo.image.url }}</code></p>
+    {% endfor %}
+    {% endfor %}
+</div>
 <div class="route-detail-page">
-    <!-- Hero секция -->
     <div class="route-hero position-relative mb-4">
         {% if route.photos.all %}
         <div class="route-hero-carousel">
-            <div id="routeHeroCarousel" class="carousel slide" data-bs-ride="carousel">
-                <div class="carousel-inner">
-                    {% for photo in route.photos.all %}
-                    <div class="carousel-item {% if forloop.first %}active{% endif %}">
-                        <div class="hero-image" style="background-image: url('{{ photo.image.url }}');"></div>
-                        {% if photo.caption %}
-                        <div class="hero-caption">
-                            <div class="container">
-                                <p class="mb-0 text-white">{{ photo.caption }}</p>
-                            </div>
-                        </div>
-                        {% endif %}
+            {% for photo in route.photos.all %}
+            <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                <div class="hero-image" style="background-image: url('{{ photo.image.url }}');"></div>
+                {% if photo.caption %}
+                <div class="hero-caption">
+                    <div class="container">
+                        <p class="mb-0 text-white">{{ photo.caption }}</p>
                     </div>
-                    {% endfor %}
                 </div>
+                {% endif %}
             </div>
+            {% endfor %}
         </div>
         {% else %}
         <div class="hero-placeholder bg-light">
@@ -179,6 +193,68 @@
                     </div>
                 </div>
 
+                {% if full_audio_guide and full_audio_guide.audio_file %}
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white border-bottom">
+                        <h5 class="card-title mb-0 text-dark">
+                            <i class="fas fa-headphones me-2 text-primary"></i>
+                            Полный аудиогид маршрута
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="full-audio-guide">
+                            <div class="d-flex align-items-center justify-content-between mb-3">
+                                <div>
+                                    <h6 class="text-dark mb-1">Аудиоэкскурсия по всему маршруту</h6>
+                                    <p class="text-muted small mb-0">
+                                        <i class="fas fa-clock me-1"></i>
+                                        Автоматически сгенерирован AI
+                                    </p>
+                                </div>
+                                <span class="badge bg-primary bg-opacity-10 text-primary">
+                                    {{ full_audio_guide.total_points }} точек
+                                </span>
+                            </div>
+                            
+                            <audio controls class="w-100" style="border-radius: 12px;">
+                                <source src="{{ full_audio_guide.audio_file.url }}" type="audio/mpeg">
+                                Ваш браузер не поддерживает аудио элементы.
+                            </audio>
+                            
+                            <div class="audio-features mt-3">
+                                <div class="row g-2">
+                                    <div class="col-auto">
+                                        <span class="badge bg-light text-dark border">
+                                            <i class="fas fa-robot me-1 text-primary"></i>AI генерация
+                                        </span>
+                                    </div>
+                                    <div class="col-auto">
+                                        <span class="badge bg-light text-dark border">
+                                            <i class="fas fa-sync-alt me-1 text-success"></i>Автообновление
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% elif route.has_audio_guide %}
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body text-center py-4">
+                        <i class="fas fa-headphones fa-2x text-muted mb-3"></i>
+                        <h6 class="text-dark mb-2">Аудиогид маршрута</h6>
+                        <p class="text-muted small mb-3">
+                            Для этого маршрута доступна генерация аудиогида с помощью AI
+                        </p>
+                        {% if user == route.author %}
+                        <a href="{% url 'edit_route' route.id %}#audio" class="btn btn-primary btn-sm">
+                            <i class="fas fa-magic me-1"></i>Сгенерировать аудиогид
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
                 <!-- Карта -->
                 <div class="card border-0 shadow-sm mb-4">
                     <div class="card-header bg-white border-bottom">
@@ -219,12 +295,38 @@
                                         <p class="point-description text-muted mb-2">{{ point.description }}</p>
                                         {% endif %}
 
+                                        <!-- ДОБАВЬ ЭТОТ БЛОК ДЛЯ AI АУДИО -->
+                                        {% if point.audio_guide %}
+                                        <div class="point-audio-section mt-3">
+                                            <div class="audio-player-card bg-light rounded p-3">
+                                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                                    <h6 class="mb-0 text-dark">
+                                                        <i class="fas fa-headphones text-primary me-2"></i>
+                                                        Аудиогид точки
+                                                    </h6>
+                                                    <span class="badge bg-success bg-opacity-10 text-success small">
+                                                        AI сгенерирован
+                                                    </span>
+                                                </div>
+                                                <audio controls class="w-100" style="border-radius: 8px;">
+                                                    <source src="{{ point.audio_guide.url }}" type="audio/mpeg">
+                                                    Ваш браузер не поддерживает аудио элементы.
+                                                </audio>
+                                                <div class="audio-info small text-muted mt-2">
+                                                    <i class="fas fa-robot me-1"></i>
+                                                    Автоматически сгенерирован нейросетью
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                        <!-- КОНЕЦ БЛОКА AI АУДИО -->
+
                                         {% if point.photos.all %}
                                         <div class="point-photos d-flex gap-2 mb-2">
                                             {% for photo in point.photos.all %}
                                             <img src="{{ photo.image.url }}" class="point-photo rounded"
-                                                 alt="{{ photo.caption }}"
-                                                 style="width: 60px; height: 60px; object-fit: cover;">
+                                                alt="{{ photo.caption }}"
+                                                style="width: 60px; height: 60px; object-fit: cover;">
                                             {% endfor %}
                                         </div>
                                         {% endif %}
@@ -529,6 +631,57 @@
     .hero-actions-light .d-flex {
         justify-content: flex-start !important;
     }
+
+/* Стили для аудиоплеера */
+.audio-player-card {
+    border: 1px solid #e3f2fd;
+    background: linear-gradient(135deg, #f8fdff 0%, #f0f7ff 100%);
+    border-radius: 12px;
+}
+
+audio {
+    border-radius: 12px;
+    background: #f8f9fa;
+}
+
+audio::-webkit-media-controls-panel {
+    background-color: #f8f9fa;
+    border-radius: 12px;
+}
+
+audio::-webkit-media-controls-play-button {
+    background-color: #3b82f6;
+    border-radius: 50%;
+}
+
+audio::-webkit-media-controls-current-time-display,
+audio::-webkit-media-controls-time-remaining-display {
+    color: #374151;
+    font-weight: 500;
+}
+
+/* Анимация для индикатора AI */
+@keyframes pulse-ai {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.badge.bg-success.bg-opacity-10 {
+    animation: pulse-ai 2s infinite;
+}
+
+/* Улучшенные стили для полного аудиогида */
+.full-audio-guide {
+    background: linear-gradient(135deg, #f0f7ff 0%, #e3f2fd 100%);
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+
+.audio-features .badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
 }
 </style>
 {% endblock %}

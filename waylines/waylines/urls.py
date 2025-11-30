@@ -13,6 +13,7 @@ urlpatterns = [
     path("chat/", include("chat.urls")),
     path("interactions/", include("interactions.urls")),
     path("users/", include("users.urls")),
+    path('audio/', include('ai_audio.urls')),
 ]
 
 if settings.DEBUG:

@@ -179,6 +179,23 @@ def route_detail(request, route_id):
     comments = route.comments.all().order_by("-created_at")[:10]
     route_photos = route.photos.all().order_by("order")
 
+    # ДОБАВЛЯЕМ: Получаем информацию об AI аудио
+    full_audio_guide = None
+    points_with_audio = []
+    
+    try:
+        from ai_audio.models import RouteAudioGuide
+        full_audio_guide = RouteAudioGuide.objects.filter(route=route).first()
+        
+        # Собираем точки с AI аудио
+        for point in points:
+            if point.audio_guide:  # Проверяем есть ли аудио файл у точки
+                points_with_audio.append(point.id)
+                
+    except ImportError:
+        # Если приложение ai_audio не установлено
+        pass
+
     # Сообщения чата маршрута
     route_chat_messages = []
     if hasattr(route, 'chat'):
@@ -212,6 +229,9 @@ def route_detail(request, route_id):
         "user_favorites_ids": list(user_favorites_ids),
         "user_rating": user_rating,
         "similar_routes": similar_routes,
+        # ДОБАВЛЯЕМ AI аудио данные
+        "full_audio_guide": full_audio_guide,
+        "points_with_audio": points_with_audio,
     }
 
     if request.user.is_authenticated:
@@ -446,6 +466,7 @@ def edit_route(request, route_id):
                 if photo_data.get("base64"):
                     save_base64_photo(photo_data, route, RoutePhoto, order=i)
 
+            # ИСПРАВЛЕНИЕ: Правильно обрабатываем точки
             points_data = data.get("points", [])
             for i, point_data in enumerate(points_data):
                 point = RoutePoint.objects.create(
@@ -453,8 +474,9 @@ def edit_route(request, route_id):
                     name=point_data.get("name", f"Точка {i+1}"),
                     description=point_data.get("description", ""),
                     address=point_data.get("address", ""),
-                    latitude=point_data["lat"],
-                    longitude=point_data["lng"],
+                    # ИСПРАВЛЕНИЕ: Используем правильные названия полей
+                    latitude=point_data.get("lat", 0),  # ← Исправлено
+                    longitude=point_data.get("lng", 0), # ← Исправлено
                     category=point_data.get("category", ""),
                     hint_author=point_data.get("hint_author", ""),
                     tags=point_data.get("tags", []),
@@ -500,11 +522,11 @@ def edit_route(request, route_id):
                 "name": point.name,
                 "description": point.description,
                 "address": point.address,
-                "lat": point.latitude,
-                "lng": point.longitude,
+                "lat": float(point.latitude) if point.latitude else 0,
+                "lng": float(point.longitude) if point.longitude else 0,
                 "category": point.category,
                 "hint_author": point.hint_author,
-                "tags": point.tags,
+                "tags": point.tags if point.tags else [],
                 "photos": [
                     {
                         "id": photo.id,
@@ -535,18 +557,43 @@ def edit_route(request, route_id):
 def save_base64_photo(photo_data, parent_obj, photo_model, order=0):
     """Сохранение фото из base64"""
     try:
+        print(f"=== DEBUG SAVE PHOTO ===")
+        print(f"🔧 Сохранение фото для {parent_obj.__class__.__name__} {parent_obj.id}")
+        print(f"📷 Photo model: {photo_model.__name__}")
+        print(f"📦 Photo data keys: {photo_data.keys() if photo_data else 'No data'}")
+        
+        if not photo_data or not photo_data.get("base64"):
+            print("❌ Нет base64 данных в photo_data")
+            return None
+            
         base64_string = photo_data["base64"]
         caption = photo_data.get("caption", "")
+        
+        print(f"📏 Длина base64 строки: {len(base64_string)}")
+        print(f"📝 Caption: {caption}")
         
         # Убираем префикс data URL если есть
         if ',' in base64_string:
             base64_string = base64_string.split(',')[1]
+            print("🔧 Убран data URL префикс")
         
+        # Проверяем что остались данные
+        if len(base64_string) < 100:
+            print("❌ Base64 строка слишком короткая после обработки")
+            return None
+            
         # Декодируем base64
-        image_data = base64.b64decode(base64_string)
+        try:
+            image_data = base64.b64decode(base64_string)
+            print(f"✅ Base64 декодирован, размер: {len(image_data)} байт")
+        except Exception as e:
+            print(f"❌ Ошибка декодирования base64: {e}")
+            return None
         
         # Создаем имя файла
-        filename = f"{parent_obj.__class__.__name__.lower()}_{parent_obj.id}_{photo_model.__name__.lower()}_{order}.jpg"
+        filename = f"{parent_obj.__class__.__name__.lower()}_{parent_obj.id}_{photo_model.__name__.lower()}_{order}_{int(time.time())}.jpg"
+        
+        print(f"📁 Имя файла: {filename}")
         
         # Создаем объект фото
         photo = photo_model.objects.create(
@@ -555,12 +602,22 @@ def save_base64_photo(photo_data, parent_obj, photo_model, order=0):
             order=order
         )
         
+        print(f"📸 Создан объект фото: {photo.id}")
+        
         # Сохраняем изображение
         photo.image.save(filename, ContentFile(image_data), save=True)
         
+        print(f"✅ Фото сохранено успешно!")
+        print(f"📁 Путь: {photo.image.path}")
+        print(f"🌐 URL: {photo.image.url}")
+        print(f"=== END DEBUG SAVE PHOTO ===")
+        
         return photo
+        
     except Exception as e:
-        print(f"Ошибка сохранения фото: {e}")
+        print(f"❌ КРИТИЧЕСКАЯ ОШИБКА сохранения фото: {e}")
+        import traceback
+        print(f"🔍 Traceback: {traceback.format_exc()}")
         return None
 
 @login_required

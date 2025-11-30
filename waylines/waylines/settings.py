@@ -1,5 +1,6 @@
 from importlib.metadata import FastPath
 from pathlib import Path
+import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -24,6 +25,7 @@ INSTALLED_APPS = [
     "interactions.apps.InteractionsConfig",
     "users.apps.UsersConfig",
     "django_cleanup.apps.CleanupConfig",
+    "ai_audio.apps.AiAudioConfig",
 ]
 
 MIDDLEWARE = [
@@ -140,10 +142,14 @@ STATICFILES_FINDERS = [
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
 ]
 
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-DOMAIN = 'http://localhost:8000'
+DOMAIN = 'http://localhost:8000'\
+
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', 'your-openai-key-here')
+YANDEX_TTS_API_KEY = os.getenv('YANDEX_TTS_API_KEY', 'your-yandex-key-here')
+GOOGLE_APPLICATION_CREDENTIALS = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', 'path-to-google-credentials.json')

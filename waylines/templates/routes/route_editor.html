@@ -316,6 +316,7 @@
                                 <div id="point-details-content">
                                     <!-- Контент будет заполнен JavaScript -->
                                 </div>
+                                {% include 'ai_audio/audio_controls.html' %}
                             </div>
                         </div>
                     </div>
@@ -756,11 +757,41 @@
     background: #fef3cd;
     border-color: #f59e0b;
 }
+
+.generate-audio-btn,
+.regenerate-audio-btn,
+.delete-audio-btn,
+.retry-audio-btn {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    opacity: 1 !important;
+}
+
+/* Убедись что кнопки не перекрыты */
+.audio-generation-section {
+    position: relative;
+    z-index: 10;
+}
+
+/* Убери любые блокировки */
+.audio-generation-section * {
+    pointer-events: auto !important;
+}
 </style>
 {% endblock %}
 
 {% block extra_js %}
+<script>
+{% if route_data_json %}
+    window.routeData = {{ route_data_json|safe }};
+    console.log('✅ Данные маршрута переданы. Точек:', window.routeData.points ? window.routeData.points.length : 0);
+{% else %}
+    window.routeData = null;
+{% endif %}
+</script>
+
 <script src="{% static 'js/route_editor.js' %}"></script>
+<script src="{% static 'js/audio_generation.js' %}"></script>
 <script>
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {

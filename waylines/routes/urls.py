@@ -46,6 +46,7 @@ urlpatterns = [
 
     path("<int:route_id>/send-to-friend/", views.send_to_friend, name="send_to_friend"),
     path("api/friends/", views.get_friends_list, name="get_friends_list"),
+    
     # Поиск
     path("search/", views.search_routes, name="search"),
 ]
