@@ -36,7 +36,7 @@
             </div>
         </div>
         {% endif %}
-        
+
         <!-- Overlay с информацией -->
         <div class="hero-overlay-light">
             <div class="container">
@@ -49,9 +49,9 @@
                                 <li class="breadcrumb-item active">{{ route.name }}</li>
                             </ol>
                         </nav>
-                        
+
                         <h1 class="hero-title-light">{{ route.name }}</h1>
-                        
+
                         <div class="hero-meta-light d-flex flex-wrap gap-3 align-items-center">
                             <div class="author-info d-flex align-items-center">
                                 <div class="author-avatar me-2">
@@ -65,7 +65,7 @@
                             <span>{{ route.created_at|date:"d.m.Y" }}</span>
                         </div>
                     </div>
-                    
+
                     <div class="col-lg-4 text-lg-end">
                         <div class="hero-actions-light">
                             {% if user.is_authenticated %}
@@ -77,11 +77,11 @@
                                         {% if route.id in user_favorites_ids %}В избранном{% else %}В избранное{% endif %}
                                     </button>
                                 </form>
-                                
+
                                 <a href="{% url 'chat:route_chat' route.id %}" class="btn btn-primary btn-sm">
                                     <i class="fas fa-comments"></i> Чат маршрута
                                 </a>
-                                
+
                                 {% if route.author == user %}
                                 <a href="{% url 'edit_route' route.id %}" class="btn btn-outline-secondary btn-sm">
                                     <i class="fas fa-edit"></i> Редактировать
@@ -110,31 +110,31 @@
                         <i class="fas fa-{% if route.route_type == 'walking' %}walking{% elif route.route_type == 'driving' %}car{% else %}bicycle{% endif %} me-1"></i>
                         {{ route.get_route_type_display }}
                     </span>
-                    
+
                     {% if route.mood %}
                     <span class="badge bg-light text-dark border">
                         <i class="fas fa-smile me-1 text-muted"></i>{{ route.get_mood_display }}
                     </span>
                     {% endif %}
-                    
+
                     {% if route.theme %}
                     <span class="badge bg-light text-dark border">
                         <i class="fas fa-tag me-1 text-muted"></i>{{ route.get_theme_display }}
                     </span>
                     {% endif %}
-                    
+
                     {% if route.is_elderly_friendly %}
                     <span class="badge bg-light text-dark border">
                         <i class="fas fa-wheelchair me-1 text-muted"></i>Для пожилых
                     </span>
                     {% endif %}
-                    
+
                     {% if route.has_audio_guide %}
                     <span class="badge bg-light text-dark border">
                         <i class="fas fa-headphones me-1 text-muted"></i>Аудиогид
                     </span>
                     {% endif %}
-                    
+
                     {% if not route.is_active %}
                     <span class="badge bg-light text-dark border">
                         <i class="fas fa-pause-circle me-1 text-muted"></i>Не актуален
@@ -153,7 +153,7 @@
                         {% else %}
                         <p class="text-muted">Описание отсутствует</p>
                         {% endif %}
-                        
+
                         <div class="route-stats mt-4 pt-3 border-top">
                             <div class="row g-3">
                                 <div class="col-sm-4">
@@ -214,16 +214,16 @@
                                             <i class="fas fa-map-marker-alt me-1"></i>{{ point.address }}
                                         </p>
                                         {% endif %}
-                                        
+
                                         {% if point.description %}
                                         <p class="point-description text-muted mb-2">{{ point.description }}</p>
                                         {% endif %}
-                                        
+
                                         {% if point.photos.all %}
                                         <div class="point-photos d-flex gap-2 mb-2">
                                             {% for photo in point.photos.all %}
-                                            <img src="{{ photo.image.url }}" class="point-photo rounded" 
-                                                 alt="{{ photo.caption }}" 
+                                            <img src="{{ photo.image.url }}" class="point-photo rounded"
+                                                 alt="{{ photo.caption }}"
                                                  style="width: 60px; height: 60px; object-fit: cover;">
                                             {% endfor %}
                                         </div>
@@ -237,55 +237,7 @@
                 </div>
 
                 <!-- Комментарии -->
-                <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-header bg-white border-bottom">
-                        <h5 class="card-title mb-0 text-dark">
-                            <i class="fas fa-comments me-2 text-muted"></i>Комментарии
-                            <span class="badge bg-primary ms-2">{{ comments.count }}</span>
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        {% if user.is_authenticated %}
-                        <form method="post" action="{% url 'interactions:add_comment' route.id %}" class="mb-4">
-                            {% csrf_token %}
-                            <div class="mb-3">
-                                <textarea name="text" class="form-control" rows="3" placeholder="Оставьте ваш комментарий..." required></textarea>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Отправить комментарий</button>
-                        </form>
-                        {% else %}
-                        <div class="alert alert-info">
-                            <a href="{% url 'login' %}?next={{ request.path }}" class="alert-link">Войдите</a>, чтобы оставить комментарий
-                        </div>
-                        {% endif %}
-                        
-                        <div class="comments-list">
-                            {% for comment in comments %}
-                            <div class="comment-item mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}">
-                                <div class="d-flex align-items-start">
-                                    <div class="comment-avatar me-3">
-                                        <div class="avatar-circle-light">
-                                            <i class="fas fa-user"></i>
-                                        </div>
-                                    </div>
-                                    <div class="comment-content flex-grow-1">
-                                        <div class="d-flex justify-content-between align-items-center mb-1">
-                                            <strong class="text-dark">{{ comment.user.username }}</strong>
-                                            <small class="text-muted">{{ comment.created_at|date:"d.m.Y H:i" }}</small>
-                                        </div>
-                                        <p class="mb-0 text-muted">{{ comment.text }}</p>
-                                    </div>
-                                </div>
-                            </div>
-                            {% empty %}
-                            <div class="text-center py-4">
-                                <i class="fas fa-comments fa-2x text-muted mb-3"></i>
-                                <p class="text-muted mb-0">Пока нет комментариев. Будьте первым!</p>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
+                {% include "interactions/comments.html" %}
 
                 <!-- Чат маршрута -->
                 <div class="card border-0 shadow-sm mb-4">
@@ -535,19 +487,19 @@
 }
 
 /* Бейджи */
-.route-type-badge.walking { 
-    background: #e8f5e8; 
-    color: #2e7d32; 
+.route-type-badge.walking {
+    background: #e8f5e8;
+    color: #2e7d32;
     border: 1px solid #c8e6c9;
 }
-.route-type-badge.driving { 
-    background: #e3f2fd; 
-    color: #1565c0; 
+.route-type-badge.driving {
+    background: #e3f2fd;
+    color: #1565c0;
     border: 1px solid #bbdefb;
 }
-.route-type-badge.cycling { 
-    background: #fff3e0; 
-    color: #ef6c00; 
+.route-type-badge.cycling {
+    background: #fff3e0;
+    color: #ef6c00;
     border: 1px solid #ffe0b2;
 }
 
@@ -565,15 +517,15 @@
         margin: 0;
         border-radius: 0;
     }
-    
+
     .hero-image {
         height: 300px;
     }
-    
+
     .hero-title-light {
         font-size: 1.5rem;
     }
-    
+
     .hero-actions-light .d-flex {
         justify-content: flex-start !important;
     }
@@ -607,7 +559,7 @@ function initMap() {
 
     // Создаем карту
     const map = L.map('route-map').setView([points[0].lat, points[0].lng], 13);
-    
+
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
         maxZoom: 19
@@ -618,7 +570,7 @@ function initMap() {
         const marker = L.marker([point.lat, point.lng], {
             icon: createNumberedIcon(index + 1, points.length)
         }).addTo(map);
-        
+
         const popupContent = `
             <div style="min-width: 200px; text-align: center;">
                 <strong>Точка ${index + 1}: ${point.name}</strong><br>
@@ -636,7 +588,7 @@ function initMap() {
 function createNumberedIcon(index, total) {
     const isStart = index === 1;
     const isEnd = index === total;
-    
+
     let backgroundColor = '#2563eb';
     if (isStart) backgroundColor = '#48bb78';
     if (isEnd) backgroundColor = '#f56565';
@@ -668,21 +620,21 @@ async function buildRouteWithORS(points, map, routeType) {
 
     try {
         console.log('Начинаем построение маршрута через ORS...');
-        
+
         // Определяем тип маршрута для OpenRouteService с правильными профилями
         const profiles = {
             'walking': 'foot-walking',
-            'driving': 'driving-car', 
+            'driving': 'driving-car',
             'cycling': 'cycling-regular'
         };
-        
+
         const profile = profiles[routeType] || 'foot-walking';
-        
+
         // Подготавливаем координаты в правильном формате [долгота, широта]
         const coordinates = points.map(point => [point.lng, point.lat]);
-        
-        console.log('Отправляем запрос к ORS:', { 
-            profile, 
+
+        console.log('Отправляем запрос к ORS:', {
+            profile,
             routeType,
             coordinates: coordinates,
             pointsCount: coordinates.length
@@ -708,9 +660,9 @@ async function buildRouteWithORS(points, map, routeType) {
             },
             body: JSON.stringify(requestBody)
         });
-        
+
         console.log('ORS Response status:', response.status, response.statusText);
-        
+
         if (!response.ok) {
             let errorText = 'Unknown error';
             try {
@@ -721,22 +673,22 @@ async function buildRouteWithORS(points, map, routeType) {
             console.error('ORS Error Response:', errorText);
             throw new Error(`ORS API ошибка ${response.status}: ${errorText}`);
         }
-        
+
         const data = await response.json();
         console.log('ORS Response data:', data);
-        
+
         // Проверяем структуру ответа - ИСПРАВЛЕННАЯ ПРОВЕРКА
         if (data.features && data.features.length > 0 && data.features[0].geometry) {
             const route = data.features[0];
             const routeGeometry = route.geometry;
-            
+
             // Получаем информацию о маршруте - ИСПРАВЛЕННАЯ ЛОГИКА
             const routeInfo = route.properties;
             console.log('Route properties:', routeInfo);
-            
+
             let distanceKm = 0;
             let durationMinutes = 0;
-            
+
             // Разные способы получения информации о маршруте
             if (routeInfo.segments && routeInfo.segments.length > 0) {
                 // Стандартный случай - есть сегменты
@@ -753,26 +705,26 @@ async function buildRouteWithORS(points, map, routeType) {
                 distanceKm = calculateStraightDistance(points).toFixed(2);
                 durationMinutes = estimateDuration(distanceKm, routeType);
             }
-            
+
             console.log(`Маршрут построен: ${distanceKm} км, ${durationMinutes} мин`);
-            
+
             // Конвертируем координаты из [lng, lat] в [lat, lng] для Leaflet
             const routeCoordinates = routeGeometry.coordinates.map(coord => [coord[1], coord[0]]);
-            
+
             // Отображаем маршрут на карте
             displayRouteOnMap(routeCoordinates, map, routeType, distanceKm, durationMinutes);
-            
+
         } else {
             console.error('Invalid ORS response structure:', data);
             throw new Error('Неверная структура ответа ORS API');
         }
-        
+
     } catch (error) {
         console.error('Ошибка построения маршрута через ORS:', error);
-        
+
         // Показываем пользователю понятное сообщение об ошибке
         let userMessage = 'Не удалось построить маршрут по дорогам. ';
-        
+
         if (error.message.includes('авторизации') || error.message.includes('ключ')) {
             userMessage += 'Проблема с API ключом.';
         } else if (error.message.includes('лимит')) {
@@ -784,9 +736,9 @@ async function buildRouteWithORS(points, map, routeType) {
         } else {
             userMessage += 'Используется прямое соединение точек.';
         }
-        
+
         showToast(userMessage, 'warning');
-        
+
         // Резервный вариант - прямая линия
         buildStraightRoute(points, map, routeType);
     }
@@ -796,10 +748,10 @@ async function buildRouteWithORS(points, map, routeType) {
 function estimateDuration(distanceKm, routeType) {
     const averageSpeeds = {
         'walking': 5,    // км/ч
-        'cycling': 15,   // км/ч  
+        'cycling': 15,   // км/ч
         'driving': 50    // км/ч
     };
-    
+
     const speed = averageSpeeds[routeType] || 5;
     const durationHours = distanceKm / speed;
     return Math.round(durationHours * 60);
@@ -813,9 +765,9 @@ function displayRouteOnMap(coordinates, map, routeType, distance, duration) {
         'driving': { color: '#2563eb', weight: 6, opacity: 0.8 },
         'cycling': { color: '#f59e0b', weight: 5, opacity: 0.8 }
     };
-    
+
     const style = routeStyles[routeType] || routeStyles.walking;
-    
+
     // Создаем линию маршрута
     const routeLine = L.polyline(coordinates, {
         color: style.color,
@@ -824,7 +776,7 @@ function displayRouteOnMap(coordinates, map, routeType, distance, duration) {
         lineJoin: 'round',
         lineCap: 'round'
     }).addTo(map);
-    
+
     // Добавляем popup с информацией о маршруте
     routeLine.bindPopup(`
         <div style="min-width: 200px; text-align: center;">
@@ -834,26 +786,26 @@ function displayRouteOnMap(coordinates, map, routeType, distance, duration) {
             <small>Точек: ${coordinates.length}</small>
         </div>
     `);
-    
+
     // Подгоняем карту под маршрут
     map.fitBounds(routeLine.getBounds(), { padding: [20, 20] });
-    
+
     console.log('Маршрут отображен на карте');
 }
 
 // Резервная функция для прямого маршрута
 function buildStraightRoute(points, map, routeType) {
     console.log('Используем прямой маршрут (резервный вариант)');
-    
+
     const coordinates = points.map(point => [point.lat, point.lng]);
     const routeStyles = {
         'walking': { color: '#48bb78', weight: 3, opacity: 0.6 },
         'driving': { color: '#2563eb', weight: 4, opacity: 0.6 },
         'cycling': { color: '#f59e0b', weight: 3, opacity: 0.6 }
     };
-    
+
     const style = routeStyles[routeType] || routeStyles.walking;
-    
+
     const routeLine = L.polyline(coordinates, {
         color: style.color,
         weight: style.weight,
@@ -861,11 +813,11 @@ function buildStraightRoute(points, map, routeType) {
         dashArray: '10, 10',
         lineJoin: 'round'
     }).addTo(map);
-    
+
     // Рассчитываем расстояние для прямого маршрута
     const distance = calculateStraightDistance(points).toFixed(2);
     const duration = estimateDuration(distance, routeType);
-    
+
     routeLine.bindPopup(`
         <div style="min-width: 200px; text-align: center;">
             <strong>Прямой ${getRouteTypeName(routeType)} маршрут</strong><br>
@@ -874,7 +826,7 @@ function buildStraightRoute(points, map, routeType) {
             <small><em>Маршрут по дорогам недоступен</em></small>
         </div>
     `);
-    
+
     map.fitBounds(routeLine.getBounds(), { padding: [20, 20] });
 }
 
@@ -882,7 +834,7 @@ function buildStraightRoute(points, map, routeType) {
 function getRouteTypeName(routeType) {
     const names = {
         'walking': 'Пеший',
-        'driving': 'Автомобильный', 
+        'driving': 'Автомобильный',
         'cycling': 'Велосипедный'
     };
     return names[routeType] || 'Пеший';
@@ -902,9 +854,9 @@ function calculateDistance(lat1, lng1, lat2, lng2) {
     const R = 6371; // Радиус Земли в км
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLng = (lng2 - lng1) * Math.PI / 180;
-    const a = 
+    const a =
         Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
         Math.sin(dLng/2) * Math.sin(dLng/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     return R * c;
@@ -927,19 +879,19 @@ function showToast(message, type = 'info') {
         max-width: 300px;
         word-wrap: break-word;
     `;
-    
+
     const colors = {
         'success': '#10b981',
-        'warning': '#f59e0b', 
+        'warning': '#f59e0b',
         'danger': '#ef4444',
         'info': '#3b82f6'
     };
-    
+
     toast.style.backgroundColor = colors[type] || colors.info;
     toast.textContent = message;
-    
+
     document.body.appendChild(toast);
-    
+
     setTimeout(() => {
         if (toast.parentNode) {
             toast.parentNode.removeChild(toast);
