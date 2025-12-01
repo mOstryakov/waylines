@@ -1,17 +1,37 @@
-<div class="card route-card h-100 shadow-sm border-0 hover-shadow transition-all position-relative">
+<div class="card route-card h-100 shadow-sm border-0 hover-shadow transition-all position-relative route-card-full">
     <!-- Основная кликабельная область -->
     <a href="{% url 'route_detail' route.id %}" class="route-card-link position-absolute top-0 start-0 w-100 h-100" 
        style="z-index: 1; text-decoration: none;"></a>
     
-    <!-- Картинка маршрута -->
-    <div class="route-image-container position-relative overflow-hidden rounded-top">
-        {% if route.photos.first %}
-        <img src="{{ route.photos.first.image.url }}" class="card-img-top route-image" alt="{{ route.name }}"
-             style="height: 220px; object-fit: cover; transition: transform 0.4s ease;">
+    <!-- Контейнер для фото -->
+    <div class="route-image-container position-relative overflow-hidden rounded-top" style="height: 220px;">
+        {% if route.photos.exists and route.photos.count > 1 %}
+        <!-- Карусель для нескольких фото -->
+        <div id="routeCarousel{{ route.id }}" class="carousel slide h-100" data-bs-ride="carousel" onclick="event.preventDefault();">
+            <div class="carousel-inner h-100">
+                {% for photo in route.photos.all %}
+                <div class="carousel-item h-100 {% if forloop.first %}active{% endif %}">
+                    <img src="{{ photo.image.url }}" class="d-block w-100 h-100" alt="{{ route.name }}" style="object-fit: cover;">
+                </div>
+                {% endfor %}
+            </div>
+            <!-- Кнопки навигации -->
+            <button class="carousel-control-prev" type="button" data-bs-target="#routeCarousel{{ route.id }}" data-bs-slide="prev" onclick="event.stopPropagation();">
+                <span class="carousel-control-prev-icon bg-dark rounded-circle p-2"></span>
+                <span class="visually-hidden">Предыдущее</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#routeCarousel{{ route.id }}" data-bs-slide="next" onclick="event.stopPropagation();">
+                <span class="carousel-control-next-icon bg-dark rounded-circle p-2"></span>
+                <span class="visually-hidden">Следующее</span>
+            </button>
+        </div>
+        {% elif route.photos.exists %}
+        <!-- Одно фото -->
+        <img src="{{ route.photos.first.image.url }}" class="w-100 h-100" alt="{{ route.name }}" style="object-fit: cover;">
         {% else %}
-        <div class="card-img-top route-image-placeholder bg-gradient-neutral text-dark d-flex align-items-center justify-content-center position-relative"
-             style="height: 220px;">
-            <div class="placeholder-content position-relative z-2 text-center">
+        <!-- Заглушка -->
+        <div class="route-image-placeholder w-100 h-100 bg-gradient-neutral text-dark d-flex align-items-center justify-content-center">
+            <div class="placeholder-content text-center">
                 <i class="fas fa-route fa-3x mb-3 opacity-50"></i>
                 <p class="small mb-0 opacity-50">Фото не добавлено</p>
             </div>
@@ -20,10 +40,19 @@
         
         <!-- Затемняющий оверлей для текста -->
         <div class="image-overlay position-absolute bottom-0 start-0 w-100" 
-             style="height: 50%; background: linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 100%);"></div>
+             style="height: 50%; background: linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 100%); z-index: 2;"></div>
+        
+        <!-- Индикатор количества фото -->
+        {% if route.photos.count > 1 %}
+        <div class="photo-count position-absolute top-0 end-0 m-3" style="z-index: 4;">
+            <span class="badge bg-dark bg-opacity-75 text-white border-0 shadow-sm">
+                <i class="fas fa-images me-1"></i>{{ route.photos.count }}
+            </span>
+        </div>
+        {% endif %}
         
         <!-- Бейджи поверх изображения -->
-        <div class="position-absolute top-0 start-0 m-3 d-flex flex-column gap-2" style="z-index: 3;">
+        <div class="position-absolute top-0 start-0 m-3 d-flex flex-column gap-2" style="z-index: 4;">
             <span class="badge bg-white bg-opacity-95 text-dark border-0 shadow-sm badge-hover">
                 <i class="fas fa-{% if route.route_type == 'walking' %}walking text-success{% elif route.route_type == 'driving' %}car text-primary{% else %}bicycle text-warning{% endif %} me-1"></i>
                 {{ route.get_route_type_display }}
@@ -37,7 +66,7 @@
         </div>
         
         <!-- Рейтинг -->
-        <div class="position-absolute bottom-0 end-0 m-3 text-white" style="z-index: 3;">
+        <div class="position-absolute bottom-0 end-0 m-3 text-white" style="z-index: 4;">
             {% if route.rating %}
             <div class="d-flex align-items-center bg-dark bg-opacity-60 rounded-pill px-2 py-1">
                 <i class="fas fa-star text-warning me-1 small"></i>
@@ -47,13 +76,14 @@
         </div>
     </div>
     
-    <div class="card-body d-flex flex-column p-3 p-md-4 position-relative" style="z-index: 2;">
+    <!-- Контент карточки -->
+    <div class="card-body d-flex flex-column p-3 position-relative" style="z-index: 3; min-height: 280px;">
         <!-- Заголовок и меню -->
-        <div class="d-flex justify-content-between align-items-start mb-3 position-relative">
+        <div class="d-flex justify-content-between align-items-start mb-2 position-relative">
             <h5 class="card-title fw-bold text-dark mb-0 line-clamp-2 pe-4" style="flex: 1; min-width: 0;">
                 {{ route.name }}
             </h5>
-            <div class="dropdown route-menu-dropdown" style="z-index: 10;">
+            <div class="dropdown route-menu-dropdown" style="z-index: 5;">
                 <button class="btn btn-sm btn-light rounded-circle hover-scale route-action-btn" 
                         type="button" 
                         data-bs-toggle="dropdown"
@@ -94,12 +124,12 @@
         </div>
         
         <!-- Описание -->
-        <p class="card-text text-muted mb-3 flex-grow-1 line-clamp-3 small">
+        <p class="card-text text-muted mb-2 flex-grow-1 line-clamp-3 small">
             {{ route.short_description|default:route.description|default:"Описание отсутствует"|truncatewords:20 }}
         </p>
         
         <!-- Дополнительные теги -->
-        <div class="mb-3">
+        <div class="mb-2">
             {% if route.mood %}
             <span class="badge bg-light text-dark border me-1 mb-1 px-2 py-1 rounded-pill small">
                 <i class="fas fa-smile me-1 text-muted"></i>{{ route.get_mood_display }}
@@ -122,37 +152,35 @@
             {% endif %}
         </div>
         
-
+        <!-- Статус отправленного маршрута -->
         {% if user.is_authenticated and user != route.author and user in route.shared_with.all %}
-        <span class="badge bg-info bg-opacity-10 text-info border-0 shadow-sm">
+        <span class="badge bg-info bg-opacity-10 text-info border-0 shadow-sm mb-2">
             <i class="fas fa-user-friends me-1"></i>Отправлен вам
         </span>
         {% endif %}
 
         <!-- Кнопка поделиться с выпадающим меню -->
-        <div class="mb-3 position-relative" style="z-index: 5;">
+        <div class="mb-2 position-relative" style="z-index: 5;">
             <div class="dropdown">
                 <button class="btn btn-outline-dark w-100 d-flex align-items-center justify-content-center py-2 dropdown-toggle share-btn"
                         type="button" 
                         data-bs-toggle="dropdown"
-                        style="border-color: #e9ecef; position: relative; z-index: 6;"
+                        style="border-color: #e9ecef; position: relative; z-index: 6; font-size: 0.85rem;"
                         onclick="event.stopPropagation();">
                     <i class="fas fa-share-alt me-2 text-muted"></i>
-                    <span class="d-none d-sm-inline">Поделиться маршрутом</span>
-                    <span class="d-inline d-sm-none">Поделиться</span>
+                    <span>Поделиться</span>
                 </button>
                 <ul class="dropdown-menu w-100 shadow border-0 p-2" style="z-index: 1002;">
                     <!-- Поделиться ссылкой -->
                     <li>
                         <button class="dropdown-item d-flex align-items-center py-2 rounded share-option" 
                                 onclick="shareByLink({{ route.id }}); event.stopPropagation();">
-                            <div class="share-icon-container bg-primary bg-opacity-10 rounded-circle me-3 d-flex align-items-center justify-content-center"
+                            <div class="share-icon-container bg-primary bg-opacity-10 rounded-circle me-2 d-flex align-items-center justify-content-center"
                                  style="width: 32px; height: 32px;">
-                                <i class="fas fa-link text-primary"></i>
+                                <i class="fas fa-link text-primary fa-sm"></i>
                             </div>
                             <div class="flex-grow-1">
                                 <div class="fw-semibold small">Скопировать ссылку</div>
-                                <small class="text-muted d-none d-sm-block">Отправить ссылку на маршрут</small>
                             </div>
                         </button>
                     </li>
@@ -161,13 +189,12 @@
                     <li>
                         <button class="dropdown-item d-flex align-items-center py-2 rounded share-option" 
                                 onclick="showQRCode({{ route.id }}, '{{ route.name|escapejs }}'); event.stopPropagation();">
-                            <div class="share-icon-container bg-success bg-opacity-10 rounded-circle me-3 d-flex align-items-center justify-content-center"
+                            <div class="share-icon-container bg-success bg-opacity-10 rounded-circle me-2 d-flex align-items-center justify-content-center"
                                  style="width: 32px; height: 32px;">
-                                <i class="fas fa-qrcode text-success"></i>
+                                <i class="fas fa-qrcode text-success fa-sm"></i>
                             </div>
                             <div class="flex-grow-1">
                                 <div class="fw-semibold small">QR код</div>
-                                <small class="text-muted d-none d-sm-block">Показать QR код маршрута</small>
                             </div>
                         </button>
                     </li>
@@ -177,30 +204,12 @@
                     <li>
                         <button class="dropdown-item d-flex align-items-center py-2 rounded share-option" 
                                 onclick="shareWithFriend({{ route.id }}); event.stopPropagation();">
-                            <div class="share-icon-container bg-info bg-opacity-10 rounded-circle me-3 d-flex align-items-center justify-content-center"
+                            <div class="share-icon-container bg-info bg-opacity-10 rounded-circle me-2 d-flex align-items-center justify-content-center"
                                  style="width: 32px; height: 32px;">
-                                <i class="fas fa-user-friends text-info"></i>
+                                <i class="fas fa-user-friends text-info fa-sm"></i>
                             </div>
                             <div class="flex-grow-1">
                                 <div class="fw-semibold small">Отправить другу</div>
-                                <small class="text-muted d-none d-sm-block">Поделиться с друзьями</small>
-                            </div>
-                        </button>
-                    </li>
-                    {% endif %}
-                    
-                    <!-- Открыть доступ пользователю -->
-                    {% if request.user == route.author %}
-                    <li>
-                        <button class="dropdown-item d-flex align-items-center py-2 rounded share-option" 
-                                onclick="shareWithUser({{ route.id }}); event.stopPropagation();">
-                            <div class="share-icon-container bg-warning bg-opacity-10 rounded-circle me-3 d-flex align-items-center justify-content-center"
-                                 style="width: 32px; height: 32px;">
-                                <i class="fas fa-user-plus text-warning"></i>
-                            </div>
-                            <div class="flex-grow-1">
-                                <div class="fw-semibold small">Предоставить доступ</div>
-                                <small class="text-muted d-none d-sm-block">Дать права на редактирование</small>
                             </div>
                         </button>
                     </li>
@@ -210,7 +219,7 @@
         </div>
         
         <!-- Статистика и дата -->
-        <div class="d-flex justify-content-between align-items-center mt-auto pt-3 border-top">
+        <div class="d-flex justify-content-between align-items-center mt-auto pt-2 border-top">
             <div class="d-flex gap-2 gap-md-3 text-muted small flex-wrap">
                 <div class="d-flex align-items-center">
                     <i class="fas fa-route me-1 text-muted"></i>
@@ -232,10 +241,6 @@
                         {% endif %}
                     </span>
                 </div>
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-map-marker-alt me-1 text-muted"></i>
-                    <span>{{ route.points.count }}</span>
-                </div>
             </div>
             
             <div class="text-muted small ms-2">
@@ -247,110 +252,116 @@
     
     <!-- Ховер эффект для всей карточки -->
     <div class="card-hover-overlay position-absolute top-0 start-0 w-100 h-100 bg-light bg-opacity-0 transition-all rounded"
-         style="pointer-events: none; z-index: 0;"></div>
-</div>
-
-<!-- Модальное окно для QR кода -->
-<div class="modal fade" id="qrCodeModal" tabindex="-1">
-    <div class="modal-dialog modal-sm modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header border-0 pb-0">
-                <h6 class="modal-title">QR код маршрута</h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body text-center">
-                <div id="qrCodeContainer" class="mb-3"></div>
-                <p class="text-muted small mb-0">Отсканируйте для быстрого доступа к маршруту</p>
-                <div class="mt-3" id="qrCodeActions"></div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Модальное окно для отправки другу -->
-<div class="modal fade" id="shareWithFriendModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header border-0">
-                <h6 class="modal-title">Отправить маршрут другу</h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label small text-muted">Выберите друга</label>
-                    <select class="form-select" id="friendSelect">
-                        <option value="">Выберите друга из списка...</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label small text-muted">Добавить сообщение (необязательно)</label>
-                    <textarea class="form-control" id="friendMessage" rows="3" placeholder="Например: Посмотри этот интересный маршрут!"></textarea>
-                </div>
-            </div>
-            <div class="modal-footer border-0">
-                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Отмена</button>
-                <button type="button" class="btn btn-primary" onclick="sendToFriend()">Отправить</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Модальное окно для предоставления доступа -->
-<div class="modal fade" id="shareWithUserModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header border-0">
-                <h6 class="modal-title">Предоставить доступ к маршруту</h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label small text-muted">Email пользователя</label>
-                    <input type="email" class="form-control" id="userEmail" placeholder="Введите email пользователя">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label small text-muted">Уровень доступа</label>
-                    <select class="form-select" id="accessLevel">
-                        <option value="view">Только просмотр</option>
-                        <option value="edit">Редактирование</option>
-                    </select>
-                </div>
-            </div>
-            <div class="modal-footer border-0">
-                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Отмена</button>
-                <button type="button" class="btn btn-dark" onclick="grantAccess()">Предоставить доступ</button>
-            </div>
-        </div>
-    </div>
+         style="pointer-events: none; z-index: 1;"></div>
 </div>
 
 <style>
-.route-card {
+/* Основные стили карточки */
+.route-card-full {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 500px;
     border-radius: 12px;
     transition: all 0.3s ease;
     overflow: hidden;
-    cursor: pointer;
     border: 1px solid #f8f9fa;
 }
 
-.route-card:hover {
+.route-card-full:hover {
     transform: translateY(-4px);
     box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
     border-color: #e9ecef;
 }
 
-.route-card:hover .card-hover-overlay {
-    background-color: rgba(0,0,0,0.02);
+/* Контейнер для фото */
+.route-image-container {
+    flex-shrink: 0;
+    position: relative;
 }
 
-.route-image-container:hover .route-image {
-    transform: scale(1.05);
+.route-image-container img {
+    object-fit: cover;
+    width: 100%;
+    height: 100%;
 }
 
+/* Карусель Bootstrap */
+.carousel {
+    height: 100%;
+}
+
+.carousel-inner {
+    height: 100%;
+    border-radius: 12px 12px 0 0;
+    overflow: hidden;
+}
+
+.carousel-item {
+    height: 100%;
+}
+
+.carousel-control-prev,
+.carousel-control-next {
+    width: 40px;
+    height: 40px;
+    background: rgba(0,0,0,0.5);
+    border-radius: 50%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin: 0 10px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.route-image-container:hover .carousel-control-prev,
+.route-image-container:hover .carousel-control-next {
+    opacity: 1;
+}
+
+.carousel-control-prev:hover,
+.carousel-control-next:hover {
+    background: rgba(0,0,0,0.7);
+}
+
+.carousel-control-prev-icon,
+.carousel-control-next-icon {
+    width: 20px;
+    height: 20px;
+}
+
+/* Заглушка для фото */
 .route-image-placeholder {
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
 }
 
+/* Бейджи */
+.badge-hover {
+    transition: all 0.2s ease;
+}
+
+.badge-hover:hover {
+    transform: translateY(-1px);
+}
+
+/* Обрезка текста */
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Кнопки */
 .hover-scale {
     transition: transform 0.2s ease;
 }
@@ -359,513 +370,97 @@
     transform: scale(1.1);
 }
 
-.line-clamp-2 {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-.line-clamp-3 {
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-/* Стили для кнопки поделиться */
-.share-btn {
-    transition: all 0.2s ease;
-    background: white;
-}
-
-.share-btn:hover {
-    background: #f8f9fa;
-    border-color: #dee2e6 !important;
-}
-
-.share-option {
-    transition: all 0.2s ease;
-    border: none !important;
-}
-
-.share-option:hover {
-    background-color: #f8f9fa !important;
-}
-
-.share-icon-container {
-    transition: transform 0.2s ease;
-}
-
-.share-option:hover .share-icon-container {
-    transform: scale(1.1);
-}
-
-/* Критические исправления для dropdown меню */
-.route-menu-dropdown .dropdown-menu {
-    z-index: 1001 !important;
-    position: absolute !important;
-}
-
-.route-action-btn {
-    position: relative;
-    z-index: 10;
-}
-
-/* Анимации */
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(15px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.route-card {
-    animation: fadeInUp 0.4s ease-out;
+/* Контент карточки */
+.route-card-full .card-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Адаптивность */
 @media (max-width: 768px) {
-    .route-card {
-        margin-bottom: 1rem;
+    .route-card-full {
+        min-height: 450px;
     }
     
-    .card-body {
-        padding: 1rem !important;
+    .route-image-container {
+        height: 180px;
     }
     
-    .route-image-container img,
-    .route-image-placeholder {
-        height: 180px !important;
-    }
-    
-    .card-title {
-        font-size: 1.1rem;
-    }
-    
-    .share-btn .d-sm-inline {
-        font-size: 0.9rem;
+    .carousel-control-prev,
+    .carousel-control-next {
+        opacity: 0.7; /* Всегда показываем на мобильных */
+        width: 35px;
+        height: 35px;
     }
 }
 
 @media (max-width: 576px) {
-    .card-body {
-        padding: 0.75rem !important;
+    .route-card-full {
+        min-height: 420px;
     }
     
-    .route-image-container img,
-    .route-image-placeholder {
-        height: 160px !important;
+    .route-image-container {
+        height: 160px;
     }
     
-    .card-title {
-        font-size: 1rem;
-        line-height: 1.3;
-    }
-    
-    .share-btn {
-        padding: 0.5rem 0.75rem !important;
-        font-size: 0.85rem;
-    }
-    
-    .dropdown-menu {
-        min-width: 200px;
+    .carousel-control-prev,
+    .carousel-control-next {
+        width: 30px;
+        height: 30px;
     }
 }
 
-/* Предотвращение выделения текста при клике */
-.route-card {
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-}
-
-/* Стили для спиннера загрузки */
-.spinner-border-sm {
-    width: 1rem;
-    height: 1rem;
-}
-
-/* Стили для списка друзей */
-.friend-option {
+/* Для сетки карточек */
+.row > [class*='col-'] {
     display: flex;
-    align-items: center;
-    padding: 8px 12px;
-    border-radius: 8px;
-    transition: background-color 0.2s;
 }
 
-.friend-option:hover {
-    background-color: #f8f9fa;
-}
-
-.friend-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    margin-right: 12px;
-    object-fit: cover;
-}
-
-.friend-info {
+.route-card-full {
     flex: 1;
 }
 
-.friend-name {
-    font-weight: 500;
-    font-size: 14px;
+/* Исправление z-index для кликабельности */
+.route-card-link {
+    z-index: 1;
 }
 
-.friend-username {
-    font-size: 12px;
-    color: #6c757d;
+.route-image-container * {
+    z-index: 2;
+}
+
+.route-menu-dropdown,
+.dropdown {
+    z-index: 5;
+}
+
+.card-body {
+    z-index: 3;
 }
 </style>
 
 <script>
-// Функция для копирования ссылки
-function shareByLink(routeId) {
-    const routeUrl = `/routes/${routeId}/`;
-    const fullUrl = window.location.origin + routeUrl;
-    
-    navigator.clipboard.writeText(fullUrl).then(function() {
-        showToast('Ссылка скопирована в буфер обмена', 'success');
-    }).catch(function() {
-        // Fallback для старых браузеров
-        const tempInput = document.createElement('input');
-        tempInput.value = fullUrl;
-        document.body.appendChild(tempInput);
-        tempInput.select();
-        document.execCommand('copy');
-        document.body.removeChild(tempInput);
-        showToast('Ссылка скопирована в буфер обмена', 'success');
-    });
-}
-
-// Функция для показа QR кода
-function showQRCode(routeId, routeName) {
-    // Показываем загрузку
-    const container = document.getElementById('qrCodeContainer');
-    const actionsContainer = document.getElementById('qrCodeActions');
-    container.innerHTML = `
-        <div class="text-center py-4">
-            <div class="spinner-border text-primary" role="status"></div>
-            <p class="mt-2 text-muted">Генерация QR кода...</p>
-        </div>
-    `;
-    actionsContainer.innerHTML = '';
-    
-    // Генерируем QR код через наш бэкенд
-    fetch(`/routes/${routeId}/generate-qr/`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCSRFToken()
+// Инициализация каруселей при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    // Форматирование времени
+    document.querySelectorAll('.duration-display').forEach(element => {
+        const minutes = parseInt(element.dataset.minutes);
+        if (!isNaN(minutes)) {
+            element.textContent = formatDuration(minutes);
         }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            container.innerHTML = '';
-            
-            const qrImage = document.createElement('img');
-            qrImage.src = data.qr_url;
-            qrImage.alt = `QR код для маршрута: ${routeName}`;
-            qrImage.className = 'img-fluid rounded shadow-sm';
-            qrImage.style.maxWidth = '100%';
-            qrImage.style.maxHeight = '200px';
-            
-            container.appendChild(qrImage);
-            
-            // Добавляем кнопки действий
-            actionsContainer.innerHTML = `
-                <div class="d-flex gap-2 justify-content-center">
-                    <a href="/routes/${routeId}/qr-code/" target="_blank" class="btn btn-outline-primary btn-sm">
-                        <i class="fas fa-expand me-1"></i> Полная страница
-                    </a>
-                    <button onclick="downloadQRCode('${data.qr_url}', '${routeName.replace(/'/g, "\\'")}')" class="btn btn-outline-success btn-sm">
-                        <i class="fas fa-download me-1"></i> Скачать
-                    </button>
-                </div>
-            `;
-        } else {
-            container.innerHTML = `
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    ${data.error || 'Ошибка генерации QR кода'}
-                </div>
-            `;
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        container.innerHTML = `
-            <div class="alert alert-danger">
-                <i class="fas fa-exclamation-triangle me-2"></i>
-                Ошибка соединения с сервером
-            </div>
-        `;
     });
     
-    // Показываем модальное окно
-    const modal = new bootstrap.Modal(document.getElementById('qrCodeModal'));
-    modal.show();
-}
-
-// Функция для скачивания QR кода
-function downloadQRCode(qrUrl, routeName) {
-    const link = document.createElement('a');
-    link.href = qrUrl;
-    link.download = `qr_code_${routeName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
-
-// Функция для открытия модального окна отправки другу
-function shareWithFriend(routeId) {
-    document.getElementById('shareWithFriendModal').dataset.routeId = routeId;
-    
-    // Сброс формы
-    document.getElementById('friendSelect').value = '';
-    document.getElementById('friendMessage').value = '';
-    
-    // Загружаем список друзей
-    loadFriendsList(routeId);
-    
-    const modal = new bootstrap.Modal(document.getElementById('shareWithFriendModal'));
-    modal.show();
-}
-
-// Функция для загрузки списка друзей
-// Функция для загрузки списка друзей
-function loadFriendsList(routeId) {
-    const friendSelect = document.getElementById('friendSelect');
-    
-    // Показываем загрузку
-    friendSelect.innerHTML = '<option value="">Загрузка друзей...</option>';
-    
-    // Используем правильный URL
-    fetch('/routes/api/friends/', {
-        method: 'GET',
-        headers: {
-            'X-CSRFToken': getCSRFToken(),
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        console.log('Friends data:', data); // Для отладки
-        
-        if (data.success && data.friends && data.friends.length > 0) {
-            friendSelect.innerHTML = '<option value="">Выберите друга из списка...</option>';
-            
-            data.friends.forEach(friend => {
-                const option = document.createElement('option');
-                option.value = friend.id;
-                const displayName = friend.first_name && friend.last_name 
-                    ? `${friend.first_name} ${friend.last_name}` 
-                    : friend.username;
-                option.textContent = displayName;
-                option.setAttribute('data-username', friend.username);
-                friendSelect.appendChild(option);
-            });
-        } else {
-            friendSelect.innerHTML = '<option value="">У вас пока нет друзей</option>';
-            
-            // Добавляем информационное сообщение
-            const infoOption = document.createElement('option');
-            infoOption.disabled = true;
-            if (data.error) {
-                infoOption.textContent = `⚠️ ${data.error}`;
-            } else {
-                infoOption.textContent = '⚠️ Список друзей пуст';
-            }
-            friendSelect.appendChild(infoOption);
-        }
-    })
-    .catch(error => {
-        console.error('Error loading friends:', error);
-        friendSelect.innerHTML = '<option value="">Ошибка загрузки друзей</option>';
-        
-        const errorOption = document.createElement('option');
-        errorOption.disabled = true;
-        errorOption.textContent = '⚠️ Не удалось загрузить список друзей';
-        friendSelect.appendChild(errorOption);
-        
-        showToast('Ошибка загрузки списка друзей', 'error');
+    // Инициализация каруселей вручную для лучшего контроля
+    document.querySelectorAll('.carousel').forEach(carousel => {
+        // Bootstrap автоматически инициализирует карусели с data-bs-ride
+        // Но мы можем добавить дополнительные обработчики
+        carousel.addEventListener('slide.bs.carousel', function(e) {
+            // Предотвращаем переход по ссылке при клике на слайд
+            e.stopPropagation();
+        });
     });
-}
+});
 
-// Функция для отправки маршрута другу
-function sendToFriend() {
-    const routeId = document.getElementById('shareWithFriendModal').dataset.routeId;
-    const friendId = document.getElementById('friendSelect').value;
-    const message = document.getElementById('friendMessage').value.trim();
-    
-    if (!friendId) {
-        showToast('Выберите друга', 'error');
-        return;
-    }
-    
-    // Показываем индикатор загрузки
-    const submitBtn = document.querySelector('#shareWithFriendModal .btn-primary');
-    const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Отправка...';
-    submitBtn.disabled = true;
-    
-    fetch(`/routes/${routeId}/send-to-friend/`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCSRFToken()
-        },
-        body: JSON.stringify({
-            friend_id: friendId,
-            message: message
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showToast(data.message, 'success');
-            const modal = bootstrap.Modal.getInstance(document.getElementById('shareWithFriendModal'));
-            modal.hide();
-        } else {
-            showToast('Ошибка: ' + data.error, 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showToast('Произошла ошибка при отправке', 'error');
-    })
-    .finally(() => {
-        // Восстанавливаем кнопку
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-    });
-}
-
-// Функция для открытия модального окна предоставления доступа
-function shareWithUser(routeId) {
-    document.getElementById('shareWithUserModal').dataset.routeId = routeId;
-    
-    // Сброс формы
-    document.getElementById('userEmail').value = '';
-    document.getElementById('accessLevel').value = 'view';
-    
-    const modal = new bootstrap.Modal(document.getElementById('shareWithUserModal'));
-    modal.show();
-}
-
-// Функция для предоставления доступа
-function grantAccess() {
-    const routeId = document.getElementById('shareWithUserModal').dataset.routeId;
-    const userEmail = document.getElementById('userEmail').value.trim();
-    const accessLevel = document.getElementById('accessLevel').value;
-    
-    if (!userEmail) {
-        showToast('Введите email пользователя', 'error');
-        return;
-    }
-    
-    if (!validateEmail(userEmail)) {
-        showToast('Введите корректный email', 'error');
-        return;
-    }
-    
-    // Показываем индикатор загрузки
-    const submitBtn = document.querySelector('#shareWithUserModal .btn-dark');
-    const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Отправка...';
-    submitBtn.disabled = true;
-    
-    fetch(`/routes/${routeId}/share-access/`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCSRFToken()
-        },
-        body: JSON.stringify({
-            email: userEmail,
-            access_level: accessLevel
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showToast(data.message, 'success');
-            const modal = bootstrap.Modal.getInstance(document.getElementById('shareWithUserModal'));
-            modal.hide();
-        } else {
-            showToast('Ошибка: ' + data.error, 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showToast('Произошла ошибка при отправке', 'error');
-    })
-    .finally(() => {
-        // Восстанавливаем кнопку
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-    });
-}
-
-// Вспомогательные функции
-function showToast(message, type) {
-    let toastContainer = document.getElementById('toast-container');
-    if (!toastContainer) {
-        toastContainer = document.createElement('div');
-        toastContainer.id = 'toast-container';
-        toastContainer.className = 'position-fixed top-0 end-0 p-3';
-        toastContainer.style.zIndex = '9999';
-        document.body.appendChild(toastContainer);
-    }
-    
-    const toastId = 'toast-' + Date.now();
-    const toast = document.createElement('div');
-    toast.id = toastId;
-    toast.className = `toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0`;
-    toast.setAttribute('role', 'alert');
-    toast.innerHTML = `
-        <div class="d-flex">
-            <div class="toast-body">${message}</div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-        </div>
-    `;
-    
-    toastContainer.appendChild(toast);
-    
-    const bsToast = new bootstrap.Toast(toast, { delay: 4000 });
-    bsToast.show();
-    
-    toast.addEventListener('hidden.bs.toast', () => {
-        toast.remove();
-    });
-}
-
-function getCSRFToken() {
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
-    return csrfToken ? csrfToken.value : '';
-}
-
-function validateEmail(email) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-}
-
-// Исправление для корректного отображения времени
 function formatDuration(minutes) {
     if (!minutes || minutes === 0) return '0 мин';
     
@@ -880,46 +475,33 @@ function formatDuration(minutes) {
     }
 }
 
-// Инициализация при загрузке страницы
-document.addEventListener('DOMContentLoaded', function() {
-    // Форматируем время для всех карточек
-    document.querySelectorAll('.duration-display').forEach(element => {
-        const minutes = parseInt(element.dataset.minutes);
-        if (!isNaN(minutes)) {
-            element.textContent = formatDuration(minutes);
-        }
-    });
+// Предотвращаем стандартное поведение для элементов управления каруселью
+document.addEventListener('click', function(e) {
+    // Для кнопок карусели
+    if (e.target.closest('.carousel-control-prev') || 
+        e.target.closest('.carousel-control-next') ||
+        e.target.closest('.carousel-indicator')) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
     
-    // Закрытие dropdown при клике вне
-    document.addEventListener('click', function(e) {
-        if (!e.target.closest('.dropdown')) {
-            document.querySelectorAll('.dropdown-menu').forEach(menu => {
-                if (menu.classList.contains('show')) {
-                    const dropdown = menu.closest('.dropdown');
-                    if (dropdown) {
-                        const btn = dropdown.querySelector('[data-bs-toggle="dropdown"]');
-                        if (btn) {
-                            bootstrap.Dropdown.getInstance(btn)?.hide();
-                        }
-                    }
-                }
-            });
-        }
-    });
+    // Для dropdown меню
+    if (e.target.closest('.dropdown-toggle') || 
+        e.target.closest('.dropdown-menu') ||
+        e.target.closest('.route-action-btn')) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
 });
 
-// Предотвращаем закрытие модального окна при клике на dropdown внутри него
-document.addEventListener('DOMContentLoaded', function() {
-    const modals = document.querySelectorAll('.modal');
-    modals.forEach(modal => {
-        modal.addEventListener('click', function(e) {
-            if (e.target.classList.contains('modal')) {
-                const dropdowns = modal.querySelectorAll('.dropdown-menu.show');
-                if (dropdowns.length > 0) {
-                    e.stopPropagation();
-                }
-            }
-        });
-    });
-});
+// Для отладки - выводим информацию о фото
+console.log('Route photos debug:');
+{% if route.photos.exists %}
+console.log('Route {{ route.id }} has {{ route.photos.count }} photos');
+{% for photo in route.photos.all %}
+console.log('Photo {{ forloop.counter }}: {{ photo.image.url }}');
+{% endfor %}
+{% else %}
+console.log('Route {{ route.id }} has no photos');
+{% endif %}
 </script>

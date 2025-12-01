@@ -2,5 +2,5 @@ from django.apps import AppConfig
 
 
 class AiAudioConfig(AppConfig):
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'ai_audio'
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "ai_audio"

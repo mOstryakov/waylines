@@ -5,7 +5,7 @@
     <div class="card-header bg-white border-bottom">
         <h5 class="card-title mb-0 text-dark">
             <i class="fas fa-comments me-2 text-muted"></i>Комментарии
-            <span class="badge bg-primary ms-2">{{ route.interaction_comments.count }}</span>
+            <span class="badge bg-primary ms-2" id="comments-count">{{ route.interaction_comments.count }}</span>
         </h5>
     </div>
 
@@ -13,13 +13,13 @@
         <!-- Форма добавления комментария -->
         {% if user.is_authenticated %}
         <div class="mb-4">
-            <form method="post" action="{% url 'interactions:add_comment' route.id %}" class="comment-form">
+            <form method="post" id="comment-form" class="comment-form">
                 {% csrf_token %}
                 <div class="mb-2">
-                    <textarea name="text" class="form-control" rows="3" placeholder="Напишите ваш комментарий..." required></textarea>
+                    <textarea name="text" id="comment-text" class="form-control" rows="3" placeholder="Напишите ваш комментарий..." required></textarea>
                 </div>
                 <div class="d-flex justify-content-end">
-                    <button type="submit" class="btn btn-primary btn-sm">
+                    <button type="submit" class="btn btn-primary btn-sm" id="submit-comment">
                         <i class="fas fa-paper-plane me-1"></i>Отправить
                     </button>
                 </div>
@@ -34,9 +34,9 @@
         {% endif %}
 
         <!-- Список комментариев -->
-        <div class="comments-list">
+        <div class="comments-list" id="comments-list">
             {% for comment in route.interaction_comments.all %}
-            <div class="comment-item d-flex mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}">
+            <div class="comment-item d-flex mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}" data-comment-id="{{ comment.id }}">
                 <!-- Аватар (плейсхолдер) -->
                 <div class="flex-shrink-0">
                     <div class="avatar-placeholder rounded-circle bg-light d-flex align-items-center justify-content-center border" style="width: 40px; height: 40px;">
@@ -52,14 +52,12 @@
                             <small class="text-muted">{{ comment.created_at|date:"d.m.Y H:i" }}</small>
                         </div>
 
-                        <!-- Кнопка удаления  -->
+                        <!-- Кнопка удаления -->
                         {% if comment.user == request.user %}
-                        <form method="post" action="{% url 'interactions:delete_comment' comment.id %}" class="d-inline">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-link text-danger p-0 btn-sm opacity-75 hover-opacity-100" title="Удалить">
-                                <i class="far fa-trash-alt"></i>
-                            </button>
-                        </form>
+                        <button type="button" class="btn btn-link text-danger p-0 btn-sm opacity-75 hover-opacity-100 delete-comment-btn" 
+                                data-comment-id="{{ comment.id }}" title="Удалить">
+                            <i class="far fa-trash-alt"></i>
+                        </button>
                         {% endif %}
                     </div>
 
@@ -76,3 +74,203 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const commentForm = document.getElementById('comment-form');
+    const commentsList = document.getElementById('comments-list');
+    const commentsCount = document.getElementById('comments-count');
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    console.log('Комментарии загружены, CSRF токен найден:', csrfToken ? 'да' : 'нет');
+    
+    // Функция для отправки нового комментария
+    if (commentForm) {
+        console.log('Форма комментариев найдена');
+        
+        commentForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            console.log('Отправка комментария начата');
+            
+            const submitBtn = document.getElementById('submit-comment');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Отправка...';
+            submitBtn.disabled = true;
+            
+            const formData = new FormData(this);
+            const routeId = '{{ route.id }}';
+            const commentText = formData.get('text');
+            
+            console.log('Данные формы:', {
+                routeId: routeId,
+                commentText: commentText,
+                csrfToken: csrfToken
+            });
+            
+            try {
+                // Исправленный URL - используйте правильный путь из urls.py
+                const url = `/interactions/comment/${routeId}/`;
+                console.log('Отправляем запрос на:', url);
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': csrfToken
+                    }
+                });
+                
+                console.log('Ответ получен, статус:', response.status);
+                
+                // Получаем текст ответа для диагностики
+                const responseText = await response.text();
+                console.log('Текст ответа (первые 500 символов):', responseText.substring(0, 500));
+                
+                // Проверяем статус ответа
+                if (!response.ok) {
+                    // Пробуем разобрать как JSON, если не получится - показываем текст
+                    let errorMessage = `HTTP ошибка! Статус: ${response.status}`;
+                    try {
+                        const errorData = JSON.parse(responseText);
+                        errorMessage = errorData.error || errorData.detail || errorMessage;
+                    } catch (jsonError) {
+                        // Если не JSON, показываем начало текста
+                        if (responseText.includes('<!DOCTYPE')) {
+                            errorMessage = 'Сервер вернул HTML страницу вместо JSON. Проверьте view функцию.';
+                        } else {
+                            errorMessage = responseText.substring(0, 200);
+                        }
+                    }
+                    throw new Error(errorMessage);
+                }
+                
+                // Пытаемся разобрать JSON
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                    console.log('JSON успешно разобран:', data);
+                } catch (jsonError) {
+                    console.error('Ошибка разбора JSON:', jsonError);
+                    throw new Error('Сервер вернул некорректный JSON: ' + responseText.substring(0, 200));
+                }
+                
+                if (data.success) {
+                    console.log('Успех! Обновляем интерфейс');
+                    // Обновляем список комментариев
+                    if (data.html) {
+                        commentsList.innerHTML = data.html;
+                    }
+                    // Обновляем счетчик комментариев
+                    if (data.comments_count !== undefined) {
+                        commentsCount.textContent = data.comments_count;
+                    }
+                    // Очищаем форму
+                    document.getElementById('comment-text').value = '';
+                    // Прокручиваем к новому комментарию
+                    const lastComment = commentsList.querySelector('.comment-item:last-child');
+                    if (lastComment) {
+                        lastComment.scrollIntoView({ behavior: 'smooth' });
+                    }
+                    console.log('Комментарий успешно добавлен');
+                } else {
+                    console.error('Ошибка от сервера:', data.error);
+                    alert('Ошибка при отправке комментария: ' + (data.error || 'Неизвестная ошибка'));
+                }
+            } catch (error) {
+                console.error('Ошибка при отправке комментария:', error);
+                console.error('Stack trace:', error.stack);
+                alert('Произошла ошибка при отправке комментария: ' + error.message);
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+                console.log('Форма восстановлена');
+            }
+        });
+    } else {
+        console.warn('Форма комментариев не найдена! Проверьте HTML структуру.');
+    }
+    
+    // Функция для удаления комментария
+    if (commentsList) {
+        commentsList.addEventListener('click', async function(e) {
+            const deleteBtn = e.target.closest('.delete-comment-btn');
+            if (!deleteBtn) return;
+            
+            e.preventDefault();
+            const commentId = deleteBtn.dataset.commentId;
+            
+            console.log('Удаление комментария:', commentId);
+            
+            if (!confirm('Вы уверены, что хотите удалить этот комментарий?')) {
+                return;
+            }
+            
+            try {
+                const url = `/interactions/comment/delete/${commentId}/`;
+                console.log('Отправляем запрос на удаление:', url);
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': csrfToken,
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `csrfmiddlewaretoken=${encodeURIComponent(csrfToken)}`
+                });
+                
+                console.log('Ответ на удаление получен, статус:', response.status);
+                
+                // Получаем текст ответа для диагностики
+                const responseText = await response.text();
+                console.log('Текст ответа удаления (первые 500 символов):', responseText.substring(0, 500));
+                
+                if (!response.ok) {
+                    let errorMessage = `HTTP ошибка! Статус: ${response.status}`;
+                    try {
+                        const errorData = JSON.parse(responseText);
+                        errorMessage = errorData.error || errorData.detail || errorMessage;
+                    } catch (jsonError) {
+                        if (responseText.includes('<!DOCTYPE')) {
+                            errorMessage = 'Сервер вернул HTML страницу вместо JSON. Проверьте view функцию.';
+                        } else {
+                            errorMessage = responseText.substring(0, 200);
+                        }
+                    }
+                    throw new Error(errorMessage);
+                }
+                
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                    console.log('JSON удаления успешно разобран:', data);
+                } catch (jsonError) {
+                    console.error('Ошибка разбора JSON удаления:', jsonError);
+                    throw new Error('Сервер вернул некорректный JSON: ' + responseText.substring(0, 200));
+                }
+                
+                if (data.success) {
+                    // Обновляем список комментариев
+                    if (data.html) {
+                        commentsList.innerHTML = data.html;
+                    }
+                    // Обновляем счетчик комментариев
+                    if (data.comments_count !== undefined) {
+                        commentsCount.textContent = data.comments_count;
+                    }
+                    console.log('Комментарий успешно удален');
+                } else {
+                    alert('Ошибка при удалении комментария: ' + (data.error || 'Неизвестная ошибка'));
+                }
+            } catch (error) {
+                console.error('Ошибка при удалении комментария:', error);
+                console.error('Stack trace:', error.stack);
+                alert('Произошла ошибка при удалении комментария: ' + error.message);
+            }
+        });
+    } else {
+        console.warn('Список комментариев не найден!');
+    }
+});
+</script>

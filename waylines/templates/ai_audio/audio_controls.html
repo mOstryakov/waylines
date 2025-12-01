@@ -82,13 +82,13 @@
         </div>
     </div>
 
-    <!-- Настройки генерации (модальное окно) -->
-    <div class="audio-settings-modal modal fade" id="audioSettingsModal" tabindex="-1">
+    <!-- Настройки генерации (модальное окно) - ИСПРАВЛЕННАЯ ВЕРСИЯ -->
+    <div class="modal fade" id="audioSettingsModal" tabindex="-1" aria-labelledby="audioSettingsModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-sm">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Настройки аудио</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title" id="audioSettingsModalLabel">Настройки аудио</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
@@ -147,5 +147,18 @@
 
 .audio-generation-section .alert {
     border: none;
+}
+
+/* Исправления для модального окна */
+.modal {
+    backdrop-filter: blur(2px);
+}
+
+.modal-backdrop {
+    z-index: 1040;
+}
+
+.modal {
+    z-index: 1050;
 }
 </style>

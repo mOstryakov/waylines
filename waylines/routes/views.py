@@ -1,3 +1,4 @@
+# routes/views.py
 __all__ = ()
 
 import json
@@ -20,7 +21,17 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.files import File
 from django.http import HttpResponse
 
-from routes.models import Route, RoutePoint, RouteFavorite, RouteRating, SavedPlace, RouteComment, PointComment, User
+from routes.models import (
+    Route,
+    RoutePoint,
+    RouteFavorite,
+    RouteRating,
+    SavedPlace,
+    RouteComment,
+    PointComment,
+    User,
+)
+from routes.models import RoutePhoto, PointPhoto  # ДОБАВЬТЕ ЭТОТ ИМПОРТ
 from users.models import Friendship
 
 
@@ -28,36 +39,51 @@ def home(request):
     # Получаем реальную статистику
     total_routes = Route.objects.filter(is_active=True).count()
     total_users = User.objects.count()
-    
+
     # Считаем уникальные страны
-    total_countries = Route.objects.filter(is_active=True).values('country').distinct().count()
-    
+    total_countries = (
+        Route.objects.filter(is_active=True)
+        .values("country")
+        .distinct()
+        .count()
+    )
+
     # Считаем маршруты по типам (только активные)
-    walking_count = Route.objects.filter(route_type='walking', is_active=True).count()
-    driving_count = Route.objects.filter(route_type='driving', is_active=True).count()
-    cycling_count = Route.objects.filter(route_type='cycling', is_active=True).count()
-    adventure_count = Route.objects.filter(mood='adventure', is_active=True).count()
-    
+    walking_count = Route.objects.filter(
+        route_type="walking", is_active=True
+    ).count()
+    driving_count = Route.objects.filter(
+        route_type="driving", is_active=True
+    ).count()
+    cycling_count = Route.objects.filter(
+        route_type="cycling", is_active=True
+    ).count()
+    adventure_count = Route.objects.filter(
+        mood="adventure", is_active=True
+    ).count()
+
     # Популярные маршруты
-    popular_routes = Route.objects.filter(is_active=True).order_by('-created_at')[:6]
-    
+    popular_routes = Route.objects.filter(is_active=True).order_by(
+        "-created_at"
+    )[:6]
+
     context = {
-        'popular_routes': popular_routes,
-        'walking_count': walking_count,
-        'driving_count': driving_count,
-        'cycling_count': cycling_count,
-        'adventure_count': adventure_count,
-        'total_routes': total_routes,
-        'total_users': total_users,
-        'total_countries': total_countries,
+        "popular_routes": popular_routes,
+        "walking_count": walking_count,
+        "driving_count": driving_count,
+        "cycling_count": cycling_count,
+        "adventure_count": adventure_count,
+        "total_routes": total_routes,
+        "total_users": total_users,
+        "total_countries": total_countries,
     }
-    
-    return render(request, 'home.html', context)
+
+    return render(request, "home.html", context)
 
 
 def all_routes(request):
     """Все публичные маршруты"""
-    routes = Route.objects.filter(privacy="public", is_active=True)
+    routes = Route.objects.filter(privacy="public", is_active=True).prefetch_related('photos')
 
     # Фильтрация
     route_type = request.GET.get("type")
@@ -82,7 +108,8 @@ def all_routes(request):
 
     # Аннотируем средний рейтинг
     routes = routes.annotate(
-        avg_rating=Avg("ratings__rating"), rating_count=Count("ratings")
+        rating=Avg("ratings__rating"),
+        rating_count=Count("ratings")
     ).order_by("-created_at")
 
     # Пагинация
@@ -111,7 +138,13 @@ def all_routes(request):
 @login_required
 def my_routes(request):
     """Маршруты пользователя с разделением на активные/неактивные"""
-    routes = Route.objects.filter(author=request.user).order_by("-created_at")
+    routes = Route.objects.filter(author=request.user).prefetch_related('photos')
+    
+    # Аннотируем средний рейтинг
+    routes = routes.annotate(
+        rating=Avg("ratings__rating"),
+        rating_count=Count("ratings")
+    ).order_by("-created_at")
     
     # Разделяем маршруты на активные и неактивные
     active_routes = routes.filter(is_active=True)
@@ -137,12 +170,18 @@ def shared_routes(request):
     routes = Route.objects.filter(
         Q(shared_with=request.user) | Q(privacy="link"),
         is_active=True
-    ).exclude(author=request.user).distinct().order_by("-created_at")
+    ).exclude(author=request.user).prefetch_related('photos').distinct()
+    
+    # Аннотируем средний рейтинг
+    routes = routes.annotate(
+        rating=Avg("ratings__rating"),
+        rating_count=Count("ratings")
+    ).order_by("-created_at")
 
     # Считаем отдельно для контекста
     shared_count = Route.objects.filter(
         shared_with=request.user, is_active=True
-    ).count()
+    ).exclude(author=request.user).count()
     
     link_count = Route.objects.filter(
         privacy="link", is_active=True
@@ -165,7 +204,6 @@ def shared_routes(request):
     return render(request, "routes/shared_routes.html", context)
 
 
-
 def route_detail(request, route_id):
     """Детальная страница маршрута"""
     route = get_object_or_404(Route, id=route_id)
@@ -182,42 +220,47 @@ def route_detail(request, route_id):
     # ДОБАВЛЯЕМ: Получаем информацию об AI аудио
     full_audio_guide = None
     points_with_audio = []
-    
+
     try:
         from ai_audio.models import RouteAudioGuide
+
         full_audio_guide = RouteAudioGuide.objects.filter(route=route).first()
-        
+
         # Собираем точки с AI аудио
         for point in points:
             if point.audio_guide:  # Проверяем есть ли аудио файл у точки
                 points_with_audio.append(point.id)
-                
+
     except ImportError:
         # Если приложение ai_audio не установлено
         pass
 
     # Сообщения чата маршрута
     route_chat_messages = []
-    if hasattr(route, 'chat'):
-        route_chat_messages = route.chat.messages.all().select_related('user').order_by('-timestamp')[:20]
- 
+    if hasattr(route, "chat"):
+        route_chat_messages = (
+            route.chat.messages.all()
+            .select_related("user")
+            .order_by("-timestamp")[:20]
+        )
+
     user_favorites_ids = []
     if request.user.is_authenticated:
         user_favorites_ids = RouteFavorite.objects.filter(
             user=request.user
-        ).values_list('route_id', flat=True)
+        ).values_list("route_id", flat=True)
 
     user_rating = None
     if request.user.is_authenticated:
         try:
-            user_rating = RouteRating.objects.get(user=request.user, route=route).rating
+            user_rating = RouteRating.objects.get(
+                user=request.user, route=route
+            ).rating
         except RouteRating.DoesNotExist:
             pass
 
     similar_routes = Route.objects.filter(
-        route_type=route.route_type,
-        privacy="public",
-        is_active=True
+        route_type=route.route_type, privacy="public", is_active=True
     ).exclude(id=route.id)[:5]
 
     context = {
@@ -244,90 +287,93 @@ def route_detail(request, route_id):
 
     return render(request, "routes/route_detail.html", context)
 
+
 @login_required
 @csrf_exempt
 def send_to_friend(request, route_id):
     """Отправка маршрута другу"""
     route = get_object_or_404(Route, id=route_id)
-    
+
     if route.author != request.user and not request.user.is_staff:
-        return JsonResponse({
-            'success': False,
-            'error': 'У вас нет прав для отправки этого маршрута'
-        })
-    
+        return JsonResponse(
+            {
+                "success": False,
+                "error": "У вас нет прав для отправки этого маршрута",
+            }
+        )
+
     try:
         data = json.loads(request.body)
-        friend_id = data.get('friend_id')
-        message = data.get('message', '')
-        
+        friend_id = data.get("friend_id")
+        message = data.get("message", "")
+
         if not friend_id:
-            return JsonResponse({
-                'success': False,
-                'error': 'Не выбран друг'
-            })
-        
+            return JsonResponse({"success": False, "error": "Не выбран друг"})
+
         try:
             from users.models import Friendship
+
             friend = User.objects.get(id=friend_id)
-            
+
             # Проверяем дружбу
             friendship = Friendship.objects.filter(
-                (Q(from_user=request.user, to_user=friend) |
-                 Q(from_user=friend, to_user=request.user)),
-                status='accepted'
+                (
+                    Q(from_user=request.user, to_user=friend)
+                    | Q(from_user=friend, to_user=request.user)
+                ),
+                status="accepted",
             ).first()
-            
+
             if not friendship:
-                return JsonResponse({
-                    'success': False,
-                    'error': 'Пользователь не является вашим другом'
-                })
-            
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "error": "Пользователь не является вашим другом",
+                    }
+                )
+
             # Добавляем маршрут в общий доступ
             route.shared_with.add(friend)
             route.save()
-            
+
             # Создаем уведомление (если есть модель Notification)
             try:
                 from notifications.models import Notification
+
                 Notification.objects.create(
                     user=friend,
-                    title='Вам отправили маршрут',
+                    title="Вам отправили маршрут",
                     message=f'{request.user.username} отправил(а) вам маршрут "{route.name}"',
-                    notification_type='route_shared',
+                    notification_type="route_shared",
                     related_object_id=route.id,
-                    related_object_type='route'
+                    related_object_type="route",
                 )
             except ImportError:
                 # Модель уведомлений не найдена - пропускаем
                 pass
-            
+
             friend_name = friend.first_name or friend.username
-            
-            return JsonResponse({
-                'success': True,
-                'message': f'Маршрут "{route.name}" отправлен другу {friend_name}'
-            })
-            
+
+            return JsonResponse(
+                {
+                    "success": True,
+                    "message": f'Маршрут "{route.name}" отправлен другу {friend_name}',
+                }
+            )
+
         except User.DoesNotExist:
-            return JsonResponse({
-                'success': False,
-                'error': 'Друг не найден'
-            })
-        
+            return JsonResponse({"success": False, "error": "Друг не найден"})
+
     except json.JSONDecodeError:
-        return JsonResponse({
-            'success': False,
-            'error': 'Неверный формат данных'
-        })
+        return JsonResponse(
+            {"success": False, "error": "Неверный формат данных"}
+        )
     except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': f'Ошибка отправки: {str(e)}'
-        })
- 
-    
+        return JsonResponse(
+            {"success": False, "error": f"Ошибка отправки: {str(e)}"}
+        )
+
+
 @login_required
 def create_route(request):
     """Создание нового маршрута"""
@@ -337,16 +383,20 @@ def create_route(request):
 
             # Валидация обязательных полей
             if not data.get("name"):
-                return JsonResponse({
-                    "success": False,
-                    "error": "Название маршрута обязательно",
-                })
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "error": "Название маршрута обязательно",
+                    }
+                )
 
-            if not data.get("points"):
-                return JsonResponse({
-                    "success": False,
-                    "error": "Добавьте хотя бы одну точку маршрута",
-                })
+            if not data.get("waypoints"):
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "error": "Добавьте хотя бы одну точку маршрута",
+                    }
+                )
 
             # Создаем маршрут
             route = Route.objects.create(
@@ -364,51 +414,80 @@ def create_route(request):
                 is_elderly_friendly=data.get("is_elderly_friendly", False),
             )
 
+            # Добавляем фото маршрута
+            route_photos = data.get("route_photos", [])
+            for i, photo_data in enumerate(route_photos):
+                if photo_data:
+                    try:
+                        # Проверяем формат фото
+                        if photo_data.startswith("data:"):
+                            # Это DataURL - новое фото
+                            photo = save_base64_photo(
+                                photo_data, route, RoutePhoto, order=i
+                            )
+                        elif photo_data.startswith(
+                            "/uploads/"
+                        ) or photo_data.startswith("/media/"):
+                            # Это уже сохраненное фото - копируем из существующего
+                            photo = copy_existing_photo(
+                                photo_data, route, RoutePhoto, order=i
+                            )
+                    except Exception as e:
+                        print(f"Ошибка сохранения фото маршрута: {e}")
+                        continue
+
             # Добавляем точки
-            points_data = data.get("points", [])
+            points_data = data.get("waypoints", [])
             for i, point_data in enumerate(points_data):
                 point = RoutePoint.objects.create(
                     route=route,
                     name=point_data.get("name", f"Точка {i+1}"),
                     description=point_data.get("description", ""),
                     address=point_data.get("address", ""),
-                    latitude=point_data["lat"],
-                    longitude=point_data["lng"],
+                    latitude=point_data.get("lat", 0),
+                    longitude=point_data.get("lng", 0),
                     category=point_data.get("category", ""),
                     hint_author=point_data.get("hint_author", ""),
                     tags=point_data.get("tags", []),
                     order=i,
                 )
 
-                # Обрабатываем фото точки если есть
+                # Добавляем фото точки если есть
                 point_photos = point_data.get("photos", [])
                 for j, photo_data in enumerate(point_photos):
-                    if photo_data.get("base64"):
-                        save_base64_photo(photo_data, point, PointPhoto, order=j)
-
-            # Обрабатываем фото маршрута если есть
-            route_photos = data.get("route_photos", [])
-            for photo_data in route_photos:
-                if photo_data.get("base64"):
-                    save_base64_photo(photo_data, route, RoutePhoto)
+                    if photo_data:
+                        try:
+                            if photo_data.startswith("data:"):
+                                save_base64_photo(
+                                    photo_data, point, PointPhoto, order=j
+                                )
+                            elif photo_data.startswith(
+                                "/uploads/"
+                            ) or photo_data.startswith("/media/"):
+                                copy_existing_photo(
+                                    photo_data, point, PointPhoto, order=j
+                                )
+                        except Exception as e:
+                            print(f"Ошибка сохранения фото точки: {e}")
+                            continue
 
             return JsonResponse({"success": True, "route_id": route.id})
 
         except json.JSONDecodeError:
-            return JsonResponse({
-                "success": False, 
-                "error": "Неверный формат JSON"
-            })
+            return JsonResponse(
+                {"success": False, "error": "Неверный формат JSON"}
+            )
         except KeyError as e:
-            return JsonResponse({
-                "success": False,
-                "error": f"Отсутствует обязательное поле: {str(e)}",
-            })
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": f"Отсутствует обязательное поле: {str(e)}",
+                }
+            )
         except Exception as e:
-            return JsonResponse({
-                "success": False, 
-                "error": f"Ошибка сервера: {str(e)}"
-            })
+            return JsonResponse(
+                {"success": False, "error": f"Ошибка сервера: {str(e)}"}
+            )
 
     # GET запрос - показать форму
     context = {
@@ -553,72 +632,140 @@ def edit_route(request, route_id):
     }
     return render(request, "routes/route_editor.html", context)
 
-# Добавьте вспомогательную функцию для сохранения фото
+
 def save_base64_photo(photo_data, parent_obj, photo_model, order=0):
-    """Сохранение фото из base64"""
+    """Сохранение фото из base64 DataURL"""
     try:
-        print(f"=== DEBUG SAVE PHOTO ===")
-        print(f"🔧 Сохранение фото для {parent_obj.__class__.__name__} {parent_obj.id}")
+        print(f"=== DEBUG SAVE BASE64 PHOTO ===")
+        print(
+            f"🔧 Сохранение фото для {parent_obj.__class__.__name__} {parent_obj.id}"
+        )
         print(f"📷 Photo model: {photo_model.__name__}")
-        print(f"📦 Photo data keys: {photo_data.keys() if photo_data else 'No data'}")
-        
-        if not photo_data or not photo_data.get("base64"):
-            print("❌ Нет base64 данных в photo_data")
+
+        if not photo_data:
+            print("❌ Нет данных photo_data")
             return None
-            
-        base64_string = photo_data["base64"]
-        caption = photo_data.get("caption", "")
-        
-        print(f"📏 Длина base64 строки: {len(base64_string)}")
-        print(f"📝 Caption: {caption}")
-        
-        # Убираем префикс data URL если есть
-        if ',' in base64_string:
-            base64_string = base64_string.split(',')[1]
-            print("🔧 Убран data URL префикс")
-        
-        # Проверяем что остались данные
-        if len(base64_string) < 100:
-            print("❌ Base64 строка слишком короткая после обработки")
+
+        # Проверяем что это DataURL
+        if not photo_data.startswith("data:"):
+            print(f"❌ Это не DataURL: {photo_data[:50]}...")
             return None
-            
+
+        # Извлекаем MIME type и данные
+        if ";base64," not in photo_data:
+            print("❌ Неправильный формат DataURL")
+            return None
+
+        # Разделяем на части
+        header, data = photo_data.split(";base64,", 1)
+
+        # Определяем расширение файла из MIME type
+        mime_type = header.replace("data:", "")
+        extensions = {
+            "image/jpeg": ".jpg",
+            "image/jpg": ".jpg",
+            "image/png": ".png",
+            "image/gif": ".gif",
+            "image/webp": ".webp",
+            "image/bmp": ".bmp",
+        }
+
+        ext = extensions.get(mime_type, ".jpg")
+
         # Декодируем base64
         try:
-            image_data = base64.b64decode(base64_string)
+            image_data = base64.b64decode(data)
             print(f"✅ Base64 декодирован, размер: {len(image_data)} байт")
         except Exception as e:
             print(f"❌ Ошибка декодирования base64: {e}")
             return None
-        
+
         # Создаем имя файла
-        filename = f"{parent_obj.__class__.__name__.lower()}_{parent_obj.id}_{photo_model.__name__.lower()}_{order}_{int(time.time())}.jpg"
-        
+        timestamp = int(timezone.now().timestamp())
+        filename = f"{parent_obj.__class__.__name__.lower()}_{parent_obj.id}_{photo_model.__name__.lower()}_{order}_{timestamp}{ext}"
+
         print(f"📁 Имя файла: {filename}")
-        
+        print(f"📁 MIME type: {mime_type}")
+
         # Создаем объект фото
-        photo = photo_model.objects.create(
-            **{parent_obj.__class__.__name__.lower(): parent_obj},
-            caption=caption,
-            order=order
-        )
-        
+        kwargs = {}
+        if parent_obj.__class__.__name__ == "Route":
+            kwargs["route"] = parent_obj
+        elif parent_obj.__class__.__name__ == "RoutePoint":
+            kwargs["point"] = parent_obj
+
+        photo = photo_model.objects.create(**kwargs, order=order)
+
         print(f"📸 Создан объект фото: {photo.id}")
-        
+
         # Сохраняем изображение
         photo.image.save(filename, ContentFile(image_data), save=True)
-        
+
         print(f"✅ Фото сохранено успешно!")
         print(f"📁 Путь: {photo.image.path}")
         print(f"🌐 URL: {photo.image.url}")
         print(f"=== END DEBUG SAVE PHOTO ===")
-        
+
         return photo
-        
+
     except Exception as e:
         print(f"❌ КРИТИЧЕСКАЯ ОШИБКА сохранения фото: {e}")
         import traceback
+
         print(f"🔍 Traceback: {traceback.format_exc()}")
         return None
+
+
+def copy_existing_photo(photo_url, parent_obj, photo_model, order=0):
+    """Копирование существующего фото"""
+    try:
+        print(f"=== DEBUG COPY EXISTING PHOTO ===")
+        print(f"🔧 Копирование фото: {photo_url}")
+        print(f"📷 Для: {parent_obj.__class__.__name__} {parent_obj.id}")
+
+        # Ищем существующее фото
+        from django.conf import settings
+        import os
+
+        # Определяем путь к файлу из URL
+        media_path = photo_url.replace("/media/", "").replace("/uploads/", "")
+        full_path = os.path.join(settings.MEDIA_ROOT, media_path)
+
+        if not os.path.exists(full_path):
+            print(f"❌ Файл не найден: {full_path}")
+            return None
+
+        # Создаем новое имя файла
+        timestamp = int(timezone.now().timestamp())
+        ext = os.path.splitext(full_path)[1]
+        filename = f"{parent_obj.__class__.__name__.lower()}_{parent_obj.id}_{photo_model.__name__.lower()}_{order}_{timestamp}{ext}"
+
+        # Читаем существующий файл
+        with open(full_path, "rb") as f:
+            file_data = f.read()
+
+        # Создаем объект фото
+        kwargs = {}
+        if parent_obj.__class__.__name__ == "Route":
+            kwargs["route"] = parent_obj
+        elif parent_obj.__class__.__name__ == "RoutePoint":
+            kwargs["point"] = parent_obj
+
+        photo = photo_model.objects.create(**kwargs, order=order)
+
+        # Сохраняем копию файла
+        photo.image.save(filename, ContentFile(file_data), save=True)
+
+        print(f"✅ Фото скопировано успешно!")
+        print(f"📁 Новый URL: {photo.image.url}")
+        print(f"=== END DEBUG COPY PHOTO ===")
+
+        return photo
+
+    except Exception as e:
+        print(f"❌ Ошибка копирования фото: {e}")
+        return None
+
 
 @login_required
 def toggle_route_active(request, route_id):
@@ -760,29 +907,26 @@ def add_saved_place(request):
 
 
 def map_view(request):
-    routes = Route.objects.filter(
-        privacy="public", is_active=True
-    ).prefetch_related("points", "photos").annotate(
-        avg_rating=Avg("ratings__rating")
+    routes = (
+        Route.objects.filter(privacy="public", is_active=True)
+        .prefetch_related("points", "photos")
+        .annotate(avg_rating=Avg("ratings__rating"))
     )
-    
+
     routes_data = []
     for route in routes:
         route_data = {
             "id": route.id,
-            "title": route.name,  # Используем name вместо title
+            "title": route.name,
             "short_description": route.short_description,
             "description": route.description,
-            "distance": route.total_distance,  # Используем total_distance
+            "distance": route.total_distance,
             "rating": route.avg_rating or 0,
             "has_audio": route.has_audio_guide,
             "difficulty": route.route_type,
             "category": {"name": route.theme} if route.theme else None,
             "photos": [
-                {
-                    "url": photo.image.url,
-                    "caption": photo.caption
-                }
+                {"url": photo.image.url, "caption": photo.caption}
                 for photo in route.photos.all()[:3]
             ],
             "points": [
@@ -798,20 +942,16 @@ def map_view(request):
             ],
         }
         routes_data.append(route_data)
-    
-    routes_json = json.dumps(routes_data)
-    
+
+    routes_json = json.dumps(routes_data, ensure_ascii=False)
+
     return render(
         request,
         "map/map_view.html",
-        {
-            "routes_json": routes_json, 
-            "routes": routes  # Передаем queryset для шаблона
-        },
+        {"routes_json": routes_json, "routes": routes},
     )
 
 
-# Вспомогательные функции
 def can_view_route(user, route):
     """Проверка доступа к маршруту"""
     if route.privacy == "public":
@@ -825,7 +965,7 @@ def can_view_route(user, route):
     ):
         return True
     if route.privacy == "link":
-        return True  # Доступ по ссылке - всегда доступно
+        return True
     return False
 
 
@@ -833,53 +973,61 @@ def can_view_route(user, route):
 @require_http_methods(["POST"])
 def share_route(request, route_id):
     from django.contrib.auth import get_user_model
+
     User = get_user_model()
 
     try:
         route = Route.objects.get(id=route_id, author=request.user)
     except Route.DoesNotExist:
-        return JsonResponse({
-            'success': False,
-            'error': 'Маршрут не найден или вы не автор'
-        }, status=403)
+        return JsonResponse(
+            {"success": False, "error": "Маршрут не найден или вы не автор"},
+            status=403,
+        )
 
     try:
         data = json.loads(request.body)
-        email = data.get('email', '').strip()
+        email = data.get("email", "").strip()
     except (json.JSONDecodeError, ValueError):
-        return JsonResponse({
-            'success': False,
-            'error': 'Некорректный формат данных'
-        }, status=400)
+        return JsonResponse(
+            {"success": False, "error": "Некорректный формат данных"},
+            status=400,
+        )
 
     if not email:
-        return JsonResponse({
-            'success': False,
-            'error': 'Email не указан'
-        }, status=400)
+        return JsonResponse(
+            {"success": False, "error": "Email не указан"}, status=400
+        )
 
     try:
         target_user = User.objects.get(email=email)
     except User.DoesNotExist:
-        return JsonResponse({
-            'success': False,
-            'error': 'Пользователь с таким email не зарегистрирован'
-        }, status=404)
+        return JsonResponse(
+            {
+                "success": False,
+                "error": "Пользователь с таким email не зарегистрирован",
+            },
+            status=404,
+        )
 
     if target_user == request.user:
-        return JsonResponse({
-            'success': False,
-            'error': 'Нельзя предоставить доступ самому себе'
-        }, status=400)
+        return JsonResponse(
+            {
+                "success": False,
+                "error": "Нельзя предоставить доступ самому себе",
+            },
+            status=400,
+        )
 
     route.privacy = "personal"
     route.shared_with.add(target_user)
     route.save()
 
-    return JsonResponse({
-        'success': True,
-        'message': f'Доступ к маршруту «{route.name}» предоставлен пользователю {email}'
-    })
+    return JsonResponse(
+        {
+            "success": True,
+            "message": f"Доступ к маршруту «{route.name}» предоставлен пользователю {email}",
+        }
+    )
 
 
 def get_user_rating(user, route):
@@ -909,94 +1057,105 @@ def haversine_distance(lat1, lon1, lat2, lon2):
 
 def walking_routes(request):
     """Страница с пешими маршрутами"""
-    routes = Route.objects.filter(route_type='walking', is_active=True)
-    
+    routes = Route.objects.filter(route_type="walking", is_active=True).prefetch_related('photos')
+
     context = {
-        'routes': routes,
-        'page_title': 'Пешие маршруты',
-        'route_type': 'walking',
-        'total_count': routes.count()
+        "routes": routes,
+        "page_title": "Пешие маршруты",
+        "route_type": "walking",
+        "total_count": routes.count(),
     }
-    return render(request, 'routes/filtered_routes.html', context)
+    return render(request, "routes/filtered_routes.html", context)
 
 def driving_routes(request):
     """Страница с автомобильными маршрутами"""
-    routes = Route.objects.filter(route_type='driving', is_active=True)
-    
+    routes = Route.objects.filter(route_type="driving", is_active=True).prefetch_related('photos')
+
     context = {
-        'routes': routes,
-        'page_title': 'Автомобильные маршруты',
-        'route_type': 'driving',
-        'total_count': routes.count()
+        "routes": routes,
+        "page_title": "Автомобильные маршруты",
+        "route_type": "driving",
+        "total_count": routes.count(),
     }
-    return render(request, 'routes/filtered_routes.html', context)
+    return render(request, "routes/filtered_routes.html", context)
 
 def cycling_routes(request):
     """Страница с велосипедными маршрутами"""
-    routes = Route.objects.filter(route_type='cycling', is_active=True)
-    
+    routes = Route.objects.filter(route_type="cycling", is_active=True).prefetch_related('photos')
+
     context = {
-        'routes': routes,
-        'page_title': 'Велосипедные маршруты',
-        'route_type': 'cycling',
-        'total_count': routes.count()
+        "routes": routes,
+        "page_title": "Велосипедные маршруты",
+        "route_type": "cycling",
+        "total_count": routes.count(),
     }
-    return render(request, 'routes/filtered_routes.html', context)
+    return render(request, "routes/filtered_routes.html", context)
 
 def adventure_routes(request):
     """Страница с приключенческими маршрутами"""
-    routes = Route.objects.filter(mood='adventure', is_active=True)
-    
+    routes = Route.objects.filter(mood="adventure", is_active=True).prefetch_related('photos')
+
     context = {
-        'routes': routes,
-        'page_title': 'Приключенческие маршруты',
-        'mood_type': 'adventure',
-        'total_count': routes.count()
+        "routes": routes,
+        "page_title": "Приключенческие маршруты",
+        "mood_type": "adventure",
+        "total_count": routes.count(),
     }
-    return render(request, 'routes/filtered_routes.html', context)
+    return render(request, "routes/filtered_routes.html", context)
+
 
 def search_routes(request):
     """Отдельная view для поиска"""
-    query = request.GET.get('q', '')
-    route_type = request.GET.get('type', '')
-    mood = request.GET.get('mood', '')
-    
+    query = request.GET.get("q", "")
+    route_type = request.GET.get("type", "")
+    mood = request.GET.get("mood", "")
+
     routes = Route.objects.filter(is_active=True)
-    
+
     if query:
         routes = routes.filter(
-            Q(name__icontains=query) | 
-            Q(description__icontains=query) |
-            Q(country__icontains=query)
+            Q(name__icontains=query)
+            | Q(description__icontains=query)
+            | Q(country__icontains=query)
         )
-    
+
     if route_type:
         routes = routes.filter(route_type=route_type)
-    
+
     if mood:
         routes = routes.filter(mood=mood)
-    
+
     context = {
-        'routes': routes,
-        'query': query,
-        'route_type': route_type,
-        'mood': mood,
-        'total_count': routes.count()
+        "routes": routes,
+        "query": query,
+        "route_type": route_type,
+        "mood": mood,
+        "total_count": routes.count(),
     }
-    return render(request, 'routes/search_results.html', context)
+    return render(request, "routes/search_results.html", context)
 
 
 class RouteCreateView(LoginRequiredMixin, View):
     def post(self, request):
         try:
             data = json.loads(request.body)
-            
+
             # Валидация обязательных полей
-            if not data.get('name'):
-                return JsonResponse({"success": False, "error": "Название маршрута обязательно"})
-            
-            if not data.get('waypoints') or len(data.get('waypoints', [])) < 2:
-                return JsonResponse({"success": False, "error": "Добавьте хотя бы две точки маршрута"})
+            if not data.get("name"):
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "error": "Название маршрута обязательно",
+                    }
+                )
+
+            if not data.get("waypoints") or len(data.get("waypoints", [])) < 2:
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "error": "Добавьте хотя бы две точки маршрута",
+                    }
+                )
 
             route = Route.objects.create(
                 author=request.user,
@@ -1013,30 +1172,79 @@ class RouteCreateView(LoginRequiredMixin, View):
                 is_elderly_friendly=data.get("is_elderly_friendly", False),
             )
 
+            # Добавляем фото маршрута
+            route_photos = data.get("route_photos", [])
+            for i, photo_data in enumerate(route_photos):
+                if photo_data:
+                    try:
+                        if photo_data.startswith("data:"):
+                            save_base64_photo(
+                                photo_data, route, RoutePhoto, order=i
+                            )
+                        elif photo_data.startswith(
+                            "/uploads/"
+                        ) or photo_data.startswith("/media/"):
+                            copy_existing_photo(
+                                photo_data, route, RoutePhoto, order=i
+                            )
+                    except Exception as e:
+                        print(f"Ошибка сохранения фото маршрута: {e}")
+                        continue
+
             # Добавляем точки
             waypoints_data = data.get("waypoints", [])
             for i, point_data in enumerate(waypoints_data):
-                RoutePoint.objects.create(
+                point = RoutePoint.objects.create(
                     route=route,
                     name=point_data.get("name", f"Точка {i+1}"),
                     description=point_data.get("description", ""),
                     address=point_data.get("address", ""),
-                    latitude=point_data["lat"],
-                    longitude=point_data["lng"],
+                    latitude=point_data.get("lat", 0),
+                    longitude=point_data.get("lng", 0),
                     category=point_data.get("category", ""),
                     hint_author=point_data.get("hint_author", ""),
                     tags=point_data.get("tags", []),
                     order=i,
                 )
 
-            return JsonResponse({"success": True, "route_id": route.id, "id": route.id})
-            
+                # Добавляем фото точки
+                point_photos = point_data.get("photos", [])
+                for j, photo_data in enumerate(point_photos):
+                    if photo_data:
+                        try:
+                            if photo_data.startswith("data:"):
+                                save_base64_photo(
+                                    photo_data, point, PointPhoto, order=j
+                                )
+                            elif photo_data.startswith(
+                                "/uploads/"
+                            ) or photo_data.startswith("/media/"):
+                                copy_existing_photo(
+                                    photo_data, point, PointPhoto, order=j
+                                )
+                        except Exception as e:
+                            print(f"Ошибка сохранения фото точки: {e}")
+                            continue
+
+            return JsonResponse(
+                {"success": True, "route_id": route.id, "id": route.id}
+            )
+
         except json.JSONDecodeError:
-            return JsonResponse({"success": False, "error": "Неверный формат JSON"})
+            return JsonResponse(
+                {"success": False, "error": "Неверный формат JSON"}
+            )
         except KeyError as e:
-            return JsonResponse({"success": False, "error": f"Отсутствует обязательное поле: {str(e)}"})
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": f"Отсутствует обязательное поле: {str(e)}",
+                }
+            )
         except Exception as e:
-            return JsonResponse({"success": False, "error": f"Ошибка сервера: {str(e)}"})
+            return JsonResponse(
+                {"success": False, "error": f"Ошибка сервера: {str(e)}"}
+            )
 
 
 class RouteUpdateView(LoginRequiredMixin, View):
@@ -1048,94 +1256,157 @@ class RouteUpdateView(LoginRequiredMixin, View):
             # Обновляем маршрут
             route.name = data.get("name", route.name)
             route.description = data.get("description", route.description)
-            route.short_description = data.get("short_description", route.short_description)
+            route.short_description = data.get(
+                "short_description", route.short_description
+            )
             route.privacy = data.get("privacy", route.privacy)
             route.route_type = data.get("route_type", route.route_type)
             route.mood = data.get("mood", route.mood)
             route.theme = data.get("theme", route.theme)
-            route.duration_minutes = data.get("duration_minutes", route.duration_minutes)
-            route.total_distance = data.get("total_distance", route.total_distance)
-            route.has_audio_guide = data.get("has_audio_guide", route.has_audio_guide)
-            route.is_elderly_friendly = data.get("is_elderly_friendly", route.is_elderly_friendly)
+            route.duration_minutes = data.get(
+                "duration_minutes", route.duration_minutes
+            )
+            route.total_distance = data.get(
+                "total_distance", route.total_distance
+            )
+            route.has_audio_guide = data.get(
+                "has_audio_guide", route.has_audio_guide
+            )
+            route.is_elderly_friendly = data.get(
+                "is_elderly_friendly", route.is_elderly_friendly
+            )
             route.is_active = data.get("is_active", route.is_active)
             route.save()
 
-            # Обновляем точки
+            # Удаляем старые точки и фото
             route.points.all().delete()
+            route.photos.all().delete()
+
+            # Добавляем фото маршрута
+            route_photos = data.get("route_photos", [])
+            for i, photo_data in enumerate(route_photos):
+                if photo_data:
+                    try:
+                        if photo_data.startswith("data:"):
+                            save_base64_photo(
+                                photo_data, route, RoutePhoto, order=i
+                            )
+                        elif photo_data.startswith(
+                            "/uploads/"
+                        ) or photo_data.startswith("/media/"):
+                            copy_existing_photo(
+                                photo_data, route, RoutePhoto, order=i
+                            )
+                    except Exception as e:
+                        print(f"Ошибка сохранения фото маршрута: {e}")
+                        continue
+
+            # Добавляем точки
             waypoints_data = data.get("waypoints", [])
             for i, point_data in enumerate(waypoints_data):
-                RoutePoint.objects.create(
+                point = RoutePoint.objects.create(
                     route=route,
                     name=point_data.get("name", f"Точка {i+1}"),
                     description=point_data.get("description", ""),
                     address=point_data.get("address", ""),
-                    latitude=point_data["lat"],
-                    longitude=point_data["lng"],
+                    latitude=point_data.get("lat", 0),
+                    longitude=point_data.get("lng", 0),
                     category=point_data.get("category", ""),
                     hint_author=point_data.get("hint_author", ""),
                     tags=point_data.get("tags", []),
                     order=i,
                 )
 
-            return JsonResponse({"success": True, "route_id": route.id, "id": route.id})
-            
-        except json.JSONDecodeError:
-            return JsonResponse({"success": False, "error": "Неверный формат JSON"})
-        except Exception as e:
-            return JsonResponse({"success": False, "error": f"Ошибка сервера: {str(e)}"})
+                # Добавляем фото точки
+                point_photos = point_data.get("photos", [])
+                for j, photo_data in enumerate(point_photos):
+                    if photo_data:
+                        try:
+                            if photo_data.startswith("data:"):
+                                save_base64_photo(
+                                    photo_data, point, PointPhoto, order=j
+                                )
+                            elif photo_data.startswith(
+                                "/uploads/"
+                            ) or photo_data.startswith("/media/"):
+                                copy_existing_photo(
+                                    photo_data, point, PointPhoto, order=j
+                                )
+                        except Exception as e:
+                            print(f"Ошибка сохранения фото точки: {e}")
+                            continue
 
+            return JsonResponse(
+                {"success": True, "route_id": route.id, "id": route.id}
+            )
+
+        except json.JSONDecodeError:
+            return JsonResponse(
+                {"success": False, "error": "Неверный формат JSON"}
+            )
+        except Exception as e:
+            return JsonResponse(
+                {"success": False, "error": f"Ошибка сервера: {str(e)}"}
+            )
 
     def post(self, request, pk):
         return self.put(request, pk)
+
 
 @login_required
 @csrf_exempt
 def generate_qr_code(request, route_id):
     """Генерация QR кода для маршрута"""
     route = get_object_or_404(Route, id=route_id)
-    
+
     # Проверяем права доступа
     if route.author != request.user and not request.user.is_staff:
-        return JsonResponse({
-            'success': False, 
-            'error': 'У вас нет прав для генерации QR кода этого маршрута'
-        })
-    
+        return JsonResponse(
+            {
+                "success": False,
+                "error": "У вас нет прав для генерации QR кода этого маршрута",
+            }
+        )
+
     try:
         qr_url = route.generate_qr_code(request)
-        return JsonResponse({
-            'success': True, 
-            'qr_url': qr_url,
-            'route_url': request.build_absolute_uri(route.get_absolute_url())
-        })
+        return JsonResponse(
+            {
+                "success": True,
+                "qr_url": qr_url,
+                "route_url": request.build_absolute_uri(
+                    route.get_absolute_url()
+                ),
+            }
+        )
     except Exception as e:
-        return JsonResponse({
-            'success': False, 
-            'error': f'Ошибка генерации QR кода: {str(e)}'
-        })
+        return JsonResponse(
+            {"success": False, "error": f"Ошибка генерации QR кода: {str(e)}"}
+        )
+
 
 def route_qr_code(request, route_id):
     """Страница с QR кодом маршрута"""
     route = get_object_or_404(Route, id=route_id)
-    
+
     # Проверка доступа к маршруту
     if not can_view_route(request.user, route):
         messages.error(request, "У вас нет доступа к этому маршруту")
         return redirect("home")
-    
+
     # Генерируем QR код если его нет
     qr_url = route.qr_code.url if route.qr_code else None
     if not qr_url:
         qr_url = route.generate_qr_code(request)
-    
+
     route_url = request.build_absolute_uri(route.get_absolute_url())
-    
+
     context = {
-        'route': route,
-        'qr_url': qr_url,
-        'route_url': route_url,
+        "route": route,
+        "qr_url": qr_url,
+        "route_url": route_url,
     }
-    
+
     if request.user.is_authenticated:
         context["pending_friend_requests"] = Friendship.objects.filter(
             to_user=request.user, status="pending"
@@ -1143,155 +1414,149 @@ def route_qr_code(request, route_id):
         context["pending_requests_count"] = Friendship.objects.filter(
             to_user=request.user, status="pending"
         ).count()
-    
-    return render(request, 'routes/route_qr_code.html', context)
+
+    return render(request, "routes/route_qr_code.html", context)
+
 
 @login_required
 @csrf_exempt
 def share_route_access(request, route_id):
     """Предоставление доступа к маршруту по email"""
     route = get_object_or_404(Route, id=route_id)
-    
+
     # Проверяем права доступа
     if route.author != request.user and not request.user.is_staff:
-        return JsonResponse({
-            'success': False, 
-            'error': 'У вас нет прав для предоставления доступа к этому маршруту'
-        })
-    
+        return JsonResponse(
+            {
+                "success": False,
+                "error": "У вас нет прав для предоставления доступа к этому маршруту",
+            }
+        )
+
     try:
         data = json.loads(request.body)
-        email = data.get('email', '').strip()
-        access_level = data.get('access_level', 'view')
-        
+        email = data.get("email", "").strip()
+        access_level = data.get("access_level", "view")
+
         if not email:
-            return JsonResponse({
-                'success': False, 
-                'error': 'Email не указан'
-            })
-        
+            return JsonResponse({"success": False, "error": "Email не указан"})
+
         try:
             target_user = User.objects.get(email=email)
         except User.DoesNotExist:
-            return JsonResponse({
-                'success': False, 
-                'error': 'Пользователь с таким email не зарегистрирован'
-            })
-        
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": "Пользователь с таким email не зарегистрирован",
+                }
+            )
+
         if target_user == request.user:
-            return JsonResponse({
-                'success': False, 
-                'error': 'Нельзя предоставить доступ самому себе'
-            })
-        
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": "Нельзя предоставить доступ самому себе",
+                }
+            )
+
         # Предоставляем доступ
         route.privacy = "personal"
         route.shared_with.add(target_user)
         route.save()
-        
-        return JsonResponse({
-            'success': True, 
-            'message': f'Доступ к маршруту «{route.name}» предоставлен пользователю {email}'
-        })
-        
-    except json.JSONDecodeError:
-        return JsonResponse({
-            'success': False, 
-            'error': 'Неверный формат данных'
-        })
-    except Exception as e:
-        return JsonResponse({
-            'success': False, 
-            'error': f'Ошибка: {str(e)}'
-        })
 
-# views.py
+        return JsonResponse(
+            {
+                "success": True,
+                "message": f"Доступ к маршруту «{route.name}» предоставлен пользователю {email}",
+            }
+        )
+
+    except json.JSONDecodeError:
+        return JsonResponse(
+            {"success": False, "error": "Неверный формат данных"}
+        )
+    except Exception as e:
+        return JsonResponse({"success": False, "error": f"Ошибка: {str(e)}"})
+
+
 @login_required
 @csrf_exempt
 def get_friends_list(request):
     """Получение списка друзей пользователя"""
     try:
-        # Предполагая, что у вас есть модель Friendship
         friends = Friendship.objects.filter(
-            Q(from_user=request.user, status='accepted') |
-            Q(to_user=request.user, status='accepted')
-        ).select_related('from_user', 'to_user')
-        
+            Q(from_user=request.user, status="accepted")
+            | Q(to_user=request.user, status="accepted")
+        ).select_related("from_user", "to_user")
+
         friends_list = []
         for friendship in friends:
             if friendship.from_user == request.user:
                 friend = friendship.to_user
             else:
                 friend = friendship.from_user
-            
-            friends_list.append({
-                'id': friend.id,
-                'username': friend.username,
-                'first_name': friend.first_name,
-                'last_name': friend.last_name,
-                'email': friend.email
-            })
-        
-        return JsonResponse({
-            'success': True,
-            'friends': friends_list
-        })
-        
+
+            friends_list.append(
+                {
+                    "id": friend.id,
+                    "username": friend.username,
+                    "first_name": friend.first_name,
+                    "last_name": friend.last_name,
+                    "email": friend.email,
+                }
+            )
+
+        return JsonResponse({"success": True, "friends": friends_list})
+
     except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        })
+        return JsonResponse({"success": False, "error": str(e)})
+
 
 @login_required
 @csrf_exempt
 def send_to_friend(request, route_id):
     """Отправка маршрута другу"""
     route = get_object_or_404(Route, id=route_id)
-    
+
     try:
         data = json.loads(request.body)
-        friend_id = data.get('friend_id')
-        message = data.get('message', '')
-        
+        friend_id = data.get("friend_id")
+        message = data.get("message", "")
+
         if not friend_id:
-            return JsonResponse({
-                'success': False,
-                'error': 'Не выбран друг'
-            })
-        
+            return JsonResponse({"success": False, "error": "Не выбран друг"})
+
         try:
             friend = User.objects.get(id=friend_id)
             friendship = Friendship.objects.filter(
-                (Q(from_user=request.user, to_user=friend) |
-                 Q(from_user=friend, to_user=request.user)),
-                status='accepted'
+                (
+                    Q(from_user=request.user, to_user=friend)
+                    | Q(from_user=friend, to_user=request.user)
+                ),
+                status="accepted",
             ).first()
-            
+
             if not friendship:
-                return JsonResponse({
-                    'success': False,
-                    'error': 'Пользователь не является вашим другом'
-                })
-                
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "error": "Пользователь не является вашим другом",
+                    }
+                )
+
         except User.DoesNotExist:
-            return JsonResponse({
-                'success': False,
-                'error': 'Друг не найден'
-            })
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'Маршрут отправлен другу {friend.first_name} {friend.last_name}'
-        })
-        
+            return JsonResponse({"success": False, "error": "Друг не найден"})
+
+        return JsonResponse(
+            {
+                "success": True,
+                "message": f"Маршрут отправлен другу {friend.first_name} {friend.last_name}",
+            }
+        )
+
     except json.JSONDecodeError:
-        return JsonResponse({
-            'success': False,
-            'error': 'Неверный формат данных'
-        })
+        return JsonResponse(
+            {"success": False, "error": "Неверный формат данных"}
+        )
     except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        })
+        return JsonResponse({"success": False, "error": str(e)})

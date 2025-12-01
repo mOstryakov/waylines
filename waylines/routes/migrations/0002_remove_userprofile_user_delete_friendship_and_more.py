@@ -6,18 +6,18 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('routes', '0001_initial'),
+        ("routes", "0001_initial"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='userprofile',
-            name='user',
+            model_name="userprofile",
+            name="user",
         ),
         migrations.DeleteModel(
-            name='Friendship',
+            name="Friendship",
         ),
         migrations.DeleteModel(
-            name='UserProfile',
+            name="UserProfile",
         ),
     ]

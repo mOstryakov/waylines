@@ -7,10 +7,11 @@ class TestConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         print("✅ TEST WebSocket подключен! Routing работает!")
         await self.accept()
-        await self.send(text_data=json.dumps({
-            'type': 'test',
-            'message': 'WebSocket работает!'
-        }))
+        await self.send(
+            text_data=json.dumps(
+                {"type": "test", "message": "WebSocket работает!"}
+            )
+        )
 
     async def receive(self, text_data):
         print("📨 Получено сообщение:", text_data)

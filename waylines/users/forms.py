@@ -36,7 +36,7 @@ class UserProfileForm(forms.ModelForm):
         instance = super().save(commit=False)
 
         # Если отмечено удаление аватара
-        if self.cleaned_data.get('remove_avatar'):
+        if self.cleaned_data.get("remove_avatar"):
             if instance.avatar:
                 instance.avatar.delete(save=False)
                 instance.avatar = None

@@ -6,13 +6,18 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('routes', '0003_route_country'),
+        ("routes", "0003_route_country"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='route',
-            name='qr_code',
-            field=models.ImageField(blank=True, null=True, upload_to='qr_codes/', verbose_name='QR код'),
+            model_name="route",
+            name="qr_code",
+            field=models.ImageField(
+                blank=True,
+                null=True,
+                upload_to="qr_codes/",
+                verbose_name="QR код",
+            ),
         ),
     ]

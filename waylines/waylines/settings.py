@@ -5,11 +5,12 @@ import os
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-SECRET_KEY = "django-insecure-r0#y!8!8l2+hqss+926&ke408+6n=xp=zir+0xz31ig6lq9fjp"
+SECRET_KEY = (
+    "django-insecure-r0#y!8!8l2+hqss+926&ke408+6n=xp=zir+0xz31ig6lq9fjp"
+)
 DEBUG = True
 
 ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
-
 
 
 INSTALLED_APPS = [
@@ -20,6 +21,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    'django.contrib.humanize',
     "routes.apps.RoutesConfig",
     "chat.apps.ChatConfig",
     "interactions.apps.InteractionsConfig",
@@ -76,15 +78,12 @@ CHANNEL_LAYERS = {
 # }
 
 
-
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
     }
 }
-
-
 
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -101,7 +100,6 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
-
 
 
 LANGUAGE_CODE = "ru-ru"
@@ -121,8 +119,6 @@ LANGUAGES = [
 ]
 
 
-
-
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 STATIC_URL = "/static/"
@@ -138,18 +134,25 @@ if static_path.exists():
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 STATICFILES_FINDERS = [
-    'django.contrib.staticfiles.finders.FileSystemFinder',
-    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+    "django.contrib.staticfiles.finders.FileSystemFinder",
+    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
 ]
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-DOMAIN = 'http://localhost:8000'\
+DOMAIN = "http://localhost:8000"
+OPENAI_API_KEY = os.getenv(
+    "OPENAI_API_KEY",
+    "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",
+)
+YANDEX_TTS_API_KEY = os.getenv("YANDEX_TTS_API_KEY", "your-yandex-key-here")
+GOOGLE_APPLICATION_CREDENTIALS = os.getenv(
+    "GOOGLE_APPLICATION_CREDENTIALS", "path-to-google-credentials.json"
+)
 
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', 'your-openai-key-here')
-YANDEX_TTS_API_KEY = os.getenv('YANDEX_TTS_API_KEY', 'your-yandex-key-here')
-GOOGLE_APPLICATION_CREDENTIALS = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', 'path-to-google-credentials.json')
+DATA_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024
+FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024

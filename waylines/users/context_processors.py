@@ -2,6 +2,7 @@ __all__ = ()
 
 from users.models import Friendship
 
+
 def navbar_context(request):
     context = {}
     if request.user.is_authenticated:

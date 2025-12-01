@@ -72,7 +72,9 @@ class Route(models.Model):
     duration_minutes = models.IntegerField(
         "Продолжительность (минут)", default=0
     )
-    country = models.CharField(max_length=100, blank=True, null=True, verbose_name="Страна")
+    country = models.CharField(
+        max_length=100, blank=True, null=True, verbose_name="Страна"
+    )
     total_distance = models.FloatField("Общее расстояние (км)", default=0)
     is_active = models.BooleanField("Актуален", default=True)
     has_audio_guide = models.BooleanField("Есть аудиогид", default=False)
@@ -89,7 +91,9 @@ class Route(models.Model):
         "Последнее обновление статуса", auto_now=True
     )
 
-    qr_code = models.ImageField(upload_to='qr_codes/', blank=True, null=True, verbose_name="QR код")
+    qr_code = models.ImageField(
+        upload_to="qr_codes/", blank=True, null=True, verbose_name="QR код"
+    )
 
     class Meta:
         verbose_name = "Маршрут"
@@ -104,25 +108,27 @@ class Route(models.Model):
         if ratings:
             return sum(r.rating for r in ratings) / len(ratings)
         return 0
-    
+
     def get_absolute_url(self):
         from django.urls import reverse
-        return reverse('route_detail', kwargs={'route_id': self.id})
-    
+
+        return reverse("route_detail", kwargs={"route_id": self.id})
+
     def generate_qr_code(self, request=None):
         """Генерация QR кода для маршрута"""
         if self.qr_code:
             return self.qr_code.url
-            
+
         # Генерируем полный URL маршрута
         if request:
             full_url = request.build_absolute_uri(self.get_absolute_url())
         else:
             # Fallback - используем домен из настроек
             from django.conf import settings
-            domain = getattr(settings, 'DOMAIN', 'http://localhost:8000')
+
+            domain = getattr(settings, "DOMAIN", "http://localhost:8000")
             full_url = f"{domain}{self.get_absolute_url()}"
-        
+
         # Создаем QR код
         qr = qrcode.QRCode(
             version=1,
@@ -132,22 +138,22 @@ class Route(models.Model):
         )
         qr.add_data(full_url)
         qr.make(fit=True)
-        
+
         # Создаем изображение
         img = qr.make_image(fill_color="black", back_color="white")
-        
+
         # Сохраняем в BytesIO
         buffer = BytesIO()
-        img.save(buffer, format='PNG')
+        img.save(buffer, format="PNG")
         buffer.seek(0)
-        
+
         # Создаем файл для Django
-        filename = f'qr_code_route_{self.id}.png'
+        filename = f"qr_code_route_{self.id}.png"
         self.qr_code.save(filename, File(buffer), save=False)
         self.save()
-        
+
         return self.qr_code.url
-    
+
     def save(self, *args, **kwargs):
         # При сохранении генерируем QR код если его нет
         if not self.qr_code and self.id:

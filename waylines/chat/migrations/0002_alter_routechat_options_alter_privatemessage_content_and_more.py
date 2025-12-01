@@ -6,22 +6,26 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('chat', '0001_initial'),
+        ("chat", "0001_initial"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='routechat',
-            options={'ordering': ['-updated_at'], 'verbose_name': 'Чат маршрута', 'verbose_name_plural': 'Чаты маршрутов'},
+            name="routechat",
+            options={
+                "ordering": ["-updated_at"],
+                "verbose_name": "Чат маршрута",
+                "verbose_name_plural": "Чаты маршрутов",
+            },
         ),
         migrations.AlterField(
-            model_name='privatemessage',
-            name='content',
-            field=models.TextField(max_length=1000, verbose_name='Сообщение'),
+            model_name="privatemessage",
+            name="content",
+            field=models.TextField(max_length=1000, verbose_name="Сообщение"),
         ),
         migrations.AlterField(
-            model_name='routechatmessage',
-            name='message',
-            field=models.TextField(max_length=1000, verbose_name='Сообщение'),
+            model_name="routechatmessage",
+            name="message",
+            field=models.TextField(max_length=1000, verbose_name="Сообщение"),
         ),
     ]

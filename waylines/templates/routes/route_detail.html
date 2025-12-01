@@ -3,6 +3,233 @@
 
 {% block title %}{{ route.name }} - Waylines{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+.route-detail-page {
+    background: #fafafa;
+}
+
+/* Спокойный hero */
+.route-hero {
+    height: 400px;
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 0 1rem;
+}
+
+.hero-image {
+    height: 400px;
+    background-size: cover;
+    background-position: center;
+}
+
+.hero-placeholder {
+    height: 400px;
+    border-radius: 12px;
+}
+
+.hero-overlay-light {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to top, rgba(255,255,255,0.95) 0%, transparent 100%);
+    padding: 2rem 0 1rem;
+}
+
+.hero-title-light {
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #1a1a1a;
+}
+
+.breadcrumb-nav-light .breadcrumb {
+    background: transparent;
+    margin-bottom: 1rem;
+}
+
+.breadcrumb-nav-light .breadcrumb-item a {
+    color: #6c757d;
+}
+
+.hero-meta-light {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.avatar-circle-light {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    color: #6c757d;
+}
+
+/* Карточки */
+.card {
+    border-radius: 8px;
+}
+
+/* Карта */
+.route-map-plain {
+    height: 300px;
+    border-radius: 0 0 8px 8px;
+}
+
+/* Точки маршрута */
+.number-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #f8f9fa;
+    border: 2px solid #dee2e6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+/* Рейтинг */
+.rating-score {
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+/* Информация */
+.info-list .info-item:last-child {
+    border-bottom: none !important;
+}
+
+/* Похожие маршруты */
+.hover-bg {
+    transition: background-color 0.2s ease;
+}
+
+.hover-bg:hover {
+    background-color: #f8f9fa;
+}
+
+/* Бейджи */
+.route-type-badge.walking {
+    background: #e8f5e8;
+    color: #2e7d32;
+    border: 1px solid #c8e6c9;
+}
+.route-type-badge.driving {
+    background: #e3f2fd;
+    color: #1565c0;
+    border: 1px solid #bbdefb;
+}
+.route-type-badge.cycling {
+    background: #fff3e0;
+    color: #ef6c00;
+    border: 1px solid #ffe0b2;
+}
+
+/* Кнопка избранного */
+.btn-favorite.active {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: white;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .route-hero {
+        height: 300px;
+        margin: 0;
+        border-radius: 0;
+    }
+
+    .hero-image {
+        height: 300px;
+    }
+
+    .hero-title-light {
+        font-size: 1.5rem;
+    }
+
+    .hero-actions-light .d-flex {
+        justify-content: flex-start !important;
+    }
+}
+
+/* Стили для аудиоплеера */
+.audio-player-card {
+    border: 1px solid #e3f2fd;
+    background: linear-gradient(135deg, #f8fdff 0%, #f0f7ff 100%);
+    border-radius: 12px;
+}
+
+audio {
+    border-radius: 12px;
+    background: #f8f9fa;
+}
+
+audio::-webkit-media-controls-panel {
+    background-color: #f8f9fa;
+    border-radius: 12px;
+}
+
+audio::-webkit-media-controls-play-button {
+    background-color: #3b82f6;
+    border-radius: 50%;
+}
+
+audio::-webkit-media-controls-current-time-display,
+audio::-webkit-media-controls-time-remaining-display {
+    color: #374151;
+    font-weight: 500;
+}
+
+/* Анимация для индикатора AI */
+@keyframes pulse-ai {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.badge.bg-success.bg-opacity-10 {
+    animation: pulse-ai 2s infinite;
+}
+
+/* Улучшенные стили для полного аудиогида */
+.full-audio-guide {
+    background: linear-gradient(135deg, #f0f7ff 0%, #e3f2fd 100%);
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+
+.audio-features .badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+/* Дополнительные стили для карты */
+.custom-marker {
+    text-align: center;
+}
+
+.route-distance,
+.route-duration {
+    font-weight: bold;
+    color: #2563eb;
+}
+
+.route-walking { border-left: 4px solid #48bb78; }
+.route-driving { border-left: 4px solid #2563eb; }
+.route-cycling { border-left: 4px solid #f59e0b; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div style="background: #e3f2fd; padding: 15px; margin: 10px; border-radius: 8px; border: 2px solid #2196f3;">
     <h6>🔍 Отладка фото в route_detail:</h6>
@@ -23,6 +250,7 @@
     {% endfor %}
     {% endfor %}
 </div>
+
 <div class="route-detail-page">
     <div class="route-hero position-relative mb-4">
         {% if route.photos.all %}
@@ -474,218 +702,6 @@
 </div>
 {% endblock %}
 
-{% block extra_css %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<style>
-.route-detail-page {
-    background: #fafafa;
-}
-
-/* Спокойный hero */
-.route-hero {
-    height: 400px;
-    border-radius: 12px;
-    overflow: hidden;
-    margin: 0 1rem;
-}
-
-.hero-image {
-    height: 400px;
-    background-size: cover;
-    background-position: center;
-}
-
-.hero-placeholder {
-    height: 400px;
-    border-radius: 12px;
-}
-
-.hero-overlay-light {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: linear-gradient(to top, rgba(255,255,255,0.95) 0%, transparent 100%);
-    padding: 2rem 0 1rem;
-}
-
-.hero-title-light {
-    font-size: 2rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    color: #1a1a1a;
-}
-
-.breadcrumb-nav-light .breadcrumb {
-    background: transparent;
-    margin-bottom: 1rem;
-}
-
-.breadcrumb-nav-light .breadcrumb-item a {
-    color: #6c757d;
-}
-
-.hero-meta-light {
-    color: #6c757d;
-    font-size: 0.9rem;
-}
-
-.avatar-circle-light {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: #e9ecef;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.7rem;
-    color: #6c757d;
-}
-
-/* Карточки */
-.card {
-    border-radius: 8px;
-}
-
-/* Карта */
-.route-map-plain {
-    height: 300px;
-    border-radius: 0 0 8px 8px;
-}
-
-/* Точки маршрута */
-.number-circle {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: #f8f9fa;
-    border: 2px solid #dee2e6;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    font-size: 0.8rem;
-    color: #6c757d;
-}
-
-/* Рейтинг */
-.rating-score {
-    font-size: 2rem;
-    font-weight: 700;
-}
-
-/* Информация */
-.info-list .info-item:last-child {
-    border-bottom: none !important;
-}
-
-/* Похожие маршруты */
-.hover-bg {
-    transition: background-color 0.2s ease;
-}
-
-.hover-bg:hover {
-    background-color: #f8f9fa;
-}
-
-/* Бейджи */
-.route-type-badge.walking {
-    background: #e8f5e8;
-    color: #2e7d32;
-    border: 1px solid #c8e6c9;
-}
-.route-type-badge.driving {
-    background: #e3f2fd;
-    color: #1565c0;
-    border: 1px solid #bbdefb;
-}
-.route-type-badge.cycling {
-    background: #fff3e0;
-    color: #ef6c00;
-    border: 1px solid #ffe0b2;
-}
-
-/* Кнопка избранного */
-.btn-favorite.active {
-    background-color: #dc3545;
-    border-color: #dc3545;
-    color: white;
-}
-
-/* Адаптивность */
-@media (max-width: 768px) {
-    .route-hero {
-        height: 300px;
-        margin: 0;
-        border-radius: 0;
-    }
-
-    .hero-image {
-        height: 300px;
-    }
-
-    .hero-title-light {
-        font-size: 1.5rem;
-    }
-
-    .hero-actions-light .d-flex {
-        justify-content: flex-start !important;
-    }
-
-/* Стили для аудиоплеера */
-.audio-player-card {
-    border: 1px solid #e3f2fd;
-    background: linear-gradient(135deg, #f8fdff 0%, #f0f7ff 100%);
-    border-radius: 12px;
-}
-
-audio {
-    border-radius: 12px;
-    background: #f8f9fa;
-}
-
-audio::-webkit-media-controls-panel {
-    background-color: #f8f9fa;
-    border-radius: 12px;
-}
-
-audio::-webkit-media-controls-play-button {
-    background-color: #3b82f6;
-    border-radius: 50%;
-}
-
-audio::-webkit-media-controls-current-time-display,
-audio::-webkit-media-controls-time-remaining-display {
-    color: #374151;
-    font-weight: 500;
-}
-
-/* Анимация для индикатора AI */
-@keyframes pulse-ai {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
-}
-
-.badge.bg-success.bg-opacity-10 {
-    animation: pulse-ai 2s infinite;
-}
-
-/* Улучшенные стили для полного аудиогида */
-.full-audio-guide {
-    background: linear-gradient(135deg, #f0f7ff 0%, #e3f2fd 100%);
-    border-radius: 12px;
-    padding: 1.5rem;
-}
-
-.audio-features .badge {
-    font-size: 0.75rem;
-    padding: 0.25rem 0.5rem;
-}
-}
-</style>
-{% endblock %}
-
 {% block extra_js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -830,12 +846,12 @@ async function buildRouteWithORS(points, map, routeType) {
         const data = await response.json();
         console.log('ORS Response data:', data);
 
-        // Проверяем структуру ответа - ИСПРАВЛЕННАЯ ПРОВЕРКА
+        // Проверяем структуру ответа
         if (data.features && data.features.length > 0 && data.features[0].geometry) {
             const route = data.features[0];
             const routeGeometry = route.geometry;
 
-            // Получаем информацию о маршруте - ИСПРАВЛЕННАЯ ЛОГИКА
+            // Получаем информацию о маршруте
             const routeInfo = route.properties;
             console.log('Route properties:', routeInfo);
 
@@ -1058,21 +1074,4 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(initMap, 100);
 });
 </script>
-
-<style>
-.custom-marker {
-    text-align: center;
-}
-
-.route-distance,
-.route-duration {
-    font-weight: bold;
-    color: #2563eb;
-}
-
-/* Стили для разных типов маршрутов */
-.route-walking { border-left: 4px solid #48bb78; }
-.route-driving { border-left: 4px solid #2563eb; }
-.route-cycling { border-left: 4px solid #f59e0b; }
-</style>
 {% endblock %}

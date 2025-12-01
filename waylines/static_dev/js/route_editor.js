@@ -746,9 +746,17 @@ class RouteEditor {
         content.innerHTML = contentHtml;
         detailsDiv.style.display = 'block';
         
-        // ПОКАЗ AI АУДИО КОНТРОЛОВ В ДЕТАЛЯХ ТОЧКИ
         if (window.audioGenerationManager) {
-            window.audioGenerationManager.showAudioForPoint(point.id || index, point);
+            if (point.id) {
+                // Точка сохранена — показываем реальные аудио контролы
+                window.audioGenerationManager.showAudioForPoint(point.id, point);
+            } else {
+                // Точка ещё не сохранена — показываем "нет аудио" и отключаем генерацию
+                window.audioGenerationManager.showNoAudio();
+                // Отключаем кнопку генерации в блоке деталей
+                const btn = document.querySelector('#point-details .generate-audio-btn');
+                if (btn) btn.disabled = true;
+            }
         }
         
         // Подсвечиваем точку на карте
@@ -928,9 +936,14 @@ class RouteEditor {
         // Загрузка аудио данных
         this.loadAudioData(point);
         
-        // ПОКАЗ AI АУДИО КОНТРОЛОВ
         if (window.audioGenerationManager) {
-            window.audioGenerationManager.showAudioForPoint(point.id || index, point);
+            if (point.id) {
+                window.audioGenerationManager.showAudioForPoint(point.id, point);
+            } else {
+                window.audioGenerationManager.showNoAudio();
+                const btn = document.querySelector('#point-editor-modal .generate-audio-btn');
+                if (btn) btn.disabled = true;
+            }
         }
         
         // Настройка обработчиков для модального окна
@@ -1145,28 +1158,13 @@ class RouteEditor {
 
         this.saveToHistory();
         
-        // Собираем фото ТОЧКИ (только из модального окна точки)
-        const pointPhotos = [];
-        const mainPreview = document.querySelector('#point-editor-modal .main-photo-preview img');
-        if (mainPreview && mainPreview.src && mainPreview.src.startsWith('data:')) {
-            pointPhotos.push(mainPreview.src);
-        }
+        // Используем getPointPhotosForModal() вместо getPointPhotos()
+        const pointPhotos = this.getPointPhotosForModal();
         
-        // Добавляем дополнительные фото точки
-        const additionalItems = document.querySelectorAll('#point-editor-modal .additional-photo-item');
-        additionalItems.forEach(item => {
-            const img = item.querySelector('img');
-            if (img && img.src && img.src.startsWith('data:')) {
-                pointPhotos.push(img.src);
-            }
-        });
-
-        // ИСПРАВЛЕНИЕ: Разделяем теги по запятой
         const tagsInput = document.getElementById('point-tags');
         const tags = tagsInput ? 
             tagsInput.value.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
 
-        // ОБНОВЛЕНИЕ: Получаем текущее состояние AI аудио
         const hasAIAudio = window.audioGenerationManager ? 
             window.audioGenerationManager.currentAudioUrl !== null : false;
         
@@ -1181,10 +1179,10 @@ class RouteEditor {
             category: document.getElementById('point-category')?.value || '',
             tags: tags,
             hint_author: document.getElementById('point-hint-author')?.value || '',
-            photos: pointPhotos, // Только фото точки
-            has_audio: hasAIAudio || !!this.currentAudioFile, // AI аудио или записанное
+            photos: pointPhotos, // Сохраняем фото в объект точки
+            has_audio: hasAIAudio || !!this.currentAudioFile,
             audio_file: this.currentAudioFile,
-            audio_guide: aiAudioUrl, // URL AI аудио
+            audio_guide: aiAudioUrl,
             lat: this.normalizeCoordinate(document.getElementById('point-lat')?.value || 0),
             lng: this.normalizeCoordinate(document.getElementById('point-lng')?.value || 0)
         };
@@ -1199,25 +1197,90 @@ class RouteEditor {
         }
     }
 
+    // Новый метод для получения фото из модального окна
+    getPointPhotosForModal() {
+        const pointPhotos = [];
+        
+        console.log('=== СБОР ФОТО ИЗ МОДАЛЬНОГО ОКНА ===');
+        
+        // 1. Основное фото
+        const mainPreview = document.querySelector('#point-editor-modal .main-photo-preview img');
+        if (mainPreview && mainPreview.src) {
+            console.log('Найдено основное фото:', mainPreview.src.substring(0, 100));
+            
+            // Проверяем, что это не дефолтное изображение
+            if (!mainPreview.src.includes('placeholder') && !mainPreview.src.includes('data:image/svg')) {
+                pointPhotos.push(mainPreview.src);
+            }
+        }
+        
+        // 2. Дополнительные фото
+        const additionalItems = document.querySelectorAll('#point-editor-modal .additional-photo-item');
+        console.log('Найдено дополнительных фото:', additionalItems.length);
+        
+        additionalItems.forEach((item, i) => {
+            const img = item.querySelector('img');
+            if (img && img.src) {
+                console.log(`Доп. фото ${i}:`, img.src.substring(0, 100));
+                
+                if (!img.src.includes('placeholder') && !img.src.includes('data:image/svg')) {
+                    pointPhotos.push(img.src);
+                }
+            }
+        });
+        
+        console.log('Итоговое количество фото:', pointPhotos.length);
+        return pointPhotos;
+    }
+
     getRoutePhotos() {
         const routePhotos = [];
         
         // Основное фото маршрута
         const mainPreview = document.querySelector('.main-photo-section .main-photo-preview img');
-        if (mainPreview && mainPreview.src && mainPreview.src.startsWith('data:')) {
-            routePhotos.push(mainPreview.src);
+        if (mainPreview && mainPreview.src) {
+            if (mainPreview.src.startsWith('data:')) {
+                // Новое фото - DataURL
+                routePhotos.push(mainPreview.src);
+            } else if (mainPreview.src.includes('/uploads/') || mainPreview.src.includes('/media/')) {
+                // Уже сохраненное фото - URL
+                routePhotos.push(mainPreview.src);
+            }
         }
         
         // Дополнительные фото маршрута
         const additionalItems = document.querySelectorAll('.additional-photos-grid .additional-photo-item');
         additionalItems.forEach(item => {
             const img = item.querySelector('img');
-            if (img && img.src && img.src.startsWith('data:')) {
-                routePhotos.push(img.src);
+            if (img && img.src) {
+                if (img.src.startsWith('data:')) {
+                    routePhotos.push(img.src);
+                } else if (img.src.includes('/uploads/') || img.src.includes('/media/')) {
+                    routePhotos.push(img.src);
+                }
             }
         });
         
         return routePhotos;
+    }
+
+    getPointPhotos(pointIndex) {
+        if (pointIndex === undefined && this.currentEditIndex !== null) {
+            pointIndex = this.currentEditIndex;
+        }
+        
+        if (pointIndex === undefined || !this.points[pointIndex]) {
+            return [];
+        }
+        
+        const point = this.points[pointIndex];
+        
+        console.log(`=== DEBUG getPointPhotos(${pointIndex}) ===`);
+        console.log('Point name:', point.name);
+        console.log('Point photos in object:', point.photos);
+        
+        // Возвращаем фото, которые уже сохранены в объекте точки
+        return point.photos || [];
     }
 
     // Аудио функциональность - ИСПРАВЛЕННАЯ ВЕРСИЯ
@@ -1730,7 +1793,10 @@ class RouteEditor {
     // Сохранение маршрута
     async saveRoute() {
         const nameInput = document.getElementById('name');
-        if (!nameInput) return;
+        if (!nameInput) {
+            this.showToast('Поле названия не найдено', 'danger');
+            return;
+        }
         
         const name = nameInput.value.trim();
         if (!name) {
@@ -1739,18 +1805,27 @@ class RouteEditor {
             return;
         }
 
-        if (this.points.length === 0) {
-            this.showToast('Добавьте хотя бы одну точку маршрута', 'warning');
+        // ИСПРАВЛЕНО: Проверяем минимум 2 точки
+        if (this.points.length < 2) {
+            this.showToast('Добавьте хотя бы две точки маршрута', 'warning');
             return;
         }
+
+        console.log('=== Начинаем сохранение маршрута ===');
+        console.log('Название:', name);
+        console.log('Количество точек:', this.points.length);
+        console.log('Точки:', this.points);
 
         const routeLoading = document.getElementById('route-loading');
         if (routeLoading) routeLoading.style.display = 'flex';
 
         try {
-            // Получаем фото маршрута отдельно
+            // Получаем фото маршрута
             const routePhotos = this.getRoutePhotos();
             
+            console.log('Фото маршрута:', routePhotos.length);
+            
+            // Формируем данные
             const routeData = {
                 name: name,
                 short_description: document.getElementById('short_description')?.value || '',
@@ -1767,8 +1842,8 @@ class RouteEditor {
                 is_elderly_friendly: document.getElementById('is_elderly_friendly')?.checked || false,
                 is_child_friendly: document.getElementById('is_child_friendly')?.checked || false,
                 is_active: document.getElementById('is_active') ? document.getElementById('is_active').checked : true,
-                route_photos: routePhotos, // Фото маршрута
-                points: this.points.map((point, index) => ({
+                route_photos: routePhotos,
+                waypoints: this.points.map((point, index) => ({
                     name: point.name,
                     description: point.description || '',
                     address: point.address || '',
@@ -1777,61 +1852,99 @@ class RouteEditor {
                     category: point.category || '',
                     hint_author: point.hint_author || '',
                     tags: point.tags || [],
-                    photos: point.photos || [], // Фото точки
+                    photos: this.getPointPhotos(index) || [],
                     has_audio: point.has_audio || false
                 }))
             };
 
-            console.log('Saving route data:', routeData);
+            console.log('Данные для отправки:', routeData);
 
+            // Определяем URL и метод
             let url, method;
+            
+            // Проверяем, редактируем ли существующий маршрут
             const isEdit = window.routeData && window.routeData.id;
+            console.log('Режим редактирования:', isEdit, 'ID:', window.routeData?.id);
 
             if (isEdit) {
                 url = `/routes/api/routes/${window.routeData.id}/`;
-                method = 'PUT'; // Используем PUT для редактирования
+                method = 'PUT';
             } else {
                 url = '/routes/api/routes/';
                 method = 'POST';
             }
 
+            console.log('Отправка запроса:', method, url);
+
+            // Получаем CSRF токен
+            const csrfToken = this.getCSRFToken();
+            if (!csrfToken) {
+                this.showToast('Ошибка CSRF токена', 'danger');
+                return;
+            }
+
+            // Отправляем запрос
             const response = await fetch(url, {
                 method: method,
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': this.getCSRFToken(),
+                    'X-CSRFToken': csrfToken,
                     'X-Requested-With': 'XMLHttpRequest'
                 },
                 body: JSON.stringify(routeData)
             });
 
+            console.log('Статус ответа:', response.status);
+
+            // Обрабатываем ответ
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('Server response not OK:', response.status, errorText);
-                throw new Error(`HTTP ${response.status}: ${errorText}`);
+                console.error('Ошибка сервера:', response.status, errorText);
+                
+                let errorMessage = `HTTP ${response.status}: `;
+                if (response.status === 400) {
+                    errorMessage += 'Неверные данные';
+                } else if (response.status === 401) {
+                    errorMessage += 'Требуется авторизация';
+                } else if (response.status === 403) {
+                    errorMessage += 'Доступ запрещен';
+                } else if (response.status === 404) {
+                    errorMessage += 'Страница не найдена';
+                } else {
+                    errorMessage += errorText.substring(0, 100);
+                }
+                
+                throw new Error(errorMessage);
             }
 
             const data = await response.json();
-            console.log('Server response:', data);
-            
-            // УСИЛЕННАЯ ПРОВЕРКА УСПЕШНОГО СОХРАНЕНИЯ
+            console.log('Ответ сервера:', data);
+
+            // Проверяем успешность
             if (data.id || data.route_id || data.success) {
                 const routeId = data.id || data.route_id;
-                this.showToast('Маршрут успешно сохранен!', 'success');
+                this.showToast('✅ Маршрут успешно сохранен!', 'success');
                 
-                // Переход на страницу маршрута через 1.5 секунды
+                // Обновляем ID точек если они есть в ответе
+                if (data.points) {
+                    data.points.forEach((savedPoint, idx) => {
+                        if (this.points[idx]) {
+                            this.points[idx].id = savedPoint.id;
+                        }
+                    });
+                }
+                
+                // Переход через 1.5 секунды
                 setTimeout(() => {
                     if (routeId) {
-                        console.log('Redirecting to route:', routeId);
                         window.location.href = `/routes/${routeId}/`;
                     } else {
-                        console.log('Redirecting to my routes');
                         window.location.href = '/routes/my/';
                     }
                 }, 1500);
+                
             } else {
-                // Если нет явного успеха, но ответ 200 OK, все равно считаем успехом
-                this.showToast('Маршрут сохранен!', 'success');
+                this.showToast('Сервер не вернул ID маршрута', 'warning');
                 setTimeout(() => {
                     window.location.href = '/routes/my/';
                 }, 1500);
@@ -1839,23 +1952,17 @@ class RouteEditor {
 
         } catch (error) {
             console.error('Ошибка сохранения:', error);
-            let errorMessage = error.message;
             
+            let errorMessage = error.message;
             if (error.message.includes('Failed to fetch')) {
                 errorMessage = 'Ошибка сети. Проверьте подключение к интернету.';
             } else if (error.message.includes('404')) {
-                errorMessage = 'API endpoint не найден. Проверьте URL.';
-            } else if (error.message.includes('403')) {
-                errorMessage = 'Доступ запрещен. Возможно, нужно авторизоваться.';
-            } else if (error.message.includes('400')) {
-                errorMessage = 'Неверные данные. Проверьте заполнение полей.';
-            } else if (error.message.includes('500')) {
-                errorMessage = 'Ошибка сервера. Попробуйте позже.';
+                errorMessage = 'Сервер не отвечает. Проверьте URL API.';
             }
             
-            this.showToast(`Ошибка сохранения: ${errorMessage}`, 'danger');
+            this.showToast(`Ошибка: ${errorMessage}`, 'danger');
+            
         } finally {
-            const routeLoading = document.getElementById('route-loading');
             if (routeLoading) routeLoading.style.display = 'none';
         }
     }
@@ -2226,7 +2333,10 @@ class RouteEditor {
     }
 
     normalizeCoordinate(coord) {
-        if (coord === null || coord === undefined) {
+        console.log('Нормализация координаты:', coord, 'тип:', typeof coord);
+        
+        if (coord === null || coord === undefined || coord === '') {
+            console.warn('Координата пустая:', coord);
             return 0;
         }
         
@@ -2239,15 +2349,19 @@ class RouteEditor {
             const cleaned = normalized.replace(/[^\d.-]/g, '');
             const parsed = parseFloat(cleaned);
             
+            console.log('После очистки:', cleaned, '->', parsed);
+            
             if (isNaN(parsed)) {
-                console.warn('Неверный формат координаты:', coord, '->', parsed);
+                console.error('Неверный формат координаты:', coord);
                 return 0;
             }
             
             return parsed;
         }
         
-        return parseFloat(coord) || 0;
+        const parsed = parseFloat(coord);
+        console.log('Прямой парсинг:', coord, '->', parsed);
+        return isNaN(parsed) ? 0 : parsed;
     }
 
     debounce(func, wait) {

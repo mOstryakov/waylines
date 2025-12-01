@@ -13,10 +13,14 @@ urlpatterns = [
     path("chat/", include("chat.urls")),
     path("interactions/", include("interactions.urls")),
     path("users/", include("users.urls")),
-    path('audio/', include('ai_audio.urls')),
+    path("audio/", include("ai_audio.urls")),
 ]
 
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(
+        settings.MEDIA_URL, document_root=settings.MEDIA_ROOT
+    )
 else:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(
+        settings.MEDIA_URL, document_root=settings.MEDIA_ROOT
+    )

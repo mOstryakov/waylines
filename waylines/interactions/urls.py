@@ -10,12 +10,22 @@ urlpatterns = [
         interactions.views.toggle_favorite,
         name="toggle_favorite",
     ),
-    path("rating/<int:route_id>/", interactions.views.add_rating, name="add_rating"),
-    path("comment/<int:route_id>/", interactions.views.add_comment, name="add_comment"),
+    path(
+        "rating/<int:route_id>/",
+        interactions.views.add_rating,
+        name="add_rating",
+    ),
+    path(
+        "comment/<int:route_id>/",
+        interactions.views.add_comment,
+        name="add_comment",
+    ),
     path(
         "comment/delete/<int:comment_id>/",
         interactions.views.delete_comment,
         name="delete_comment",
     ),
-    path("my-favorites/", interactions.views.my_favorites, name="my_favorites"),
+    path(
+        "my-favorites/", interactions.views.my_favorites, name="my_favorites"
+    ),
 ]
