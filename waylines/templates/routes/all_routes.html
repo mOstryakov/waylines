@@ -1,138 +1,361 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Все маршруты - Waylines{% endblock %}
 
 {% block content %}
-<div class="container">
-  <div class="row">
-    <div class="col-md-3">
-      <!-- Фильтры -->
-      <div class="card mb-4">
-        <div class="card-header">
-          <h5 class="card-title mb-0">Фильтры</h5>
-        </div>
-        <div class="card-body">
-          <form method="get" id="filter-form">
-            <!-- Поиск -->
-            <div class="mb-3">
-              <label class="form-label">Поиск</label>
-              <input type="text" name="q" class="form-control" value="{{ request.GET.q }}" 
-                     placeholder="Название, описание...">
-            </div>
-
-            <!-- Тип маршрута -->
-            <div class="mb-3">
-              <label class="form-label">Тип маршрута</label>
-              <select name="type" class="form-select">
-                <option value="">Все типы</option>
-                {% for value, label in route_types %}
-                <option value="{{ value }}" {% if request.GET.type == value %}selected{% endif %}>
-                  {{ label }}
-                </option>
-                {% endfor %}
-              </select>
-            </div>
-
-            <!-- Настроение -->
-            <div class="mb-3">
-              <label class="form-label">Настроение</label>
-              <select name="mood" class="form-select">
-                <option value="">Любое настроение</option>
-                {% for value, label in moods %}
-                <option value="{{ value }}" {% if request.GET.mood == value %}selected{% endif %}>
-                  {{ label }}
-                </option>
-                {% endfor %}
-              </select>
-            </div>
-
-            <!-- Тема -->
-            <div class="mb-3">
-              <label class="form-label">Тема</label>
-              <select name="theme" class="form-select">
-                <option value="">Любая тема</option>
-                {% for value, label in themes %}
-                <option value="{{ value }}" {% if request.GET.theme == value %}selected{% endif %}>
-                  {{ label }}
-                </option>
-                {% endfor %}
-              </select>
-            </div>
-
-            <button type="submit" class="btn btn-primary w-100">Применить</button>
-            <a href="{% url 'all_routes' %}" class="btn btn-outline-secondary w-100 mt-2">Сбросить</a>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-md-9">
-      <!-- Заголовок и сортировка -->
-      <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h1 class="h3 mb-1">Все маршруты</h1>
-          <p class="text-muted mb-0">Найдено {{ page_obj.paginator.count }} маршрутов</p>
+            <h1 class="h3 fw-bold mb-1">Все маршруты</h1>
+            <p class="text-muted mb-0">Найдено {{ page_obj.paginator.count }} маршрут{{ page_obj.paginator.count|pluralize:"ов" }}</p>
         </div>
         <div class="dropdown">
-          <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-            Сортировка
-          </button>
-          <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}sort=newest">Сначала новые</a></li>
-            <li><a class="dropdown-item" href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}sort=popular">По популярности</a></li>
-            <li><a class="dropdown-item" href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}sort=rating">По рейтингу</a></li>
-          </ul>
+            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                Сортировка
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}sort=newest">Сначала новые</a></li>
+                <li><a class="dropdown-item" href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}sort=popular">По популярности</a></li>
+                <li><a class="dropdown-item" href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}sort=rating">По рейтингу</a></li>
+            </ul>
         </div>
-      </div>
-
-      <div class="row">
-        {% for route in page_obj %}
-        <div class="col-lg-4 col-md-6 mb-4">
-          {% include 'routes/partials/route_card.html' with route=route %}
-        </div>
-        {% empty %}
-        <div class="col-12">
-          <div class="text-center py-5">
-            <i class="fas fa-search fa-3x text-muted mb-3"></i>
-            <h4>Маршруты не найдены</h4>
-            <p class="text-muted">Попробуйте изменить параметры поиска</p>
-            <a href="{% url 'all_routes' %}" class="btn btn-primary">Сбросить фильтры</a>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-
-      <!-- Пагинация -->
-      {% if page_obj.paginator.num_pages > 1 %}
-      <nav aria-label="Page navigation">
-        <ul class="pagination justify-content-center">
-          {% if page_obj.has_previous %}
-          <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Назад</a>
-          </li>
-          {% endif %}
-
-          {% for num in page_obj.paginator.page_range %}
-          {% if page_obj.number == num %}
-          <li class="page-item active">
-            <span class="page-link">{{ num }}</span>
-          </li>
-          {% else %}
-          <li class="page-item">
-            <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
-          </li>
-          {% endif %}
-          {% endfor %}
-
-          {% if page_obj.has_next %}
-          <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Вперед</a>
-          </li>
-          {% endif %}
-        </ul>
-      </nav>
-      {% endif %}
     </div>
-  </div>
+
+    <div class="row g-4">
+        <!-- Фильтры -->
+        <div class="col-xl-3 col-lg-3">
+            <div class="card border-0 shadow-sm h-100" style="position: sticky; top: 20px;">
+                <div class="card-header bg-white border-bottom">
+                    <h5 class="card-title mb-0">Фильтры</h5>
+                </div>
+                <div class="card-body p-3">
+                    <form method="get" id="filter-form">
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Поиск</label>
+                            <input type="text" name="q" class="form-control form-control-sm" value="{{ request.GET.q }}" 
+                                   placeholder="Название, описание...">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Тип маршрута</label>
+                            <select name="type" class="form-select form-select-sm">
+                                <option value="">Все типы</option>
+                                {% for value, label in route_types %}
+                                <option value="{{ value }}" {% if request.GET.type == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Настроение</label>
+                            <select name="mood" class="form-select form-select-sm">
+                                <option value="">Любое настроение</option>
+                                {% for value, label in moods %}
+                                <option value="{{ value }}" {% if request.GET.mood == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Тема</label>
+                            <select name="theme" class="form-select form-select-sm">
+                                <option value="">Любая тема</option>
+                                {% for value, label in themes %}
+                                <option value="{{ value }}" {% if request.GET.theme == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-sm">Применить</button>
+                            <a href="{% url 'all_routes' %}" class="btn btn-outline-secondary btn-sm">Сбросить</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Маршруты -->
+        <div class="col-xl-9 col-lg-9">
+            {% if page_obj %}
+                <!-- Правильная сетка -->
+                <div class="row g-4">
+                    {% for route in page_obj %}
+                    <div class="col-12 col-sm-6 col-xl-4">
+                        {% include 'routes/partials/route_card.html' with route=route %}
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-search fa-2x text-muted mb-3"></i>
+                <h4 class="mb-2">Маршруты не найдены</h4>
+                <p class="text-muted mb-3">Попробуйте изменить параметры поиска</p>
+                <a href="{% url 'all_routes' %}" class="btn btn-outline-primary btn-sm">Сбросить фильтры</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
 </div>
+
+<!-- ПАГИНАЦИЯ -->
+{% if page_obj and page_obj.paginator.num_pages > 1 %}
+<div class="container-fluid px-4 mt-4">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                        {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<style>
+/* Используем всю ширину */
+.container-fluid {
+    max-width: 1800px;
+    margin: 0 auto;
+}
+
+/* Правильная сетка для карточек */
+.row.g-4 {
+    margin-right: -0.75rem;
+    margin-left: -0.75rem;
+}
+
+.row.g-4 > .col-12.col-sm-6.col-xl-4 {
+    padding-right: 0.75rem;
+    padding-left: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Карточки маршрутов */
+.route-card-full {
+    height: 100%;
+    min-height: 420px;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #f0f0f0;
+    border-radius: 12px;
+    background: #fff;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.route-card-full:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+}
+
+/* Изображение */
+.route-image-container {
+    height: 180px;
+    width: 100%;
+    overflow: hidden;
+    border-radius: 12px 12px 0 0;
+    flex-shrink: 0;
+}
+
+.route-image-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    transition: transform 0.3s ease;
+}
+
+.route-card-full:hover .route-image-container img {
+    transform: scale(1.05);
+}
+
+/* Контент карточки */
+.route-card-full .card-body {
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-height: 0;
+}
+
+/* Текст */
+.route-card-full .card-text {
+    flex-grow: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    margin-bottom: 0.75rem;
+}
+
+/* Кнопки и статистика */
+.route-card-full .card-footer {
+    margin-top: auto;
+    padding-top: 0.75rem;
+    border-top: 1px solid #f0f0f0;
+}
+
+/* Размеры */
+.route-card-full .card-title {
+    font-size: 1rem;
+    line-height: 1.3;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.route-card-full .badge {
+    font-size: 0.75rem;
+    padding: 0.25em 0.5em;
+}
+
+.route-card-full small {
+    font-size: 0.8rem;
+}
+
+.route-card-full .btn {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.75rem;
+}
+
+/* Стики-фильтры */
+.card[style*="sticky"] {
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    border: 1px solid #e9ecef;
+}
+
+.card[style*="sticky"] .card-header {
+    padding: 1rem;
+    background: #f8f9fa;
+}
+
+.card[style*="sticky"] .card-body {
+    padding: 1rem;
+}
+
+/* Адаптивность карточек */
+@media (max-width: 1399px) {
+    .col-xl-4 {
+        flex: 0 0 33.333333%;
+        max-width: 33.333333%;
+    }
+}
+
+@media (max-width: 1199px) {
+    .route-card-full {
+        min-height: 400px;
+    }
+    
+    .route-image-container {
+        height: 170px;
+    }
+}
+
+@media (max-width: 991px) {
+    .col-lg-3 {
+        flex: 0 0 25%;
+        max-width: 25%;
+    }
+    
+    .col-lg-9 {
+        flex: 0 0 75%;
+        max-width: 75%;
+    }
+    
+    .col-sm-6 {
+        flex: 0 0 50%;
+        max-width: 50%;
+    }
+    
+    .route-card-full {
+        min-height: 380px;
+    }
+    
+    .route-image-container {
+        height: 160px;
+    }
+}
+
+@media (max-width: 767px) {
+    .col-lg-3, .col-lg-9 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+    
+    .col-sm-6 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+    
+    .route-card-full {
+        min-height: auto;
+        height: auto;
+    }
+    
+    .route-image-container {
+        height: 180px;
+    }
+}
+
+@media (max-width: 575px) {
+    .container-fluid {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+    
+    .route-image-container {
+        height: 160px;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filterForm = document.getElementById('filter-form');
+    if (filterForm) {
+        const selects = filterForm.querySelectorAll('select');
+        selects.forEach(select => {
+            select.addEventListener('change', () => filterForm.submit());
+        });
+    }
+});
+</script>
+
 {% endblock %}

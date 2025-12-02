@@ -15,28 +15,236 @@
     --border-light: #e0e0e0;
     --text-dark: #202124;
     --text-muted: #5f6368;
+    --success: #34a853;
+    --warning: #fbbc05;
+    --danger: #ea4335;
 }
 
-.avatar-container {
+/* Основные улучшения */
+.container-fluid {
+    max-width: 1400px;
+}
+
+/* Боковая панель - фиксированная высота */
+.chats-sidebar {
+    position: sticky;
+    top: 20px;
+    height: calc(100vh - 100px);
+    display: flex;
+    flex-direction: column;
+    border-radius: 16px;
+    overflow: hidden;
+    background: white;
+    border: 1px solid var(--border-light);
+}
+
+.profile-section {
+    flex-shrink: 0;
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.conversations-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.conversations-header {
+    flex-shrink: 0;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border-light);
+    background: white;
+    z-index: 10;
+}
+
+.conversations-list-container {
+    flex: 1;
+    overflow: hidden;
     position: relative;
-    display: inline-block;
 }
 
-.online-status {
+.conversations-list {
     position: absolute;
-    bottom: 2px;
-    right: 2px;
-    width: 12px;
-    height: 12px;
-    border: 2px solid white;
-    border-radius: 50%;
-    background: #4caf50;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow-y: auto;
+    padding: 0.5rem 0;
 }
 
+/* Единые контейнеры с фиксированной высотой */
+.scrollable-container {
+    height: 400px;
+    display: flex;
+    flex-direction: column;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border-light);
+    background: white;
+    margin-bottom: 1.5rem;
+}
+
+.container-header {
+    flex-shrink: 0;
+    padding: 1.25rem;
+    border-bottom: 1px solid var(--border-light);
+    background: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.container-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.container-scrollable {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 1rem;
+}
+
+/* Сетка карточек - упрощенный дизайн */
+.routes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    padding: 1rem 0;
+}
+
+.route-card-grid {
+    height: 100%;
+    transition: all 0.3s ease;
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    overflow: hidden;
+    background: white;
+    cursor: pointer;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+}
+
+.route-card-grid:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(26, 115, 232, 0.15);
+    border-color: var(--primary-blue);
+}
+
+.route-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.route-card-info {
+    flex: 1;
+}
+
+.route-name {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--text-dark);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.route-author {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.route-status {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.route-status.published {
+    background: rgba(52, 168, 83, 0.1);
+    color: var(--success);
+}
+
+.route-status.participant {
+    background: rgba(66, 133, 244, 0.1);
+    color: var(--primary-blue);
+}
+
+.route-status.public {
+    background: rgba(251, 188, 5, 0.1);
+    color: var(--warning);
+}
+
+.route-status.draft {
+    background: rgba(96, 96, 96, 0.1);
+    color: var(--text-muted);
+}
+
+.route-description {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    flex: 1;
+}
+
+.route-meta {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-light);
+}
+
+.route-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.route-messages {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    color: var(--primary-blue);
+    font-weight: 500;
+}
+
+/* Элементы диалогов */
 .conversation-item {
     transition: all 0.2s ease;
     border-left: 3px solid transparent;
     cursor: pointer;
+    margin: 0.25rem 0.5rem;
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
 }
 
 .conversation-item:hover {
@@ -47,74 +255,92 @@
 .conversation-item.active {
     background-color: var(--primary-light);
     border-left-color: var(--primary-blue);
+    box-shadow: 0 2px 8px rgba(26, 115, 232, 0.1);
 }
 
 .conversation-item.unread {
-    background-color: #fff;
+    background-color: rgba(138, 180, 248, 0.1);
     border-left-color: var(--accent-blue);
 }
 
-.conversation-item.unread:hover {
-    background-color: var(--primary-light);
-}
-
-.hover-lift:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(26, 115, 232, 0.15);
-    transition: all 0.3s ease;
-}
-
-.empty-state-icon {
-    width: 80px;
-    height: 80px;
-    background: linear-gradient(135deg, var(--primary-blue), var(--primary-dark));
+/* Аватарки пользователей */
+.user-avatar {
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 auto;
-}
-
-.route-chat-card {
-    transition: all 0.3s ease;
-    border: 1px solid var(--border-light);
-    cursor: pointer;
-}
-
-.route-chat-card:hover {
-    border-color: var(--primary-blue);
-    box-shadow: 0 2px 12px rgba(26, 115, 232, 0.1);
-}
-
-.friend-card {
-    transition: all 0.3s ease;
-    border: 1px solid var(--border-light);
-    cursor: pointer;
-}
-
-.friend-card:hover {
-    border-color: var(--primary-blue);
-    background: var(--primary-light) !important;
-}
-
-.badge-count {
-    min-width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
     font-weight: 600;
+    background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+    color: white;
+    font-size: 14px;
+    position: relative;
+    margin-right: 12px;
+    flex-shrink: 0;
 }
 
-.last-message {
+.user-avatar.small {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+}
+
+.user-status {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid white;
+    background: var(--success);
+}
+
+/* Текст и утилиты */
+.conversation-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.conversation-username {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--text-dark);
+    margin-bottom: 2px;
+}
+
+.conversation-message {
+    font-size: 0.75rem;
+    color: var(--text-muted);
     display: -webkit-box;
     -webkit-line-clamp: 1;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    color: var(--text-muted);
+    margin-bottom: 2px;
 }
 
+.conversation-time {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.conversation-unread {
+    background: var(--primary-blue);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 600;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 8px;
+}
+
+/* Поиск */
 .search-box {
     position: relative;
 }
@@ -139,401 +365,635 @@
     border-color: var(--primary-blue);
 }
 
-.conversations-list {
-    max-height: 500px;
-    overflow-y: auto;
+/* Карточки друзей */
+.friends-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1rem;
+    padding: 1rem 0;
 }
 
-.conversations-list::-webkit-scrollbar {
+.friend-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.25rem;
+    border-radius: 12px;
+    background: white;
+    border: 1px solid var(--border-light);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    text-align: center;
+}
+
+.friend-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(26, 115, 232, 0.15);
+    border-color: var(--primary-blue);
+}
+
+.friend-avatar {
+    position: relative;
+    margin-bottom: 12px;
+}
+
+.friend-name {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--text-dark);
+    margin-bottom: 4px;
+}
+
+.friend-status {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* Заголовки секций */
+.section-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 0.5rem;
+}
+
+.section-subtitle {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+}
+
+/* Анимации */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease forwards;
+}
+
+/* Кнопка нового чата в заголовке */
+.header-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.new-chat-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1.25rem;
+    background: var(--primary-blue);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.new-chat-btn:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+}
+
+/* Кастомные скроллбары */
+::-webkit-scrollbar {
     width: 6px;
 }
 
-.conversations-list::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 3px;
+::-webkit-scrollbar-track {
+    background: transparent;
 }
 
-.conversations-list::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb {
     background: #c5c5c5;
     border-radius: 3px;
 }
 
-.conversations-list::-webkit-scrollbar-thumb:hover {
+::-webkit-scrollbar-thumb:hover {
     background: #a5a5a5;
 }
 
-.message-time {
-    font-size: 11px;
-    white-space: nowrap;
-    color: var(--text-muted);
+.container-scrollable::-webkit-scrollbar {
+    width: 4px;
 }
 
-.status-dot {
-    width: 8px;
-    height: 8px;
+/* Адаптивность */
+@media (max-width: 1200px) {
+    .routes-grid {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    }
+}
+
+@media (max-width: 992px) {
+    .chats-sidebar {
+        height: auto;
+        position: static;
+        margin-bottom: 1.5rem;
+    }
+    
+    .scrollable-container {
+        height: 350px;
+    }
+    
+    .routes-grid,
+    .friends-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .scrollable-container {
+        height: 300px;
+    }
+    
+    .container-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .header-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+}
+
+@media (max-width: 576px) {
+    .section-title {
+        font-size: 1.25rem;
+    }
+    
+    .new-chat-btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+    }
+}
+
+/* Состояния пустоты */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+.empty-state-icon {
+    width: 80px;
+    height: 80px;
     border-radius: 50%;
-    position: absolute;
-    bottom: 2px;
-    right: 2px;
-    border: 2px solid white;
-}
-
-.route-icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
+    margin: 0 auto 1.5rem;
     background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
 }
 
-.route-icon i {
+.empty-state-icon i {
     color: white;
-    font-size: 18px;
+    font-size: 2rem;
 }
 
-.avatar {
+.empty-state-title {
+    font-size: 1.25rem;
     font-weight: 600;
-    background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+    color: var(--text-dark);
+    margin-bottom: 0.5rem;
 }
 
-.friend-modal-item {
-    transition: all 0.2s ease;
-    border: 1px solid transparent;
-    border-radius: 12px;
-    cursor: pointer;
+.empty-state-text {
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+    max-width: 400px;
+    text-align: center;
 }
 
-.friend-modal-item:hover {
-    border-color: var(--primary-blue);
-    background: var(--primary-light);
-    transform: translateX(4px);
+/* Утилиты */
+.text-muted {
+    color: var(--text-muted) !important;
 }
 
-.typing-indicator {
-    color: var(--primary-blue);
-    font-style: italic;
-    font-size: 12px;
-}
-
-.typing-dots {
-    display: inline-block;
-}
-
-.typing-dots span {
-    animation: typing 1.4s infinite;
-}
-
-.typing-dots span:nth-child(2) {
-    animation-delay: 0.2s;
-}
-
-.typing-dots span:nth-child(3) {
-    animation-delay: 0.4s;
-}
-
-@keyframes typing {
-    0%, 60%, 100% { opacity: 0.3; }
-    30% { opacity: 1; }
-}
-
-.message-preview {
-    position: relative;
-}
-
-.message-preview.you::before {
-    content: "Вы: ";
-    color: var(--primary-blue);
+.badge {
+    font-size: 0.75rem;
     font-weight: 600;
 }
 
-.chat-category {
-    font-size: 12px;
+/* Секция быстрого начала чата */
+.quick-chat-friends {
+    padding: 1rem 0;
+    border-top: 1px solid var(--border-light);
+    margin-top: 1rem;
+}
+
+.quick-chat-title {
+    font-size: 0.875rem;
     font-weight: 600;
     color: var(--text-muted);
+    margin-bottom: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: 12px;
-}
-
-.btn-primary {
-    background: var(--primary-blue);
-    border-color: var(--primary-blue);
-    font-weight: 500;
-}
-
-.btn-primary:hover {
-    background: var(--primary-dark);
-    border-color: var(--primary-dark);
-    transform: translateY(-1px);
-}
-
-.btn-outline-primary {
-    color: var(--primary-blue);
-    border-color: var(--primary-blue);
-    font-weight: 500;
-}
-
-.btn-outline-primary:hover {
-    background: var(--primary-blue);
-    border-color: var(--primary-blue);
-    transform: translateY(-1px);
-}
-
-.card {
-    border: 1px solid var(--border-light);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.bg-light-custom {
-    background: var(--bg-light) !important;
-    border: 1px solid var(--border-light);
-}
-
-.unread-dot {
-    width: 8px;
-    height: 8px;
-    background: var(--primary-blue);
-    border-radius: 50%;
-    display: inline-block;
-    margin-right: 4px;
 }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
+    <!-- Заголовок страницы -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="section-title">Сообщения и чаты</h1>
+            <p class="section-subtitle">Общайтесь с друзьями и обсуждайте маршруты</p>
+        </div>
+        <div class="header-actions">
+            {% if friends %}
+            <button class="new-chat-btn" data-bs-toggle="modal" data-bs-target="#newChatModal">
+                <i class="fas fa-plus"></i>
+                <span>Новый чат</span>
+            </button>
+            {% endif %}
+            <a href="{% url 'all_routes' %}" class="btn btn-outline-primary rounded-pill px-4">
+                <i class="fas fa-route me-1"></i>Все маршруты
+            </a>
+        </div>
+    </div>
+
     <div class="row g-4">
-        <!-- Боковая панель -->
+        <!-- Боковая панель с личными сообщениями -->
         <div class="col-xl-4 col-lg-5">
-            <!-- Профиль и действия -->
-            <div class="card border-0 mb-4">
-                <div class="card-body p-4">
-                    <div class="d-flex align-items-center mb-4">
-                        <div class="avatar-container me-3">
-                            <div class="avatar text-white rounded-circle d-flex align-items-center justify-content-center" 
-                                 style="width: 52px; height: 52px; font-size: 18px;">
+            <div class="chats-sidebar">
+                <!-- Профиль пользователя -->
+                <div class="profile-section">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="position-relative me-3">
+                            <div class="user-avatar">
                                 {{ user.username|first|upper }}
                             </div>
-                            <div class="online-status"></div>
+                            <div class="user-status bg-success"></div>
                         </div>
                         <div class="flex-grow-1">
-                            <h6 class="mb-1 fw-bold text-dark">{{ user.username }}</h6>
+                            <h5 class="mb-1 fw-bold text-dark">{{ user.username }}</h5>
                             <small class="text-success d-flex align-items-center">
-                                <span class="unread-dot"></span>
+                                <i class="fas fa-circle me-1" style="font-size: 8px;"></i>
                                 Активен сейчас
                             </small>
                         </div>
                     </div>
+                    
+                    <!-- Поиск в чатах -->
+                    <div class="search-box mb-3">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-0">
+                                <i class="fas fa-search text-muted"></i>
+                            </span>
+                            <input type="text" class="form-control border-0" id="chatSearch" 
+                                   placeholder="Поиск чатов и друзей...">
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <!-- Список диалогов -->
-            <div class="card border-0">
-                <div class="card-header bg-transparent border-0 p-4 pb-3">
-                    <h6 class="fw-bold mb-0 text-dark d-flex align-items-center">
-                        <i class="fas fa-comments me-2" style="color: var(--primary-blue);"></i>
-                        Личные сообщения
-                    </h6>
-                </div>
-                <div class="card-body p-0">
-                    {% if conversations_data %}
-                    <div class="conversations-list">
-                        {% for conv_data in conversations_data %}
-                        <div class="conversation-item d-flex align-items-center p-3 text-decoration-none border-bottom {% if conv_data.unread_count > 0 %}unread{% endif %} {% if forloop.first %}active{% endif %}"
-                             onclick="location.href='{% url 'chat:private_chat' conv_data.other_user.id %}'">
-                            <div class="position-relative me-3">
-                                <div class="avatar text-white rounded-circle d-flex align-items-center justify-content-center" 
-                                     style="width: 50px; height: 50px; font-size: 16px;">
-                                    {{ conv_data.other_user.username|first|upper }}
-                                </div>
-                                <div class="status-dot bg-{% if forloop.counter|divisibleby:3 %}warning{% else %}success{% endif %}"></div>
-                            </div>
-                            
-                            <div class="flex-grow-1 me-2" style="min-width: 0;">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <h6 class="mb-0 fw-semibold text-dark">{{ conv_data.other_user.username }}</h6>
-                                    {% if conv_data.last_message %}
-                                    <small class="message-time">{{ conv_data.last_message.created_at|time }}</small>
-                                    {% endif %}
+                <!-- Список диалогов -->
+                <div class="conversations-section">
+                    <div class="conversations-header">
+                        <h6 class="fw-bold mb-0 text-dark d-flex align-items-center">
+                            <i class="fas fa-comments me-2" style="color: var(--primary-blue);"></i>
+                            Личные сообщения
+                            {% if total_unread_count > 0 %}
+                            <span class="badge bg-primary ms-2">{{ total_unread_count }}</span>
+                            {% endif %}
+                        </h6>
+                    </div>
+                    
+                    <div class="conversations-list-container">
+                        {% if conversations_data %}
+                        <div class="conversations-list">
+                            <!-- Показываем все активные диалоги -->
+                            {% for conv_data in conversations_data %}
+                            <div class="conversation-item d-flex align-items-center {% if conv_data.unread_count > 0 %}unread{% endif %} fade-in"
+                                 onclick="window.location.href='{% url 'chat:private_chat' conv_data.other_user.id %}'">
+                                <div class="position-relative">
+                                    <div class="user-avatar small">
+                                        {{ conv_data.other_user.username|first|upper }}
+                                    </div>
+                                    <div class="user-status bg-{% if conv_data.is_online %}success{% else %}secondary{% endif %}"></div>
                                 </div>
                                 
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <p class="mb-0 small last-message message-preview {% if conv_data.last_message and conv_data.last_message.sender == user %}you{% endif %}" 
-                                       style="max-width: 200px;">
+                                <div class="conversation-content">
+                                    <div class="d-flex justify-content-between align-items-start mb-1">
+                                        <div class="conversation-username">{{ conv_data.other_user.username }}</div>
                                         {% if conv_data.last_message %}
-                                            {{ conv_data.last_message.content }}
-                                        {% else %}
-                                            Нет сообщений
-                                        {% endif %}
-                                    </p>
-                                    <div class="d-flex align-items-center">
-                                        {% if conv_data.is_typing %}
-                                        <div class="typing-indicator me-2">
-                                            <span class="typing-dots">
-                                                печатает<span>.</span><span>.</span><span>.</span>
-                                            </span>
+                                        <div class="conversation-time">
+                                            {{ conv_data.last_message.created_at|time }}
                                         </div>
                                         {% endif %}
+                                    </div>
+                                    
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="conversation-message">
+                                            {% if conv_data.last_message %}
+                                                {% if conv_data.last_message.sender == user %}
+                                                    Вы: {{ conv_data.last_message.content|truncatechars:30 }}
+                                                {% else %}
+                                                    {{ conv_data.last_message.content|truncatechars:30 }}
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">Начать диалог</span>
+                                            {% endif %}
+                                        </div>
                                         {% if conv_data.unread_count > 0 %}
-                                        <span class="badge bg-primary badge-count">{{ conv_data.unread_count }}</span>
+                                        <div class="conversation-unread">{{ conv_data.unread_count }}</div>
                                         {% endif %}
                                     </div>
                                 </div>
                             </div>
+                            {% endfor %}
                         </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <div class="text-center py-5 px-3">
-                        <div class="empty-state-icon mb-3">
-                            <i class="fas fa-comments fa-lg text-white"></i>
+                        
+                        <!-- Если есть друзья без диалогов, показываем их как быстрый доступ -->
+                        {% if friends_without_chats %}
+                        <div class="quick-chat-friends">
+                            <div class="quick-chat-title">Быстрый доступ</div>
+                            {% for friend in friends_without_chats|slice:":3" %}
+                            <div class="conversation-item d-flex align-items-center fade-in"
+                                 onclick="window.location.href='{% url 'chat:private_chat' friend.id %}'">
+                                <div class="position-relative">
+                                    <div class="user-avatar small">
+                                        {{ friend.username|first|upper }}
+                                    </div>
+                                    <div class="user-status bg-{% if forloop.counter|divisibleby:2 %}success{% else %}secondary{% endif %}"></div>
+                                </div>
+                                
+                                <div class="conversation-content">
+                                    <div class="conversation-username">{{ friend.username }}</div>
+                                    <div class="conversation-message text-muted">
+                                        Начать диалог
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
                         </div>
-                        <h6 class="text-dark mb-2 fw-semibold">Нет сообщений</h6>
-                        <p class="text-muted small mb-3">Начните общение с друзьями</p>
-                        <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#newChatModal">
-                            <i class="fas fa-plus me-1"></i>Начать чат
-                        </button>
+                        {% endif %}
+                        
+                        {% else %}
+                        <!-- Если нет диалогов, показываем друзей как быстрый доступ -->
+                        {% if friends %}
+                        <div class="conversations-list">
+                            <div class="quick-chat-friends">
+                                <div class="quick-chat-title">Начните общение с друзьями</div>
+                                {% for friend in friends|slice:":5" %}
+                                <div class="conversation-item d-flex align-items-center fade-in"
+                                     onclick="window.location.href='{% url 'chat:private_chat' friend.id %}'">
+                                    <div class="position-relative">
+                                        <div class="user-avatar small">
+                                            {{ friend.username|first|upper }}
+                                        </div>
+                                        <div class="user-status bg-{% if forloop.counter|divisibleby:2 %}success{% else %}secondary{% endif %}"></div>
+                                    </div>
+                                    
+                                    <div class="conversation-content">
+                                        <div class="conversation-username">{{ friend.username }}</div>
+                                        <div class="conversation-message text-muted">
+                                            Начать диалог
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            
+                            <div class="empty-state" style="padding: 2rem 1rem;">
+                                <p class="empty-state-text">У вас еще нет сообщений</p>
+                                <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#newChatModal">
+                                    <i class="fas fa-plus me-1"></i>Начать чат
+                                </button>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="empty-state">
+                            <div class="empty-state-icon">
+                                <i class="fas fa-comments"></i>
+                            </div>
+                            <h6 class="empty-state-title">Нет сообщений</h6>
+                            <p class="empty-state-text">Начните общение с друзьями</p>
+                            <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#newChatModal">
+                                <i class="fas fa-plus me-1"></i>Начать чат
+                            </button>
+                        </div>
+                        {% endif %}
+                        {% endif %}
                     </div>
-                    {% endif %}
                 </div>
             </div>
         </div>
 
         <!-- Основной контент -->
         <div class="col-xl-8 col-lg-7">
-            <!-- Заголовок -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h4 class="fw-bold mb-1 text-dark">Обсуждения маршрутов</h4>
-                    <p class="text-muted mb-0">Чат с участниками и планируйте новые приключения</p>
-                </div>
-                <div class="d-flex gap-2">
-                    {% if friends %}
-                    <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#newChatModal">
-                        <i class="fas fa-plus me-1"></i>Новый чат
-                    </button>
-                    {% endif %}
-                    <a href="{% url 'all_routes' %}" class="btn btn-outline-primary rounded-pill px-4">
-                        <i class="fas fa-route me-1"></i>Маршруты
-                    </a>
-                </div>
-            </div>
-
-            <!-- Чаты маршрутов -->
-            <div class="row g-4">
-                <!-- Мои маршруты -->
-                {% if user_routes_chats %}
-                <div class="col-lg-6">
-                    <div class="card border-0 h-100">
-                        <div class="card-header bg-transparent border-0 p-4 pb-3">
-                            <h5 class="fw-bold mb-0 d-flex align-items-center">
-                                <i class="fas fa-route me-2" style="color: var(--primary-blue);"></i>
-                                Мои маршруты
-                            </h5>
-                        </div>
-                        <div class="card-body p-4 pt-0">
-                            {% for chat in user_routes_chats %}
-                            <div class="route-chat-card d-flex align-items-center p-3 rounded-3 mb-3 bg-light-custom"
-                                 onclick="location.href='{% url 'chat:route_chat' chat.route.id %}'">
-                                <div class="route-icon me-3">
-                                    <i class="fas fa-route"></i>
-                                </div>
-                                <div class="flex-grow-1 me-3">
-                                    <h6 class="fw-semibold mb-1 text-dark">{{ chat.route.name }}</h6>
-                                    <small class="text-muted">
-                                        Автор: {{ chat.route.author.username }}
-                                    </small>
-                                </div>
-                                <div class="text-primary">
-                                    <i class="fas fa-chevron-right"></i>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-
-                <!-- Доступные маршруты -->
-                {% if participant_chats or public_chats %}
-                <div class="col-lg-6">
-                    <div class="card border-0 h-100">
-                        <div class="card-header bg-transparent border-0 p-4 pb-3">
-                            <h5 class="fw-bold mb-0 d-flex align-items-center">
-                                <i class="fas fa-users me-2" style="color: var(--primary-blue);"></i>
-                                Доступные чаты
-                            </h5>
-                        </div>
-                        <div class="card-body p-4 pt-0">
-                            {% for chat in participant_chats %}
-                            <div class="route-chat-card d-flex align-items-center p-3 rounded-3 mb-3 bg-light-custom"
-                                 onclick="location.href='{% url 'chat:route_chat' chat.route.id %}'">
-                                <div class="route-icon me-3" style="background: linear-gradient(135deg, #34a853, #4caf50);">
-                                    <i class="fas fa-user-circle"></i>
-                                </div>
-                                <div class="flex-grow-1 me-3">
-                                    <h6 class="fw-semibold mb-1 text-dark">{{ chat.route.name }}</h6>
-                                    <small class="text-muted">
-                                        Автор: {{ chat.route.author.username }}
-                                    </small>
-                                </div>
-                                <span class="badge bg-success rounded-pill px-3 py-2">Войти</span>
-                            </div>
-                            {% endfor %}
-                            
-                            {% for chat in public_chats %}
-                            <div class="route-chat-card d-flex align-items-center p-3 rounded-3 mb-3 bg-light-custom"
-                                 onclick="location.href='{% url 'chat:route_chat' chat.route.id %}'">
-                                <div class="route-icon me-3" style="background: linear-gradient(135deg, #ea4335, #fbbc05);">
-                                    <i class="fas fa-globe"></i>
-                                </div>
-                                <div class="flex-grow-1 me-3">
-                                    <h6 class="fw-semibold mb-1 text-dark">{{ chat.route.name }}</h6>
-                                    <small class="text-muted">Публичный маршрут</small>
-                                </div>
-                                <span class="badge bg-warning text-dark rounded-pill px-3 py-2">Присоединиться</span>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-            </div>
-
-            <!-- Быстрый доступ к друзьям -->
-            {% if friends %}
-            <div class="card border-0 mt-4">
-                <div class="card-header bg-transparent border-0 p-4 pb-3">
-                    <h5 class="fw-bold mb-0 d-flex align-items-center">
-                        <i class="fas fa-bolt me-2" style="color: var(--primary-blue);"></i>
-                        Быстрый доступ
+            <!-- Мои маршруты -->
+            {% if user_routes_chats %}
+            <div class="scrollable-container">
+                <div class="container-header">
+                    <h5 class="container-title">
+                        <i class="fas fa-route" style="color: var(--primary-blue);"></i>
+                        Мои маршруты
+                        <span class="badge bg-primary ms-2">{{ user_routes_chats|length }}</span>
                     </h5>
                 </div>
-                <div class="card-body p-4 pt-0">
-                    <div class="row g-3">
-                        {% for friend in friends|slice:":6" %}
-                        <div class="col-md-4 col-sm-6">
-                            <div class="friend-card d-flex align-items-center p-3 rounded-3 bg-light-custom h-100"
-                                 onclick="location.href='{% url 'chat:private_chat' friend.id %}'">
-                                <div class="position-relative me-3">
-                                    <div class="avatar text-white rounded-circle d-flex align-items-center justify-content-center" 
-                                         style="width: 44px; height: 44px; font-size: 15px;">
-                                        {{ friend.username|first|upper }}
-                                    </div>
-                                    <div class="status-dot bg-{% if forloop.counter|divisibleby:2 %}success{% else %}warning{% endif %}"></div>
-                                </div>
-                                <div>
-                                    <h6 class="mb-1 fw-semibold text-dark">{{ friend.username }}</h6>
-                                    <small class="text-muted">
-                                        {% if forloop.counter|divisibleby:2 %}
-                                        <span class="text-success">Online</span>
+                
+                <div class="container-scrollable">
+                    <div class="routes-grid">
+                        {% for chat in user_routes_chats %}
+                        {% with route=chat.route %}
+                        <div class="route-card-grid" 
+                             onclick="window.location.href='{% url 'chat:route_chat' route.id %}'">
+                            <div class="route-card-header">
+                                <div class="route-card-info">
+                                    <div class="route-name">
+                                        {{ route.name }}
+                                        {% if route.is_public %}
+                                        <span class="route-status published">Публичный</span>
+                                        {% elif route.participants.exists %}
+                                        <span class="route-status participant">Закрытый</span>
                                         {% else %}
-                                        Был(а) недавно
+                                        <span class="route-status draft">Черновик</span>
                                         {% endif %}
-                                    </small>
+                                    </div>
+                                    <div class="route-author">
+                                        <i class="fas fa-user"></i>
+                                        {{ route.author.username }}
+                                    </div>
                                 </div>
+                            </div>
+                            
+                            {% if route.description %}
+                            <div class="route-description">
+                                {{ route.description }}
+                            </div>
+                            {% endif %}
+                            
+                            <div class="route-meta">
+                                <div class="route-meta-item">
+                                    <i class="fas fa-calendar"></i>
+                                    {{ route.created_at|date:"d.m.Y" }}
+                                </div>
+                                {% if route.distance %}
+                                <div class="route-meta-item">
+                                    <i class="fas fa-route"></i>
+                                    {{ route.distance }}км
+                                </div>
+                                {% endif %}
+                                <div class="route-messages">
+                                    <i class="fas fa-comment"></i>
+                                    {{ route.messages.count }} сообщ.
+                                </div>
+                            </div>
+                        </div>
+                        {% endwith %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Доступные маршруты -->
+            {% if participant_chats or public_chats %}
+            <div class="scrollable-container">
+                <div class="container-header">
+                    <h5 class="container-title">
+                        <i class="fas fa-users" style="color: var(--success);"></i>
+                        Доступные маршруты
+                        <span class="badge bg-success ms-2">
+                            {{ participant_chats|length|add:public_chats|length }}
+                        </span>
+                    </h5>
+                </div>
+                
+                <div class="container-scrollable">
+                    <div class="routes-grid">
+                        {% for chat in participant_chats %}
+                        {% with route=chat.route %}
+                        <div class="route-card-grid" 
+                             onclick="window.location.href='{% url 'chat:route_chat' route.id %}'">
+                            <div class="route-card-header">
+                                <div class="route-card-info">
+                                    <div class="route-name">
+                                        {{ route.name }}
+                                        <span class="route-status participant">Вы участник</span>
+                                    </div>
+                                    <div class="route-author">
+                                        <i class="fas fa-crown"></i>
+                                        {{ route.author.username }}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {% if route.description %}
+                            <div class="route-description">
+                                {{ route.description }}
+                            </div>
+                            {% endif %}
+                            
+                            <div class="route-meta">
+                                <div class="route-meta-item">
+                                    <i class="fas fa-users"></i>
+                                    {{ route.participants.count|add:1 }} участников
+                                </div>
+                                <div class="route-meta-item">
+                                    <i class="fas fa-calendar"></i>
+                                    {{ route.created_at|date:"d.m.Y" }}
+                                </div>
+                                <div class="route-messages">
+                                    <i class="fas fa-comment"></i>
+                                    {{ route.messages.count }} сообщ.
+                                </div>
+                            </div>
+                        </div>
+                        {% endwith %}
+                        {% endfor %}
+                        
+                        {% for chat in public_chats %}
+                        {% with route=chat.route %}
+                        <div class="route-card-grid" 
+                             onclick="window.location.href='{% url 'chat:route_chat' route.id %}'">
+                            <div class="route-card-header">
+                                <div class="route-card-info">
+                                    <div class="route-name">
+                                        {{ route.name }}
+                                        <span class="route-status public">Публичный</span>
+                                    </div>
+                                    <div class="route-author">
+                                        <i class="fas fa-user"></i>
+                                        {{ route.author.username }}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {% if route.description %}
+                            <div class="route-description">
+                                {{ route.description }}
+                            </div>
+                            {% endif %}
+                            
+                            <div class="route-meta">
+                                <div class="route-meta-item">
+                                    <i class="fas fa-users"></i>
+                                    {{ route.participants.count }} участников
+                                </div>
+                                <div class="route-meta-item">
+                                    <i class="fas fa-calendar"></i>
+                                    {{ route.created_at|date:"d.m.Y" }}
+                                </div>
+                                <div class="route-messages">
+                                    <i class="fas fa-comment"></i>
+                                    {{ route.messages.count }} сообщ.
+                                </div>
+                            </div>
+                        </div>
+                        {% endwith %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Друзья онлайн -->
+            {% if friends %}
+            <div class="scrollable-container">
+                <div class="container-header">
+                    <h5 class="container-title">
+                        <i class="fas fa-user-friends" style="color: var(--primary-blue);"></i>
+                        Все друзья
+                        <span class="badge bg-primary ms-2">{{ friends|length }}</span>
+                    </h5>
+                </div>
+                
+                <div class="container-scrollable">
+                    <div class="friends-grid">
+                        {% for friend in friends %}
+                        <div class="friend-card" 
+                             onclick="window.location.href='{% url 'chat:private_chat' friend.id %}'">
+                            <div class="friend-avatar">
+                                <div class="user-avatar">
+                                    {{ friend.username|first|upper }}
+                                </div>
+                                <div class="user-status bg-{% if forloop.counter|divisibleby:2 %}success{% else %}warning{% endif %}"></div>
+                            </div>
+                            <div class="friend-name">{{ friend.username }}</div>
+                            <div class="friend-status">
+                                {% if forloop.counter|divisibleby:2 %}
+                                <span class="text-success">Online</span>
+                                {% else %}
+                                <span class="text-warning">Недавно</span>
+                                {% endif %}
                             </div>
                         </div>
                         {% endfor %}
@@ -542,20 +1002,22 @@
             </div>
             {% endif %}
 
-            <!-- Если нет активных чатов -->
-            {% if not conversations_data and not user_routes_chats and not participant_chats and not public_chats %}
-            <div class="card border-0 text-center py-5">
-                <div class="card-body px-4">
-                    <div class="empty-state-icon mb-4 mx-auto">
-                        <i class="fas fa-comments fa-lg text-white"></i>
+            <!-- Пустое состояние -->
+            {% if not user_routes_chats and not participant_chats and not public_chats and not friends %}
+            <div class="scrollable-container">
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <i class="fas fa-route"></i>
                     </div>
-                    <h4 class="fw-bold mb-3 text-dark">Начните общение</h4>
-                    <p class="text-muted mb-4">Создайте первый чат с друзьями или присоединитесь к обсуждению маршрутов</p>
-                    <div class="d-flex gap-3 justify-content-center flex-wrap">
-                        <button class="btn btn-primary rounded-pill px-4 py-2" data-bs-toggle="modal" data-bs-target="#newChatModal">
-                            <i class="fas fa-plus me-2"></i>Начать чат
-                        </button>
-                        <a href="{% url 'all_routes' %}" class="btn btn-outline-primary rounded-pill px-4 py-2">
+                    <h3 class="empty-state-title">Нет доступных маршрутов</h3>
+                    <p class="empty-state-text">
+                        Создайте свой маршрут или присоединитесь к существующим
+                    </p>
+                    <div class="d-flex gap-3 justify-content-center">
+                        <a href="{% url 'create_route' %}" class="btn btn-primary rounded-pill px-4">
+                            <i class="fas fa-plus me-2"></i>Создать маршрут
+                        </a>
+                        <a href="{% url 'all_routes' %}" class="btn btn-outline-primary rounded-pill px-4">
                             <i class="fas fa-route me-2"></i>Найти маршруты
                         </a>
                     </div>
@@ -569,7 +1031,7 @@
 <!-- Модальное окно нового чата -->
 <div class="modal fade" id="newChatModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg">
+        <div class="modal-content border-0 shadow-lg rounded-3">
             <div class="modal-header border-0 p-4 pb-0">
                 <h5 class="modal-title fw-bold text-dark">Новый чат</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -581,62 +1043,43 @@
                         <span class="input-group-text bg-white border-0">
                             <i class="fas fa-search text-muted"></i>
                         </span>
-                        <input type="text" class="form-control border-0" placeholder="Поиск друзей...">
+                        <input type="text" class="form-control border-0" id="friendSearch" 
+                               placeholder="Поиск друзей...">
                     </div>
                 </div>
                 
                 <div class="friends-list" style="max-height: 400px; overflow-y: auto;">
-                    <div class="chat-category">Друзья онлайн</div>
-                    {% for friend in friends|slice:":3" %}
-                    <div class="friend-modal-item d-flex align-items-center p-3 mb-2"
-                         onclick="location.href='{% url 'chat:private_chat' friend.id %}'">
-                        <div class="position-relative me-3">
-                            <div class="avatar text-white rounded-circle d-flex align-items-center justify-content-center" 
-                                 style="width: 48px; height: 48px; font-size: 16px;">
-                                    {{ friend.username|first|upper }}
-                            </div>
-                            <div class="status-dot bg-success"></div>
-                        </div>
-                        <div class="flex-grow-1">
-                            <h6 class="mb-0 fw-semibold text-dark">{{ friend.username }}</h6>
-                            <small class="text-success">Online</small>
-                        </div>
-                        <i class="fas fa-chevron-right text-muted ms-2"></i>
-                    </div>
-                    {% endfor %}
-                    
-                    <div class="chat-category mt-4">Все друзья</div>
                     {% for friend in friends %}
-                    <div class="friend-modal-item d-flex align-items-center p-3 mb-2"
-                         onclick="location.href='{% url 'chat:private_chat' friend.id %}'">
-                        <div class="position-relative me-3">
-                            <div class="avatar text-white rounded-circle d-flex align-items-center justify-content-center" 
-                                 style="width: 48px; height: 48px; font-size: 16px;">
-                                    {{ friend.username|first|upper }}
+                    <div class="conversation-item d-flex align-items-center p-3 mb-2 rounded-3 friend-item"
+                         onclick="window.location.href='{% url 'chat:private_chat' friend.id %}'"
+                         style="cursor: pointer;">
+                        <div class="position-relative">
+                            <div class="user-avatar small">
+                                {{ friend.username|first|upper }}
                             </div>
-                            <div class="status-dot bg-{% if forloop.counter|divisibleby:2 %}success{% else %}secondary{% endif %}"></div>
+                            <div class="user-status bg-{% if forloop.counter|divisibleby:2 %}success{% else %}secondary{% endif %}"></div>
                         </div>
-                        <div class="flex-grow-1">
-                            <h6 class="mb-0 fw-semibold text-dark">{{ friend.username }}</h6>
-                            <small class="text-muted">
+                        <div class="conversation-content">
+                            <div class="conversation-username">{{ friend.username }}</div>
+                            <div class="conversation-message">
                                 {% if forloop.counter|divisibleby:2 %}
                                 <span class="text-success">Online</span>
                                 {% else %}
-                                Был(а) недавно
+                                <span class="text-muted">Был(а) недавно</span>
                                 {% endif %}
-                            </small>
+                            </div>
                         </div>
                         <i class="fas fa-chevron-right text-muted ms-2"></i>
                     </div>
                     {% endfor %}
                 </div>
                 {% else %}
-                <div class="text-center py-4">
-                    <div class="empty-state-icon mb-3 mx-auto">
-                        <i class="fas fa-users fa-lg text-white"></i>
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <i class="fas fa-users"></i>
                     </div>
-                    <h6 class="text-dark mb-2 fw-semibold">У вас пока нет друзей</h6>
-                    <p class="text-muted small mb-3">Найдите друзей чтобы начать общение</p>
+                    <h6 class="empty-state-title">У вас пока нет друзей</h6>
+                    <p class="empty-state-text">Найдите друзей чтобы начать общение</p>
                     <a href="{% url 'find_friends' %}" class="btn btn-primary rounded-pill px-4">
                         <i class="fas fa-user-plus me-2"></i>Найти друзей
                     </a>
@@ -652,37 +1095,140 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Поиск в чатах
-    const searchInput = document.querySelector('#chat-search');
-    if (searchInput) {
-        searchInput.addEventListener('input', function(e) {
-            const searchTerm = e.target.value.toLowerCase();
+    const chatSearch = document.getElementById('chatSearch');
+    if (chatSearch) {
+        chatSearch.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase().trim();
             const conversationItems = document.querySelectorAll('.conversation-item');
+            const chatUsernames = document.querySelectorAll('.conversation-username');
             
-            conversationItems.forEach(item => {
-                const username = item.querySelector('.fw-semibold').textContent.toLowerCase();
-                if (username.includes(searchTerm)) {
-                    item.style.display = 'flex';
-                } else {
-                    item.style.display = 'none';
+            conversationItems.forEach((item, index) => {
+                if (chatUsernames[index]) {
+                    const username = chatUsernames[index].textContent.toLowerCase();
+                    if (username.includes(searchTerm)) {
+                        item.style.display = 'flex';
+                        item.classList.add('highlight-search');
+                        chatUsernames[index].innerHTML = highlightText(chatUsernames[index].textContent, searchTerm);
+                    } else {
+                        item.style.display = 'none';
+                    }
+                }
+            });
+            
+            // Показать сообщение, если ничего не найдено
+            const visibleItems = Array.from(conversationItems).filter(item => item.style.display !== 'none');
+            if (searchTerm && visibleItems.length === 0) {
+                showNoResultsMessage(searchTerm);
+            } else {
+                hideNoResultsMessage();
+            }
+        });
+    }
+    
+    // Поиск в модальном окне друзей
+    const friendSearch = document.getElementById('friendSearch');
+    if (friendSearch) {
+        friendSearch.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase().trim();
+            const friendItems = document.querySelectorAll('.friend-item');
+            const friendNames = document.querySelectorAll('.conversation-username');
+            
+            friendItems.forEach((item, index) => {
+                if (friendNames[index]) {
+                    const username = friendNames[index].textContent.toLowerCase();
+                    if (username.includes(searchTerm)) {
+                        item.style.display = 'flex';
+                        friendNames[index].innerHTML = highlightText(friendNames[index].textContent, searchTerm);
+                    } else {
+                        item.style.display = 'none';
+                    }
                 }
             });
         });
     }
     
-    // Клик по элементам чата
-    const clickableItems = document.querySelectorAll('.conversation-item, .route-chat-card, .friend-card');
-    clickableItems.forEach(item => {
-        item.style.cursor = 'pointer';
+    // Функция для подсветки текста
+    function highlightText(text, searchTerm) {
+        if (!searchTerm) return text;
+        const regex = new RegExp(`(${searchTerm})`, 'gi');
+        return text.replace(regex, '<span class="text-primary fw-bold">$1</span>');
+    }
+    
+    // Функция для показа сообщения "не найдено"
+    function showNoResultsMessage(searchTerm) {
+        let noResults = document.querySelector('.no-results-message');
+        if (!noResults) {
+            noResults = document.createElement('div');
+            noResults.className = 'no-results-message text-center py-4';
+            const conversationsList = document.querySelector('.conversations-list');
+            if (conversationsList) {
+                conversationsList.appendChild(noResults);
+            }
+        }
+        noResults.innerHTML = `
+            <div class="text-muted mb-2">
+                <i class="fas fa-search fa-lg"></i>
+            </div>
+            <p class="mb-1">Не найдено чатов по запросу</p>
+            <p class="small text-muted">"${searchTerm}"</p>
+        `;
+    }
+    
+    function hideNoResultsMessage() {
+        const noResults = document.querySelector('.no-results-message');
+        if (noResults) {
+            noResults.remove();
+        }
+    }
+    
+    // Анимация для непрочитанных сообщений
+    const unreadBadges = document.querySelectorAll('.conversation-unread');
+    unreadBadges.forEach(badge => {
+        badge.classList.add('pulse-animation');
+        setTimeout(() => {
+            badge.classList.remove('pulse-animation');
+        }, 2000);
     });
     
-    // Активный элемент в списке чатов
-    const conversationItems = document.querySelectorAll('.conversation-item');
-    conversationItems.forEach(item => {
-        item.addEventListener('click', function() {
-            conversationItems.forEach(i => i.classList.remove('active'));
-            this.classList.add('active');
-        });
+    // Автоматический фокус на поиске при открытии модального окна
+    $('#newChatModal').on('shown.bs.modal', function () {
+        const friendSearch = document.getElementById('friendSearch');
+        if (friendSearch) {
+            friendSearch.focus();
+        }
     });
+    
+    // Добавить стили для анимации
+    const style = document.createElement('style');
+    style.textContent = `
+        .highlight-search {
+            background-color: rgba(26, 115, 232, 0.1) !important;
+            border-left-color: var(--primary-blue) !important;
+        }
+        
+        .pulse-animation {
+            animation: pulse 1.5s ease-in-out 3;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        /* Улучшенные стили для кликабельности */
+        .conversation-item,
+        .route-card-grid,
+        .friend-card {
+            cursor: pointer !important;
+        }
+        
+        .conversation-item:hover,
+        .friend-item:hover {
+            background-color: var(--primary-light) !important;
+        }
+    `;
+    document.head.appendChild(style);
 });
 </script>
 {% endblock %}

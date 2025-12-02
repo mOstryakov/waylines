@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.urls import reverse
 from django.http import JsonResponse
 import logging
@@ -114,6 +115,7 @@ def add_comment(request, route_id):
         try:
             route = Route.objects.get(id=route_id)
             print(f"DEBUG: Маршрут найден: {route.name}")
+            print(f"DEBUG: Автор маршрута: {route.author.username}, ID: {route.author.id}")
         except Route.DoesNotExist:
             print("DEBUG: Маршрут не найден")
             if request.headers.get("X-Requested-With") == "XMLHttpRequest":
@@ -162,7 +164,9 @@ def add_comment(request, route_id):
                 html_parts = []
                 for i, cmt in enumerate(comments):
                     can_delete = cmt.user == request.user
+                    is_author = cmt.user == route.author
                     delete_button = ""
+                    
                     if can_delete:
                         delete_button = f"""
                         <button type="button" class="btn btn-link text-danger p-0 btn-sm opacity-75 hover-opacity-100 delete-comment-btn" 
@@ -170,19 +174,32 @@ def add_comment(request, route_id):
                             <i class="far fa-trash-alt"></i>
                         </button>
                         """
+                    
+                    # МЕТКА АВТОРА МАРШРУТА
+                    author_badge = ""
+                    if is_author:
+                        author_badge = f"""
+                        <span class="badge bg-light text-muted border px-2 py-1 ms-2" style="font-size: 0.65rem; font-weight: 500;">
+                            <i class="fas fa-feather-alt me-1"></i>Автор
+                        </span>
+                        """
 
                     border_class = (
                         "border-bottom" if i < comments_count - 1 else ""
                     )
 
-                    from django.utils.timezone import localtime
-
-                    local_time = localtime(cmt.created_at)
-                    formatted_date = local_time.strftime("%d.%m.%Y %H:%M")
+                    # ISO формат времени для JavaScript
+                    iso_time = cmt.created_at.isoformat()
+                    
+                    # ВРЕМЕННО показываем серверное время (JavaScript потом заменит)
+                    server_time = cmt.created_at.strftime("%d.%m.%Y %H:%M")
 
                     html_parts.append(
                         f"""
-                    <div class="comment-item d-flex mb-3 pb-3 {border_class}" data-comment-id="{cmt.id}">
+                    <div class="comment-item d-flex mb-3 pb-3 {border_class}" 
+                         data-comment-id="{cmt.id}"
+                         data-user-id="{cmt.user.id}"
+                         data-timestamp="{iso_time}">
                         <div class="flex-shrink-0">
                             <div class="avatar-placeholder rounded-circle bg-light d-flex align-items-center justify-content-center border" style="width: 40px; height: 40px;">
                                 <i class="fas fa-user text-secondary"></i>
@@ -191,8 +208,11 @@ def add_comment(request, route_id):
                         <div class="flex-grow-1 ms-3">
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
-                                    <h6 class="mb-0 text-dark fw-bold">{cmt.user.username}</h6>
-                                    <small class="text-muted">{formatted_date}</small>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <h6 class="mb-0 text-dark fw-bold">{cmt.user.username}</h6>
+                                        {author_badge}
+                                    </div>
+                                    <small class="text-muted comment-time" data-timestamp="{iso_time}">{server_time}</small>
                                 </div>
                                 {delete_button}
                             </div>
@@ -298,6 +318,7 @@ def delete_comment(request, comment_id):
 
         route = comment.route
         print(f"DEBUG: Удаляем комментарий к маршруту: {route.name}")
+        print(f"DEBUG: Автор маршрута: {route.author.username}, ID: {route.author.id}")
 
         comment.delete()
         print("DEBUG: Комментарий удален")
@@ -314,7 +335,9 @@ def delete_comment(request, comment_id):
                 html_parts = []
                 for i, cmt in enumerate(comments):
                     can_delete = cmt.user == request.user
+                    is_author = cmt.user == route.author
                     delete_button = ""
+                    
                     if can_delete:
                         delete_button = f"""
                         <button type="button" class="btn btn-link text-danger p-0 btn-sm opacity-75 hover-opacity-100 delete-comment-btn" 
@@ -322,19 +345,32 @@ def delete_comment(request, comment_id):
                             <i class="far fa-trash-alt"></i>
                         </button>
                         """
+                    
+                    # МЕТКА АВТОРА МАРШРУТА
+                    author_badge = ""
+                    if is_author:
+                        author_badge = f"""
+                        <span class="badge bg-light text-muted border px-2 py-1 ms-2" style="font-size: 0.65rem; font-weight: 500;">
+                            <i class="fas fa-feather-alt me-1"></i>Автор
+                        </span>
+                        """
 
                     border_class = (
                         "border-bottom" if i < comments_count - 1 else ""
                     )
 
-                    from django.utils.timezone import localtime
-
-                    local_time = localtime(cmt.created_at)
-                    formatted_date = local_time.strftime("%d.%m.%Y %H:%M")
+                    # ISO формат времени для JavaScript
+                    iso_time = cmt.created_at.isoformat()
+                    
+                    # ВРЕМЕННО показываем серверное время (JavaScript потом заменит)
+                    server_time = cmt.created_at.strftime("%d.%m.%Y %H:%M")
 
                     html_parts.append(
                         f"""
-                    <div class="comment-item d-flex mb-3 pb-3 {border_class}" data-comment-id="{cmt.id}">
+                    <div class="comment-item d-flex mb-3 pb-3 {border_class}" 
+                         data-comment-id="{cmt.id}"
+                         data-user-id="{cmt.user.id}"
+                         data-timestamp="{iso_time}">
                         <div class="flex-shrink-0">
                             <div class="avatar-placeholder rounded-circle bg-light d-flex align-items-center justify-content-center border" style="width: 40px; height: 40px;">
                                 <i class="fas fa-user text-secondary"></i>
@@ -343,8 +379,11 @@ def delete_comment(request, comment_id):
                         <div class="flex-grow-1 ms-3">
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
-                                    <h6 class="mb-0 text-dark fw-bold">{cmt.user.username}</h6>
-                                    <small class="text-muted">{formatted_date}</small>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <h6 class="mb-0 text-dark fw-bold">{cmt.user.username}</h6>
+                                        {author_badge}
+                                    </div>
+                                    <small class="text-muted comment-time" data-timestamp="{iso_time}">{server_time}</small>
                                 </div>
                                 {delete_button}
                             </div>

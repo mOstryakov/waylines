@@ -1,10 +1,12 @@
-<div class="card route-card h-100 shadow-sm border-0 hover-shadow transition-all position-relative route-card-full">
+<div class="card route-card shadow-sm border-0 hover-shadow transition-all position-relative route-card-full" 
+     style="width: 320px; height: 450px; display: flex; flex-direction: column; overflow: hidden;">
     <!-- Основная кликабельная область -->
     <a href="{% url 'route_detail' route.id %}" class="route-card-link position-absolute top-0 start-0 w-100 h-100" 
        style="z-index: 1; text-decoration: none;"></a>
     
     <!-- Контейнер для фото -->
-    <div class="route-image-container position-relative overflow-hidden rounded-top" style="height: 220px;">
+    <div class="route-image-container position-relative overflow-hidden rounded-top" 
+         style="height: 180px; flex-shrink: 0;">
         {% if route.photos.exists and route.photos.count > 1 %}
         <!-- Карусель для нескольких фото -->
         <div id="routeCarousel{{ route.id }}" class="carousel slide h-100" data-bs-ride="carousel" onclick="event.preventDefault();">
@@ -77,7 +79,7 @@
     </div>
     
     <!-- Контент карточки -->
-    <div class="card-body d-flex flex-column p-3 position-relative" style="z-index: 3; min-height: 280px;">
+    <div class="card-body d-flex flex-column p-3 position-relative" style="z-index: 3; flex: 1 1 auto; min-height: 0; overflow: hidden;">
         <!-- Заголовок и меню -->
         <div class="d-flex justify-content-between align-items-start mb-2 position-relative">
             <h5 class="card-title fw-bold text-dark mb-0 line-clamp-2 pe-4" style="flex: 1; min-width: 0;">
@@ -124,12 +126,14 @@
         </div>
         
         <!-- Описание -->
-        <p class="card-text text-muted mb-2 flex-grow-1 line-clamp-3 small">
-            {{ route.short_description|default:route.description|default:"Описание отсутствует"|truncatewords:20 }}
-        </p>
+        <div class="mb-2 flex-grow-1" style="overflow: hidden; position: relative; min-height: 0;">
+            <p class="card-text text-muted mb-0 small line-clamp-3" style="max-height: 72px; overflow: hidden;">
+                {{ route.short_description|default:route.description|default:"Описание отсутствует"|truncatewords:25 }}
+            </p>
+        </div>
         
         <!-- Дополнительные теги -->
-        <div class="mb-2">
+        <div class="mb-2" style="flex-shrink: 0;">
             {% if route.mood %}
             <span class="badge bg-light text-dark border me-1 mb-1 px-2 py-1 rounded-pill small">
                 <i class="fas fa-smile me-1 text-muted"></i>{{ route.get_mood_display }}
@@ -154,13 +158,15 @@
         
         <!-- Статус отправленного маршрута -->
         {% if user.is_authenticated and user != route.author and user in route.shared_with.all %}
-        <span class="badge bg-info bg-opacity-10 text-info border-0 shadow-sm mb-2">
-            <i class="fas fa-user-friends me-1"></i>Отправлен вам
-        </span>
+        <div style="flex-shrink: 0; margin-bottom: 8px;">
+            <span class="badge bg-info bg-opacity-10 text-info border-0 shadow-sm">
+                <i class="fas fa-user-friends me-1"></i>Отправлен вам
+            </span>
+        </div>
         {% endif %}
 
         <!-- Кнопка поделиться с выпадающим меню -->
-        <div class="mb-2 position-relative" style="z-index: 5;">
+        <div class="position-relative" style="z-index: 5; flex-shrink: 0; margin-bottom: 8px;">
             <div class="dropdown">
                 <button class="btn btn-outline-dark w-100 d-flex align-items-center justify-content-center py-2 dropdown-toggle share-btn"
                         type="button" 
@@ -219,7 +225,8 @@
         </div>
         
         <!-- Статистика и дата -->
-        <div class="d-flex justify-content-between align-items-center mt-auto pt-2 border-top">
+        <div class="d-flex justify-content-between align-items-center border-top pt-2" 
+             style="flex-shrink: 0; margin-top: auto; padding-top: 8px;">
             <div class="d-flex gap-2 gap-md-3 text-muted small flex-wrap">
                 <div class="d-flex align-items-center">
                     <i class="fas fa-route me-1 text-muted"></i>
@@ -230,9 +237,11 @@
                     <span class="duration-display" data-minutes="{{ route.duration_minutes }}">
                         {% if route.duration_minutes %}
                             {% if route.duration_minutes >= 1440 %}
-                                {{ route.duration_minutes|divisibleby:1440|floatformat:0 }} д
+                                {% widthratio route.duration_minutes 1440 1 as days %}
+                                {{ days|floatformat:0 }} д
                             {% elif route.duration_minutes >= 60 %}
-                                {{ route.duration_minutes|divisibleby:60|floatformat:0 }} ч
+                                {% widthratio route.duration_minutes 60 1 as hours %}
+                                {{ hours|floatformat:0 }} ч
                             {% else %}
                                 {{ route.duration_minutes }} мин
                             {% endif %}
@@ -256,12 +265,10 @@
 </div>
 
 <style>
-/* Основные стили карточки */
+/* Основные стили карточки с фиксированной шириной */
 .route-card-full {
     display: flex;
     flex-direction: column;
-    height: 100%;
-    min-height: 500px;
     border-radius: 12px;
     transition: all 0.3s ease;
     overflow: hidden;
@@ -375,21 +382,64 @@
     flex: 1;
     display: flex;
     flex-direction: column;
+    min-height: 0;
+}
+
+/* Для правильного отображения flex элементов */
+.route-card-full .flex-grow-1 {
+    flex: 1;
+    min-height: 0;
 }
 
 /* Адаптивность */
-@media (max-width: 768px) {
+@media (max-width: 1400px) {
     .route-card-full {
-        min-height: 450px;
+        width: 300px;
+        height: 430px;
     }
     
     .route-image-container {
-        height: 180px;
+        height: 170px;
+    }
+}
+
+@media (max-width: 1200px) {
+    .route-card-full {
+        width: 280px;
+        height: 420px;
+    }
+    
+    .route-image-container {
+        height: 160px;
+    }
+}
+
+@media (max-width: 992px) {
+    .route-card-full {
+        width: 100%;
+        height: 400px;
+        max-width: 350px;
+        margin: 0 auto;
+    }
+    
+    .route-image-container {
+        height: 150px;
+    }
+}
+
+@media (max-width: 768px) {
+    .route-card-full {
+        height: 380px;
+        max-width: 320px;
+    }
+    
+    .route-image-container {
+        height: 140px;
     }
     
     .carousel-control-prev,
     .carousel-control-next {
-        opacity: 0.7; /* Всегда показываем на мобильных */
+        opacity: 0.7;
         width: 35px;
         height: 35px;
     }
@@ -397,11 +447,13 @@
 
 @media (max-width: 576px) {
     .route-card-full {
-        min-height: 420px;
+        width: 100%;
+        height: 360px;
+        max-width: 100%;
     }
     
     .route-image-container {
-        height: 160px;
+        height: 130px;
     }
     
     .carousel-control-prev,
@@ -462,7 +514,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function formatDuration(minutes) {
-    if (!minutes || minutes === 0) return '0 мин';
+    if (!minutes || minutes === 0 || isNaN(minutes)) return '0 мин';
     
     if (minutes >= 1440) {
         const days = Math.floor(minutes / 1440);
@@ -493,15 +545,4 @@ document.addEventListener('click', function(e) {
         e.stopPropagation();
     }
 });
-
-// Для отладки - выводим информацию о фото
-console.log('Route photos debug:');
-{% if route.photos.exists %}
-console.log('Route {{ route.id }} has {{ route.photos.count }} photos');
-{% for photo in route.photos.all %}
-console.log('Photo {{ forloop.counter }}: {{ photo.image.url }}');
-{% endfor %}
-{% else %}
-console.log('Route {{ route.id }} has no photos');
-{% endif %}
 </script>
