@@ -1,1694 +1,451 @@
-{% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Чат с {{ other_user.username }} - Waylines{% endblock %}
-
-{% block content %}
-<!-- Уведомления -->
-<div id="notifications" class="notifications-container"></div>
-
-<div class="container-fluid h-100 p-0">
-    <div class="row g-0 h-100">
-        <!-- Чат -->
-        <div class="col-12" id="chat-main-col">
-            <div class="chat-container h-100 d-flex flex-column bg-light">
-                <!-- Заголовок чата -->
-                <div class="chat-header bg-white border-bottom p-4 shadow-sm">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div class="d-flex align-items-center">
-                            <a href="{% url 'chat:chat_dashboard' %}" class="btn btn-sm btn-outline-secondary me-3">
-                                <i class="fas fa-arrow-left"></i>
-                            </a>
-                            <button class="btn btn-sm btn-outline-info me-3 d-md-none" onclick="toggleUserInfo()">
-                                <i class="fas fa-info-circle"></i>
-                            </button>
-                            <div class="position-relative me-3">
-                                <div class="avatar bg-gradient-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
-                                     style="width: 50px; height: 50px; font-size: 18px; font-weight: 600;">
-                                    {{ other_user.username|first|upper }}
-                                </div>
-                                <div class="position-absolute bottom-0 end-0 bg-success rounded-circle border border-2 border-white"
-                                     style="width: 12px; height: 12px;"></div>
-                            </div>
-                            <div>
-                                <h5 class="mb-1 fw-bold">{{ other_user.username }}</h5>
-                                <small class="text-muted" id="last-activity">
-                                    <i class="fas fa-circle text-success me-1" style="font-size: 8px;"></i>
-                                    <span id="activity-text">
-                                        {% if other_user.is_online %}
-                                            В сети
-                                        {% else %}
-                                            Был(а) {{ other_user.last_seen|timesince }} назад
-                                        {% endif %}
-                                    </span>
-                                </small>
-                            </div>
-                        </div>
-                        <div class="dropdown">
-                            <button class="btn btn-sm btn-light rounded-circle" type="button" data-bs-toggle="dropdown"
-                                    style="width: 40px; height: 40px;">
-                                <i class="fas fa-ellipsis-v text-muted"></i>
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end shadow border-0">
-                                <li><a class="dropdown-item" href="#" onclick="toggleUserInfo()">
-                                    <i class="fas fa-info-circle me-2"></i> Информация о пользователе
-                                </a></li>
-                                <li><a class="dropdown-item" href="{% url 'user_profile' other_user.username %}">
-                                    <i class="fas fa-user me-2"></i> Профиль
-                                </a></li>
-                                <li><a class="dropdown-item" href="#" onclick="blockUser()">
-                                    <i class="fas fa-ban me-2"></i> Заблокировать
-                                </a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="#" onclick="refreshChat()">
-                                    <i class="fas fa-sync-alt me-2"></i> Обновить чат
-                                </a></li>
-                                <li><a class="dropdown-item" href="{% url 'chat:chat_dashboard' %}">
-                                    <i class="fas fa-comments me-2"></i> Все чаты
-                                </a></li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Сообщения -->
-                <div class="chat-messages flex-grow-1 p-4" id="chat-messages" 
-                     style="overflow-y: auto; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
-                    {% for message in messages %}
-                    <div class="message-wrapper mb-4 {% if message.sender == request.user %}own-message{% endif %}" 
-                         data-message-id="{{ message.id }}">
-                        <div class="message-bubble {% if message.sender == request.user %}own-bubble{% else %}other-bubble{% endif %}">
-                            {% if message.sender != request.user %}
-                            <div class="message-sender mb-1">
-                                <small class="text-primary fw-bold">{{ message.sender.username }}</small>
-                            </div>
-                            {% endif %}
-                            <div class="message-content">
-                                {% if message.message_type == 'text' %}
-                                    {{ message.content|linebreaks }}
-                                {% elif message.message_type == 'image' %}
-                                    <div class="media-message">
-                                        <img src="{{ message.content }}" alt="Изображение" class="img-fluid rounded" style="max-width: 300px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                                        <div class="media-error" style="display: none; padding: 20px; text-align: center; color: #6c757d;">
-                                            <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
-                                            <p>Не удалось загрузить изображение</p>
-                                        </div>
-                                    </div>
-                                {% elif message.message_type == 'video' %}
-                                    <div class="media-message">
-                                        <video controls class="img-fluid rounded" style="max-width: 300px;">
-                                            <source src="{{ message.content }}" type="video/mp4">
-                                            Ваш браузер не поддерживает видео.
-                                        </video>
-                                    </div>
-                                {% elif message.message_type == 'audio' %}
-                                    <div class="media-message">
-                                        <audio controls class="w-100">
-                                            <source src="{{ message.content }}" type="audio/mpeg">
-                                            Ваш браузер не поддерживает аудио.
-                                        </audio>
-                                    </div>
-                                {% elif message.message_type == 'voice' %}
-                                    <div class="voice-message d-flex align-items-center">
-                                        <button class="btn btn-sm btn-outline-primary play-voice-btn me-2" data-audio-url="{{ message.content }}">
-                                            <i class="fas fa-play"></i>
-                                        </button>
-                                        <div class="voice-waveform flex-grow-1 me-2">
-                                            <div class="waveform-bar"></div>
-                                            <div class="waveform-bar"></div>
-                                            <div class="waveform-bar"></div>
-                                            <div class="waveform-bar"></div>
-                                            <div class="waveform-bar"></div>
-                                        </div>
-                                        <small class="text-muted voice-duration">0:00</small>
-                                    </div>
-                                {% endif %}
-                            </div>
-                            <div class="message-time text-end mt-1">
-                                <small class="text-muted message-timestamp" data-timestamp="{{ message.created_at|date:'c' }}">
-                                    {{ message.created_at|date:"H:i" }}
-                                </small>
-                                {% if message.sender == request.user %}
-                                <i class="fas fa-check-double text-primary ms-1" style="font-size: 10px;"></i>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                    {% empty %}
-                    <div class="text-center text-muted py-5" id="empty-chat-message">
-                        <div class="empty-state-icon mb-4">
-                            <i class="fas fa-comments fa-4x text-light"></i>
-                        </div>
-                        <h4 class="fw-light">Начните диалог</h4>
-                        <p class="text-muted">Отправьте первое сообщение {{ other_user.username }}</p>
-                    </div>
-                    {% endfor %}
-                </div>
-
-                <!-- Индикатор загрузки -->
-                <div id="chat-loading" class="text-center py-3 bg-white border-top" style="display: none;">
-                    <div class="spinner-border spinner-border-sm text-primary" role="status">
-                        <span class="visually-hidden">Загрузка...</span>
-                    </div>
-                    <small class="text-muted ms-2">Загрузка сообщений...</small>
-                </div>
-
-                <!-- Индикатор набора сообщения -->
-                <div id="typing-indicator" class="px-4 py-2 bg-white border-top" style="display: none;">
-                    <div class="typing-dots">
-                        <small class="text-muted">
-                            <i class="fas fa-pencil-alt me-2"></i>
-                            <span id="typing-user">{{ other_user.username }}</span> печатает
-                            <span class="typing-animation"></span>
-                        </small>
-                    </div>
-                </div>
-
-                <!-- Форма отправки сообщения -->
-                <div class="chat-input bg-white border-top p-3 shadow-sm">
-                    <!-- Часовой пояс пользователя -->
-                    <div class="text-end mb-2">
-                        <small class="text-muted user-timezone-info" id="user-timezone"></small>
-                    </div>
-                    
-                    <!-- Медиа-предпросмотр -->
-                    <div id="media-preview" class="mb-3" style="display: none;">
-                        <div class="d-flex align-items-center bg-light rounded p-2">
-                            <div id="preview-content" class="flex-grow-1"></div>
-                            <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="clearMedia()">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <form id="chat-form" class="d-flex align-items-end gap-2" enctype="multipart/form-data">
-                        {% csrf_token %}
-                        <input type="hidden" name="conversation_id" value="{{ conversation.id }}">
-                        
-                        <div class="flex-grow-1 position-relative">
-                            <div class="input-group">
-                                <div class="btn-group me-2">
-                                    <button type="button" class="btn btn-outline-secondary rounded-circle d-flex align-items-center justify-content-center"
-                                            style="width: 40px; height: 40px;" data-bs-toggle="dropdown">
-                                        <i class="fas fa-plus"></i>
-                                    </button>
-                                    <ul class="dropdown-menu shadow border-0 p-2">
-                                        <li>
-                                            <button type="button" class="dropdown-item d-flex align-items-center py-2" onclick="triggerFileInput('image')">
-                                                <i class="fas fa-image text-success me-2"></i>
-                                                <span>Фото</span>
-                                            </button>
-                                        </li>
-                                        <li>
-                                            <button type="button" class="dropdown-item d-flex align-items-center py-2" onclick="triggerFileInput('video')">
-                                                <i class="fas fa-video text-info me-2"></i>
-                                                <span>Видео</span>
-                                            </button>
-                                        </li>
-                                        <li>
-                                            <button type="button" class="dropdown-item d-flex align-items-center py-2" onclick="triggerFileInput('audio')">
-                                                <i class="fas fa-music text-warning me-2"></i>
-                                                <span>Аудио</span>
-                                            </button>
-                                        </li>
-                                    </ul>
-                                </div>
-                                
-                                <!-- Текстовый ввод -->
-                                <input type="text" 
-                                       class="form-control border-end-0" 
-                                       id="chat-message-input" 
-                                       name="message"
-                                       placeholder="Напишите сообщение..." 
-                                       maxlength="1000"
-                                       autocomplete="off"
-                                       style="border-radius: 25px; padding: 12px 20px; border: 1px solid #e0e0e0;">
-                                
-                                <button type="button" class="btn btn-outline-secondary border-start-0" 
-                                        style="border-radius: 0 25px 25px 0; border: 1px solid #e0e0e0;">
-                                    <i class="fas fa-smile"></i>
-                                </button>
-                            </div>
-                            
-                            <!-- Скрытые инпуты для загрузки файлов -->
-                            <input type="file" id="file-input" name="media_file" accept="image/*,video/*,audio/*" style="display: none;">
-                            <input type="file" id="image-input" name="media_file" accept="image/*" style="display: none;">
-                            <input type="file" id="video-input" name="media_file" accept="video/*" style="display: none;">
-                            <input type="file" id="audio-input" name="media_file" accept="audio/*" style="display: none;">
-                        </div>
-                        
-                        <!-- Кнопка голосового сообщения -->
-                        <button type="button" class="btn btn-outline-primary rounded-circle d-flex align-items-center justify-content-center voice-toggle-btn" 
-                                id="voice-toggle-btn"
-                                style="width: 50px; height: 50px;"
-                                onmousedown="startVoiceRecording()" 
-                                onmouseup="stopVoiceRecording()"
-                                onmouseleave="stopVoiceRecording()"
-                                ontouchstart="startVoiceRecording()" 
-                                ontouchend="stopVoiceRecording()">
-                            <i class="fas fa-microphone"></i>
-                        </button>
-                        
-                        <!-- Кнопка отправки сообщения -->
-                        <button type="submit" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center" 
-                                id="chat-message-submit"
-                                style="width: 50px; height: 50px;">
-                            <i class="fas fa-paper-plane"></i>
-                        </button>
-                    </form>
-                    
-                    <!-- Индикатор записи голосового сообщения -->
-                    <div id="voice-recording-indicator" class="mt-3 text-center" style="display: none;">
-                        <div class="d-flex align-items-center justify-content-center">
-                            <div class="recording-animation me-3">
-                                <div class="pulse"></div>
-                                <i class="fas fa-microphone text-danger"></i>
-                            </div>
-                            <div class="recording-info">
-                                <div class="recording-timer">
-                                    <span id="voice-recording-time">0:00</span>
-                                </div>
-                                <small class="text-muted">Запись голосового сообщения...</small>
-                            </div>
-                            <button type="button" class="btn btn-danger btn-sm ms-3" onclick="cancelVoiceRecording()">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="mt-2 d-flex justify-content-between align-items-center px-2">
-                        <small class="text-muted" id="char-counter">0/1000</small>
-                        <small class="text-muted">
-                            <i class="fas fa-bolt me-1 text-success"></i>
-                            <span id="connection-status">Подключение...</span>
-                        </small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Сайдбар информации о пользователе -->
-<div class="user-info-sidebar-overlay" id="user-info-overlay" style="display: none;"></div>
-<div class="user-info-sidebar" id="user-info-sidebar">
-    <div class="user-info-content">
-        <div class="user-info-header">
-            <h5 class="fw-bold mb-0">Информация о пользователе</h5>
-            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleUserInfo()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        
-        <div class="user-info-body">
-            <div class="text-center mb-4">
-                <div class="position-relative mx-auto mb-3">
-                    <div class="avatar bg-gradient-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto" 
-                         style="width: 100px; height: 100px; font-size: 32px; font-weight: 600;">
-                        {{ other_user.username|first|upper }}
-                    </div>
-                    <div class="position-absolute bottom-0 end-0 bg-success rounded-circle border border-3 border-white"
-                         style="width: 20px; height: 20px;"></div>
-                </div>
-                <h5 class="fw-bold">{{ other_user.username }}</h5>
-                <p class="text-muted mb-3">Участник Waylines</p>
-                <div class="online-status">
-                    <span class="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill" id="online-status">
-                        <i class="fas fa-circle me-1" style="font-size: 8px;"></i>В сети
-                    </span>
-                </div>
-            </div>
-
-            <div class="mb-4">
-                <h6 class="fw-semibold text-uppercase small mb-3">Общая информация</h6>
-                <div class="info-grid">
-                    <div class="info-item d-flex justify-content-between align-items-center py-2 border-bottom">
-                        <span class="text-muted">Маршруты</span>
-                        <strong class="text-primary">{{ other_user.routes.count }}</strong>
-                    </div>
-                    <div class="info-item d-flex justify-content-between align-items-center py-2 border-bottom">
-                        <span class="text-muted">Друзья</span>
-                        <strong class="text-primary">{{ accepted_friends_count }}</strong>
-                    </div>
-                    <div class="info-item d-flex justify-content-between align-items-center py-2 border-bottom">
-                        <span class="text-muted">Статус</span>
-                        <strong class="text-success" id="last-seen">В сети</strong>
-                    </div>
-                    <div class="info-item d-flex justify-content-between align-items-center py-2">
-                        <span class="text-muted">В чате с</span>
-                        <strong>{{ conversation.created_at|date:"d.m.Y" }}</strong>
-                    </div>
-                </div>
-            </div>
-
-            <div class="mb-4">
-                <h6 class="fw-semibold text-uppercase small mb-3">Действия</h6>
-                <div class="d-grid gap-2">
-                    <a href="{% url 'user_profile' other_user.username %}" class="btn btn-outline-primary btn-sm py-2">
-                        <i class="fas fa-user me-2"></i> Профиль
-                    </a>
-                    <a href="{% url 'all_routes' %}?author={{ other_user.username }}" class="btn btn-outline-success btn-sm py-2">
-                        <i class="fas fa-route me-2"></i> Маршруты
-                    </a>
-                    <button class="btn btn-outline-info btn-sm py-2" onclick="startRouteChat()">
-                        <i class="fas fa-map-marked-alt me-2"></i> Общий маршрут
-                    </button>
-                </div>
-            </div>
-
-            <div class="mt-auto">
-                <div class="d-grid gap-2">
-                    <button class="btn btn-warning btn-sm py-2" onclick="refreshChat()">
-                        <i class="fas fa-sync-alt me-2"></i> Обновить чат
-                    </button>
-                    <a href="{% url 'chat:chat_dashboard' %}" class="btn btn-outline-secondary btn-sm py-2">
-                        <i class="fas fa-comments me-2"></i> Все чаты
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
-{% block extra_css %}
-<style>
-/* Основные стили чата */
-.chat-container {
-    background: #f8f9fa;
-    transition: all 0.3s ease;
-}
-
-.chat-messages {
-    max-height: calc(100vh - 280px);
-    min-height: 400px;
-    scroll-behavior: smooth;
-}
-
-/* Стили для сообщений */
-.message-wrapper {
-    display: flex;
-    flex-direction: column;
-}
-
-.own-message {
-    align-items: flex-end;
-}
-
-.other-message {
-    align-items: flex-start;
-}
-
-.message-bubble {
-    max-width: 70%;
-    padding: 12px 16px;
-    border-radius: 18px;
-    position: relative;
-    animation: messageSlideIn 0.3s ease-out;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.own-bubble {
-    background: linear-gradient(135deg, #007bff, #0056b3);
-    color: white;
-    border-bottom-right-radius: 6px;
-}
-
-.other-bubble {
-    background: white;
-    color: #333;
-    border-bottom-left-radius: 6px;
-    border: 1px solid #e9ecef;
-}
-
-.message-content {
-    line-height: 1.4;
-    word-wrap: break-word;
-}
-
-.message-time {
-    font-size: 0.75rem;
-    opacity: 0.8;
-}
-
-.message-sender {
-    font-size: 0.8rem;
-    font-weight: 600;
-}
-
-/* Стили для медиа-сообщений */
-.media-message img,
-.media-message video {
-    max-width: 100%;
-    border-radius: 12px;
-}
-
-.voice-message {
-    padding: 8px 12px;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 20px;
-}
-
-.voice-waveform {
-    display: flex;
-    align-items: center;
-    height: 30px;
-}
-
-.waveform-bar {
-    width: 3px;
-    height: 20px;
-    background-color: currentColor;
-    margin: 0 1px;
-    border-radius: 2px;
-    animation: waveform 1.5s ease-in-out infinite;
-}
-
-.waveform-bar:nth-child(2) { animation-delay: 0.2s; }
-.waveform-bar:nth-child(3) { animation-delay: 0.4s; }
-.waveform-bar:nth-child(4) { animation-delay: 0.6s; }
-.waveform-bar:nth-child(5) { animation-delay: 0.8s; }
-
-@keyframes waveform {
-    0%, 100% { height: 10px; }
-    50% { height: 20px; }
-}
-
-/* Анимации */
-@keyframes messageSlideIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px) scale(0.95);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-/* Анимация печати */
-.typing-animation::after {
-    content: '...';
-    animation: typing 1.5s infinite;
-}
-
-@keyframes typing {
-    0%, 20% { content: '.'; }
-    40% { content: '..'; }
-    60%, 100% { content: '...'; }
-}
-
-/* Стили для аватаров */
-.avatar {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-
-.bg-gradient-primary {
-    background: linear-gradient(135deg, #007bff, #6610f2) !important;
-}
-
-/* Стили для пустого состояния */
-.empty-state-icon {
-    opacity: 0.5;
-}
-
-/* Стили для скроллбара */
-.chat-messages::-webkit-scrollbar {
-    width: 6px;
-}
-
-.chat-messages::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 10px;
-}
-
-.chat-messages::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 10px;
-}
-
-.chat-messages::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
-}
-
-/* Стили для уведомлений */
-.notifications-container {
-    position: fixed;
-    top: 80px;
-    right: 20px;
-    z-index: 1060;
-    max-width: 350px;
-    width: 100%;
-}
-
-.notification {
-    background: white;
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 10px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-    border-left: 4px solid;
-    transform: translateX(400px);
-    opacity: 0;
-    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-    position: relative;
-    overflow: hidden;
-}
-
-.notification.show {
-    transform: translateX(0);
-    opacity: 1;
-}
-
-.notification.hide {
-    transform: translateX(400px);
-    opacity: 0;
-}
-
-.notification-success {
-    border-left-color: #10b981;
-    color: #065f46;
-}
-
-.notification-error {
-    border-left-color: #ef4444;
-    color: #7f1d1d;
-}
-
-.notification-warning {
-    border-left-color: #f59e0b;
-    color: #78350f;
-}
-
-.notification-info {
-    border-left-color: #3b82f6;
-    color: #1e3a8a;
-}
-
-/* Стили для сайдбара информации о пользователе */
-.user-info-sidebar {
-    position: fixed;
-    top: 0;
-    right: -400px;
-    width: 350px;
-    height: 100vh;
-    background: white;
-    box-shadow: -5px 0 15px rgba(0,0,0,0.1);
-    z-index: 1040;
-    transition: right 0.3s ease;
-    overflow-y: auto;
-}
-
-.user-info-sidebar.active {
-    right: 0;
-}
-
-.user-info-sidebar-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.5);
-    z-index: 1039;
-    display: none;
-}
-
-.user-info-content {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-}
-
-.user-info-header {
-    padding: 20px;
-    border-bottom: 1px solid #e9ecef;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.user-info-body {
-    padding: 20px;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-}
-
-.info-grid .info-item {
-    transition: background-color 0.2s ease;
-}
-
-.info-grid .info-item:hover {
-    background-color: #f8f9fa;
-    border-radius: 8px;
-}
-
-/* Адаптивность */
-@media (max-width: 768px) {
-    .chat-messages {
-        max-height: calc(100vh - 200px);
-        padding: 16px;
-    }
-    .message-bubble {
-        max-width: 85%;
-    }
-    .notifications-container {
-        right: 10px;
-        left: 10px;
-        max-width: none;
-    }
-    
-    .user-info-sidebar {
-        width: 100%;
-        right: -100%;
-    }
-}
-
-/* Эффекты при наведении */
-.btn:hover {
-    transform: translateY(-1px);
-    transition: all 0.2s ease;
-}
-
-.message-bubble:hover {
-    transform: translateY(-1px);
-    transition: all 0.2s ease;
-}
-
-/* Стили для предпросмотра медиа */
-#media-preview img,
-#media-preview video {
-    max-width: 150px;
-    max-height: 150px;
-    border-radius: 8px;
-}
-
-/* Стили для записи голосовых сообщений */
-.recording-animation {
-    position: relative;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.pulse {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    background-color: #dc3545;
-    border-radius: 50%;
-    animation: pulse 1.5s infinite;
-    opacity: 0.6;
-}
-
-@keyframes pulse {
-    0% {
-        transform: scale(0.8);
-        opacity: 0.6;
-    }
-    50% {
-        transform: scale(1.2);
-        opacity: 0.3;
-    }
-    100% {
-        transform: scale(0.8);
-        opacity: 0.6;
-    }
-}
-
-.voice-toggle-btn.recording {
-    background-color: #dc3545 !important;
-    border-color: #dc3545 !important;
-    color: white !important;
-    animation: recordingPulse 1s infinite;
-}
-
-@keyframes recordingPulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-    100% { transform: scale(1); }
-}
-
-#voice-recording-indicator {
-    background: linear-gradient(135deg, #ffe6e6, #ffcccc);
-    border-radius: 25px;
-    padding: 12px 20px;
-    border: 2px solid #dc3545;
-}
-
-/* Сдвиг чата при открытом сайдбаре */
-body.sidebar-open #chat-main-col {
-    margin-right: 350px;
-    transition: margin-right 0.3s ease;
-}
-
-@media (max-width: 768px) {
-    body.sidebar-open #chat-main-col {
-        margin-right: 0;
-    }
-}
-
-/* Стили для ошибок медиа */
-.media-error {
-    background: #f8f9fa;
-    border-radius: 12px;
-    border: 2px dashed #dee2e6;
-}
-
-/* Стили для информации о часовом поясе */
-.user-timezone-info {
-    font-size: 0.75rem;
-    opacity: 0.7;
-    cursor: help;
-    display: inline-block;
-    padding: 2px 8px;
-    background: rgba(0, 123, 255, 0.1);
-    border-radius: 12px;
-    border: 1px solid rgba(0, 123, 255, 0.2);
-}
-</style>
-{% endblock %}
-
-{% block extra_js %}
-<!-- Подключаем moment.js и moment-timezone для работы с временем -->
+<!-- Подключаем moment.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.43/moment-timezone-with-data.min.js"></script>
 
+<div class="card border-0 shadow-sm mb-4" id="comments-section">
+    <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0 text-dark">
+            <i class="fas fa-comments me-2 text-muted"></i>Комментарии
+            <span class="badge bg-primary ms-2" id="comments-count">{{ route.interaction_comments.count }}</span>
+        </h5>
+    </div>
+
+    <div class="card-body p-3">
+        <!-- Форма добавления комментария -->
+        {% if user.is_authenticated %}
+        <div class="mb-3">
+            <form method="post" id="comment-form" class="comment-form">
+                {% csrf_token %}
+                <div class="mb-2">
+                    <textarea name="text" id="comment-text" class="form-control" rows="2" placeholder="Напишите ваш комментарий..." required></textarea>
+                </div>
+                <div class="d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary btn-sm" id="submit-comment">
+                        <i class="fas fa-paper-plane me-1"></i>Отправить
+                    </button>
+                </div>
+            </form>
+        </div>
+        {% else %}
+        <div class="alert alert-light text-center mb-3 border" role="alert">
+            <small class="text-muted">
+                <a href="{% url 'login' %}?next={{ request.path }}" class="fw-bold text-decoration-none">Войдите</a>, чтобы оставить комментарий.
+            </small>
+        </div>
+        {% endif %}
+
+        <!-- Список комментариев -->
+        <div class="comments-container" id="comments-container" style="max-height: 400px; overflow-y: auto; padding-right: 5px;">
+            <div class="comments-list" id="comments-list">
+                {% for comment in route.interaction_comments.all %}
+                <div class="comment-item d-flex mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}" 
+                     data-comment-id="{{ comment.id }}"
+                     data-user-id="{{ comment.user.id }}"
+                     data-timestamp="{{ comment.created_at|date:'c' }}">
+                    <div class="flex-shrink-0">
+                        <div class="avatar-placeholder rounded-circle bg-light d-flex align-items-center justify-content-center border" style="width: 40px; height: 40px;">
+                            <i class="fas fa-user text-secondary"></i>
+                        </div>
+                    </div>
+
+                    <div class="flex-grow-1 ms-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <h6 class="mb-0 text-dark fw-bold">{{ comment.user.username }}</h6>
+                                    {% if comment.user == route.author %}
+                                    <span class="badge bg-light text-muted border px-2 py-1" style="font-size: 0.65rem; font-weight: 500;">
+                                        <i class="fas fa-feather-alt me-1"></i>Автор
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                <small class="text-muted comment-time" data-timestamp="{{ comment.created_at|date:'c' }}">
+                                    {{ comment.created_at|date:"d.m.Y H:i" }}
+                                </small>
+                            </div>
+
+                            {% if comment.user == request.user %}
+                            <button type="button" class="btn btn-link text-danger p-0 btn-sm opacity-75 hover-opacity-100 delete-comment-btn" 
+                                    data-comment-id="{{ comment.id }}" title="Удалить">
+                                <i class="far fa-trash-alt"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+
+                        <p class="comment-text text-secondary mt-2 mb-0" style="white-space: pre-line;">{{ comment.text }}</p>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-4 text-muted">
+                    <i class="far fa-comment-dots fa-3x mb-3 opacity-25"></i>
+                    <p class="mb-0">Комментариев пока нет. Будьте первым!</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
-// ==================== НАСТРОЙКИ ЛОКАЛИ И ЧАСОВОГО ПОЯСА ====================
+// ==================== НАСТРОЙКИ MOMENT.JS ====================
 
-// Определяем язык браузера
-function getBrowserLocale() {
-    return navigator.language || navigator.userLanguage || 'ru-RU';
-}
-
-// Устанавливаем локаль moment.js
-function setupMomentLocale() {
-    const browserLocale = getBrowserLocale();
-    const language = browserLocale.split('-')[0];
-    
-    // Поддерживаемые локали в moment.js
-    const supportedLocales = [
-        'ru', 'en', 'fr', 'de', 'es', 'it', 'zh', 'ja', 'ko', 'ar',
-        'pt', 'nl', 'pl', 'tr', 'sv', 'da', 'fi', 'no', 'cs', 'hu'
-    ];
-    
-    if (supportedLocales.includes(language)) {
-        moment.locale(language);
-        console.log(`🌐 Установлена локаль: ${language}`);
-    } else {
-        moment.locale('en');
-        console.log(`🌐 Язык ${language} не поддерживается, используется английский`);
+// Устанавливаем русскую локаль для moment.js
+moment.locale('ru', {
+    months: 'января_февраля_марта_апреля_мая_июня_июля_августа_сентября_октября_ноября_декабря'.split('_'),
+    monthsShort: 'янв_фев_мар_апр_мая_июня_июля_авг_сен_окт_ноя_дек'.split('_'),
+    weekdays: 'воскресенье_понедельник_вторник_среда_четверг_пятница_суббота'.split('_'),
+    weekdaysShort: 'вс_пн_вт_ср_чт_пт_сб'.split('_'),
+    weekdaysMin: 'вс_пн_вт_ср_чт_пт_сб'.split('_'),
+    longDateFormat: {
+        LT: 'HH:mm',
+        LTS: 'HH:mm:ss',
+        L: 'DD.MM.YYYY',
+        LL: 'D MMMM YYYY г.',
+        LLL: 'D MMMM YYYY г., HH:mm',
+        LLLL: 'dddd, D MMMM YYYY г., HH:mm'
+    },
+    calendar: {
+        sameDay: '[Сегодня в] LT',
+        nextDay: '[Завтра в] LT',
+        lastDay: '[Вчера в] LT',
+        nextWeek: 'dddd [в] LT',
+        lastWeek: 'dddd [в] LT',
+        sameElse: 'L'
+    },
+    relativeTime: {
+        future: 'через %s',
+        past: '%s назад',
+        s: 'несколько секунд',
+        m: 'минуту',
+        mm: '%d минут',
+        h: 'час',
+        hh: '%d часов',
+        d: 'день',
+        dd: '%d дней',
+        M: 'месяц',
+        MM: '%d месяцев',
+        y: 'год',
+        yy: '%d лет'
     }
-}
-
-// Показываем часовой пояс пользователя
-function showUserTimezone() {
-    const timezone = moment.tz.guess();
-    const timezoneElement = document.getElementById('user-timezone');
-    
-    if (timezoneElement) {
-        const offset = moment().tz(timezone).format('Z');
-        const timezoneName = timezone.replace(/_/g, ' ');
-        
-        // Локализованный текст
-        const timezoneText = {
-            'ru': `Ваш часовой пояс: ${timezoneName} (UTC${offset})`,
-            'en': `Your timezone: ${timezoneName} (UTC${offset})`,
-            'de': `Ihre Zeitzone: ${timezoneName} (UTC${offset})`,
-            'fr': `Votre fuseau horaire: ${timezoneName} (UTC${offset})`,
-            'es': `Su zona horaria: ${timezoneName} (UTC${offset})`,
-            'zh': `您的时区: ${timezoneName} (UTC${offset})`,
-            'ja': `あなたのタイムゾーン: ${timezoneName} (UTC${offset})`,
-            'ko': `귀하의 시간대: ${timezoneName} (UTC${offset})`,
-            'ar': `المنطقة الزمنية الخاصة بك: ${timezoneName} (UTC${offset})`
-        };
-        
-        const currentLocale = moment.locale();
-        const text = timezoneText[currentLocale] || timezoneText['en'];
-        timezoneElement.textContent = text;
-        timezoneElement.title = text;
-    }
-}
-
-// Локализованные строки для разных языков
-const localeStrings = {
-    ru: {
-        justNow: 'только что',
-        minutesAgo: 'минут назад',
-        hoursAgo: 'часов назад',
-        yesterday: 'вчера',
-        today: 'сегодня',
-        at: 'в',
-        online: 'В сети',
-        offline: 'Не в сети',
-        wasAgo: 'Был(а)'
-    },
-    en: {
-        justNow: 'just now',
-        minutesAgo: 'minutes ago',
-        hoursAgo: 'hours ago',
-        yesterday: 'yesterday',
-        today: 'today',
-        at: 'at',
-        online: 'Online',
-        offline: 'Offline',
-        wasAgo: 'Was'
-    },
-    de: {
-        justNow: 'gerade eben',
-        minutesAgo: 'Minuten vor',
-        hoursAgo: 'Stunden vor',
-        yesterday: 'gestern',
-        today: 'heute',
-        at: 'um',
-        online: 'Online',
-        offline: 'Offline',
-        wasAgo: 'War'
-    },
-    fr: {
-        justNow: 'à l\'instant',
-        minutesAgo: 'minutes il y a',
-        hoursAgo: 'heures il y a',
-        yesterday: 'hier',
-        today: 'aujourd\'hui',
-        at: 'à',
-        online: 'En ligne',
-        offline: 'Hors ligne',
-        wasAgo: 'Était'
-    },
-    es: {
-        justNow: 'ahora mismo',
-        minutesAgo: 'minutos atrás',
-        hoursAgo: 'horas atrás',
-        yesterday: 'ayer',
-        today: 'hoy',
-        at: 'a',
-        online: 'En línea',
-        offline: 'Desconectado',
-        wasAgo: 'Estaba'
-    },
-    zh: {
-        justNow: '刚才',
-        minutesAgo: '分钟前',
-        hoursAgo: '小时前',
-        yesterday: '昨天',
-        today: '今天',
-        at: '在',
-        online: '在线',
-        offline: '离线',
-        wasAgo: '曾经'
-    },
-    ja: {
-        justNow: 'たった今',
-        minutesAgo: '分前',
-        hoursAgo: '時間前',
-        yesterday: '昨日',
-        today: '今日',
-        at: 'で',
-        online: 'オンライン',
-        offline: 'オフライン',
-        wasAgo: 'でした'
-    },
-    ko: {
-        justNow: '방금',
-        minutesAgo: '분 전',
-        hoursAgo: '시간 전',
-        yesterday: '어제',
-        today: '오늘',
-        at: '에서',
-        online: '온라인',
-        offline: '오프라인',
-        wasAgo: '이었다'
-    },
-    ar: {
-        justNow: 'الآن',
-        minutesAgo: 'دقيقة مضت',
-        hoursAgo: 'ساعة مضت',
-        yesterday: 'أمس',
-        today: 'اليوم',
-        at: 'في',
-        online: 'متصل',
-        offline: 'غير متصل',
-        wasAgo: 'كان'
-    }
-};
-
-// Получаем локализованные строки для текущего языка
-function getLocalizedStrings() {
-    const currentLocale = moment.locale();
-    return localeStrings[currentLocale] || localeStrings.en;
-}
+});
 
 // ==================== ФУНКЦИИ ДЛЯ РАБОТЫ С ВРЕМЕНЕМ ====================
 
-// Форматируем время сообщения с учетом локали
-function formatMessageTime(timestamp) {
-    if (!timestamp) return '';
-    
-    const messageTime = moment.utc(timestamp).local(); // Конвертируем UTC в локальное время
-    const now = moment();
-    const diffMinutes = now.diff(messageTime, 'minutes');
-    const diffHours = now.diff(messageTime, 'hours');
-    
-    const strings = getLocalizedStrings();
-    
-    // Если меньше минуты назад
-    if (diffMinutes < 1) {
-        return strings.justNow;
-    }
-    
-    // Если меньше часа назад
-    if (diffMinutes < 60) {
-        const localizedMinutes = getLocalizedMinutes(diffMinutes, moment.locale());
-        return `${diffMinutes} ${localizedMinutes} ${strings.minutesAgo}`;
-    }
-    
-    // Если сегодня
-    if (messageTime.isSame(now, 'day')) {
-        return `${strings.today} ${strings.at} ${messageTime.format('HH:mm')}`;
-    }
-    
-    // Если вчера
-    if (messageTime.isSame(now.clone().subtract(1, 'day'), 'day')) {
-        return `${strings.yesterday} ${strings.at} ${messageTime.format('HH:mm')}`;
-    }
-    
-    // Если в этом году
-    if (messageTime.isSame(now, 'year')) {
-        return messageTime.format('D MMM HH:mm');
-    }
-    
-    // Иначе полная дата
-    return messageTime.format('DD.MM.YYYY HH:mm');
-}
-
-// Получаем локализованное слово "минута" для разных языков
-function getLocalizedMinutes(minutes, locale) {
-    switch(locale) {
-        case 'ru':
-            return getRussianMinutes(minutes);
-        case 'en':
-            return 'minute' + (minutes === 1 ? '' : 's');
-        case 'de':
-            return 'Minute' + (minutes === 1 ? '' : 'n');
-        case 'fr':
-            return 'minute' + (minutes === 1 ? '' : 's');
-        case 'es':
-            return 'minuto' + (minutes === 1 ? '' : 's');
-        case 'zh':
-            return '分钟';
-        case 'ja':
-            return '分';
-        case 'ko':
-            return '분';
-        case 'ar':
-            return 'دقيقة';
-        default:
-            return 'minute' + (minutes === 1 ? '' : 's');
+// Определяет часовой пояс пользователя
+function detectUserTimezone() {
+    try {
+        const timezone = moment.tz.guess();
+        console.log('Часовой пояс пользователя:', timezone);
+        
+        // Сохраняем в cookie на случай, если понадобится на сервере
+        document.cookie = `user_timezone=${encodeURIComponent(timezone)}; path=/; max-age=${365*24*60*60}; SameSite=Lax`;
+        
+        return timezone;
+    } catch (error) {
+        console.error('Не удалось определить часовой пояс:', error);
+        return 'UTC';
     }
 }
 
-// Русское склонение минут
-function getRussianMinutes(minutes) {
-    const lastDigit = minutes % 10;
-    const lastTwoDigits = minutes % 100;
-    
-    if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
-        return 'минут';
-    }
-    
-    switch(lastDigit) {
-        case 1: return 'минуту';
-        case 2:
-        case 3:
-        case 4: return 'минуты';
-        default: return 'минут';
+// Форматирует время в локальном формате пользователя
+function formatLocalTimeWithMoment(isoString) {
+    try {
+        if (!isoString) return '';
+        
+        // Создаем moment объект из ISO строки
+        const time = moment.utc(isoString).local();
+        
+        // Проверяем, сегодня ли это
+        const now = moment();
+        const isToday = time.isSame(now, 'day');
+        const isYesterday = time.isSame(now.clone().subtract(1, 'day'), 'day');
+        const isThisYear = time.isSame(now, 'year');
+        
+        // Разные форматы в зависимости от давности
+        if (isToday) {
+            // Сегодня: показываем время и "сегодня"
+            return `Сегодня в ${time.format('HH:mm')}`;
+        } else if (isYesterday) {
+            // Вчера: показываем время и "вчера"
+            return `Вчера в ${time.format('HH:mm')}`;
+        } else if (isThisYear) {
+            // В этом году: показываем дату без года
+            return time.format('D MMMM в HH:mm');
+        } else {
+            // Прошлые года: показываем полную дату
+            return time.format('D MMMM YYYY в HH:mm');
+        }
+    } catch (error) {
+        console.error('Ошибка форматирования времени:', error, isoString);
+        return isoString;
     }
 }
 
-// Обновляем время во всех сообщениях
-function updateAllMessageTimes() {
-    const timeElements = document.querySelectorAll('.message-timestamp[data-timestamp]');
+// Функция для обновления времени во всех комментариях
+function updateAllCommentTimes() {
+    const timeElements = document.querySelectorAll('.comment-time[data-timestamp]');
     
     timeElements.forEach(element => {
         const timestamp = element.dataset.timestamp;
         if (timestamp) {
-            const formattedTime = formatMessageTime(timestamp);
+            const formattedTime = formatLocalTimeWithMoment(timestamp);
             if (formattedTime) {
                 element.textContent = formattedTime;
                 
-                // Добавляем title с полной датой
-                const fullDate = moment.utc(timestamp).local().format('LLLL');
+                // Добавляем title с полной датой для наведения
+                const fullDate = moment.utc(timestamp).local().format('dddd, D MMMM YYYY, HH:mm:ss');
                 element.title = fullDate;
             }
         }
     });
 }
 
-// ==================== ОСНОВНОЙ КОД ЧАТА ====================
+// ==================== ОСНОВНАЯ ЛОГИКА КОММЕНТАРИЕВ ====================
 
-// Глобальные переменные
-const conversationId = {{ conversation.id }};
-const currentUserId = {{ request.user.id }};
-const currentUsername = "{{ request.user.username }}";
-const otherUserId = {{ other_user.id }};
-const otherUsername = "{{ other_user.username }}";
-let isSending = false;
-let firebaseChat;
-let mediaFile = null;
-let mediaType = null;
-let voiceBlob = null;
-let mediaRecorder = null;
-let audioChunks = [];
-let recordingTimer = null;
-let recordingStartTime = null;
-let isRecording = false;
-let currentAudio = null;
-
-// Инициализация чата при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Инициализация чата...');
+    const commentForm = document.getElementById('comment-form');
+    const commentsContainer = document.getElementById('comments-container');
+    const commentsList = document.getElementById('comments-list');
+    const commentsCount = document.getElementById('comments-count');
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const routeId = '{{ route.id }}';
     
-    // Настраиваем локаль и часовой пояс
-    setupMomentLocale();
-    showUserTimezone();
+    console.log('Комментарии инициализированы, маршрут ID:', routeId);
     
-    // Обновляем время в существующих сообщениях
-    updateAllMessageTimes();
+    // ШАГ 1: Определяем часовой пояс пользователя
+    detectUserTimezone();
     
-    // Обновляем время каждую минуту
-    setInterval(updateAllMessageTimes, 60000);
+    // ШАГ 2: Обновляем время в комментариях
+    updateAllCommentTimes();
     
-    // Предотвращаем перезагрузку формы
-    const chatForm = document.querySelector('#chat-form');
-    if (chatForm) {
-        chatForm.addEventListener('submit', function(e) {
+    // ШАГ 3: Обновляем время каждые 30 секунд
+    setInterval(updateAllCommentTimes, 30000);
+    
+    // Функция для прокрутки вниз контейнера
+    function scrollCommentsToBottom() {
+        if (commentsContainer) {
+            commentsContainer.scrollTop = commentsContainer.scrollHeight;
+        }
+    }
+    
+    // Изначально прокручиваем вниз
+    setTimeout(scrollCommentsToBottom, 100);
+    
+    // Функция для отправки комментария
+    if (commentForm) {
+        commentForm.addEventListener('submit', async function(e) {
             e.preventDefault();
-            handleMessageSubmit(e);
-        });
-    }
-    
-    initializeFirebaseChat();
-    setupEventListeners();
-    updateCharCounter();
-    document.querySelector('#chat-message-input').focus();
-    
-    // Инициализация статуса активности
-    updateActivityStatus();
-});
-
-// Инициализация Firebase чата
-function initializeFirebaseChat() {
-    try {
-        firebaseChat = new FirebaseChat(conversationId, {
-            id: currentUserId,
-            username: currentUsername
-        });
-        console.log('✅ Чат инициализирован');
-        updateConnectionStatus('connected', 'Подключено');
-    } catch (error) {
-        console.error('❌ Ошибка инициализации:', error);
-        updateConnectionStatus('error', 'Ошибка подключения');
-        showError('Ошибка подключения к чату');
-    }
-}
-
-// Класс для работы с Firebase
-class FirebaseChat {
-    constructor(conversationId, currentUser) {
-        this.conversationId = conversationId;
-        this.currentUser = currentUser;
-        this.database = firebase.database();
-        this.messagesRef = this.database.ref(`chats/${conversationId}/messages`);
-        this.typingRef = this.database.ref(`chats/${conversationId}/typing`);
-        this.usersRef = this.database.ref(`chats/${conversationId}/users`);
-        this.connectedRef = this.database.ref('.info/connected');
-        
-        this.init();
-    }
-
-    async init() {
-        await this.setupConnectionMonitoring();
-        await this.setupMessagesListener();
-        await this.setupTypingListener();
-        await this.setUserOnline();
-        await this.loadMessageHistory();
-    }
-
-    async setupConnectionMonitoring() {
-        this.connectedRef.on('value', (snap) => {
-            if (snap.val() === true) {
-                updateConnectionStatus('connected', 'Подключено');
-            } else {
-                updateConnectionStatus('disconnected', 'Переподключение...');
-            }
-        });
-    }
-
-    async setupMessagesListener() {
-        this.messagesRef.orderByChild('timestamp').on('child_added', (snapshot) => {
-            const message = snapshot.val();
-            this.addMessageToChat(message);
-        });
-    }
-
-    async setupTypingListener() {
-        this.typingRef.on('child_changed', (snapshot) => {
-            const typingData = snapshot.val();
-            if (typingData.isTyping && typingData.userId !== this.currentUser.id) {
-                showTypingIndicator(typingData.username);
-            } else {
-                hideTypingIndicator();
-            }
-        });
-    }
-
-    async setUserOnline() {
-        this.usersRef.child(this.currentUser.id).set({
-            userId: this.currentUser.id,
-            username: this.currentUser.username,
-            lastSeen: Date.now(),
-            isOnline: true
-        });
-        
-        this.usersRef.on('child_changed', (snapshot) => {
-            const userData = snapshot.val();
-            if (userData.userId === otherUserId) {
-                updateUserStatus(userData);
-            }
-        });
-        
-        this.usersRef.child(otherUserId).once('value').then((snapshot) => {
-            const userData = snapshot.val();
-            if (userData) {
-                updateUserStatus(userData);
-            }
-        });
-    }
-
-    async loadMessageHistory() {
-        try {
-            const snapshot = await this.messagesRef.orderByChild('timestamp').limitToLast(50).once('value');
-            const messages = [];
             
-            snapshot.forEach((childSnapshot) => {
-                const message = childSnapshot.val();
-                messages.push(message);
-            });
+            const submitBtn = document.getElementById('submit-comment');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Отправка...';
+            submitBtn.disabled = true;
             
-            messages.sort((a, b) => a.timestamp - b.timestamp);
-            this.renderMessages(messages);
+            const commentText = document.getElementById('comment-text').value.trim();
             
-        } catch (error) {
-            console.error('Ошибка загрузки истории:', error);
-            showError('Ошибка загрузки истории сообщений');
-        }
-    }
-
-    async sendMessage(messageText, messageType = 'text', mediaFile = null) {
-        if (isSending) {
-            showWarning('Сообщение отправляется...');
-            return false;
-        }
-        
-        isSending = true;
-        const messageInput = document.querySelector('#chat-message-input');
-        const submitBtn = document.querySelector('#chat-message-submit');
-        
-        messageInput.disabled = true;
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        
-        try {
-            let mediaUrl = null;
-            
-            if (mediaFile) {
-                mediaUrl = await this.uploadMediaToServer(mediaFile, messageType);
-                if (!mediaUrl) {
-                    throw new Error('Ошибка загрузки медиафайла');
-                }
-            }
-            
-            const messageId = Date.now().toString();
-            const messageData = {
-                id: messageId,
-                content: messageText || (mediaUrl ? '' : ''),
-                sender: this.currentUser.username,
-                sender_id: this.currentUser.id,
-                timestamp: Date.now(), // Сохраняем timestamp в UTC
-                message_type: messageType
-            };
-            
-            if (mediaUrl) {
-                messageData.content = mediaUrl;
-            }
-            
-            this.addMessageToChat({
-                ...messageData,
-                is_own: true,
-                is_temp: true
-            });
-            
-            await this.messagesRef.child(messageId).set(messageData);
-            
-            console.log('✅ Сообщение отправлено');
-            
-            messageInput.value = '';
-            updateCharCounter();
-            this.setTyping(false);
-            clearMedia();
-            
-            return true;
-            
-        } catch (error) {
-            console.error('❌ Ошибка отправки:', error);
-            showError('Ошибка отправки сообщения');
-            return false;
-        } finally {
-            isSending = false;
-            messageInput.disabled = false;
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
-        }
-    }
-
-    async uploadMediaToServer(file, messageType) {
-        return new Promise((resolve, reject) => {
-            const formData = new FormData();
-            formData.append('media_file', file);
-            formData.append('conversation_id', conversationId);
-            formData.append('message_type', messageType);
-            
-            fetch('/chat/upload-media/', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': getCSRFToken(),
-                },
-                body: formData
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Ошибка сети');
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success && data.file_url) {
-                    resolve(data.file_url);
-                } else {
-                    reject(new Error(data.error || 'Ошибка загрузки файла'));
-                }
-            })
-            .catch(error => {
-                console.error('Ошибка загрузки:', error);
-                reject(error);
-            });
-        });
-    }
-
-    setTyping(isTyping) {
-        this.typingRef.child(this.currentUser.id).set({
-            isTyping: isTyping,
-            userId: this.currentUser.id,
-            username: this.currentUser.username,
-            timestamp: Date.now()
-        });
-    }
-
-    renderMessages(messages) {
-        const messagesContainer = document.querySelector('#chat-messages');
-        messagesContainer.innerHTML = '';
-        
-        if (messages.length === 0) {
-            this.showEmptyChatMessage();
-            return;
-        }
-        
-        console.log('🎨 Отрисовка сообщений:', messages.length);
-        
-        messages.forEach(messageData => {
-            this.addMessageToChat(messageData);
-        });
-        
-        // Обновляем время после рендеринга
-        setTimeout(updateAllMessageTimes, 100);
-    }
-
-    addMessageToChat(messageData) {
-        const messagesContainer = document.querySelector('#chat-messages');
-        
-        const emptyMessage = messagesContainer.querySelector('#empty-chat-message');
-        if (emptyMessage) {
-            emptyMessage.remove();
-        }
-        
-        const existingMessage = messagesContainer.querySelector(`[data-message-id="${messageData.id}"]`);
-        if (existingMessage) {
-            if (messageData.is_temp) {
-                existingMessage.remove();
-            } else {
+            if (!commentText) {
+                alert('Введите текст комментария');
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
                 return;
             }
-        }
-
-        const messageWrapper = document.createElement('div');
-        messageWrapper.className = `message-wrapper mb-4 ${messageData.sender_id == currentUserId ? 'own-message' : 'other-message'}`;
-        messageWrapper.dataset.messageId = messageData.id;
-        
-        const isOwn = messageData.sender_id == currentUserId;
-        const senderName = isOwn ? 'Вы' : messageData.sender;
-
-        let messageContent = '';
-        switch(messageData.message_type) {
-            case 'text':
-                messageContent = `<div class="message-content">${escapeHtml(messageData.content).replace(/\n/g, '<br>')}</div>`;
-                break;
-            case 'image':
-                messageContent = `
-                    <div class="message-content">
-                        <div class="media-message">
-                            <img src="${messageData.content}" alt="Изображение" class="img-fluid rounded" style="max-width: 300px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                            <div class="media-error" style="display: none; padding: 20px; text-align: center; color: #6c757d;">
-                                <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
-                                <p>Не удалось загрузить изображение</p>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                break;
-            case 'video':
-                messageContent = `
-                    <div class="message-content">
-                        <div class="media-message">
-                            <video controls class="img-fluid rounded" style="max-width: 300px;">
-                                <source src="${messageData.content}" type="video/mp4">
-                                Ваш браузер не поддерживает видео.
-                            </video>
-                        </div>
-                    </div>
-                `;
-                break;
-            case 'audio':
-                messageContent = `
-                    <div class="message-content">
-                        <div class="media-message">
-                            <audio controls class="w-100">
-                                <source src="${messageData.content}" type="audio/mpeg">
-                                Ваш браузер не поддерживает аудио.
-                            </audio>
-                        </div>
-                    </div>
-                `;
-                break;
-            case 'voice':
-                messageContent = `
-                    <div class="message-content">
-                        <div class="voice-message d-flex align-items-center">
-                            <button class="btn btn-sm btn-outline-primary play-voice-btn me-2" data-audio-url="${messageData.content}">
-                                <i class="fas fa-play"></i>
-                            </button>
-                            <div class="voice-waveform flex-grow-1 me-2">
-                                <div class="waveform-bar"></div>
-                                <div class="waveform-bar"></div>
-                                <div class="waveform-bar"></div>
-                                <div class="waveform-bar"></div>
-                                <div class="waveform-bar"></div>
-                            </div>
-                            <small class="text-muted voice-duration">0:00</small>
-                        </div>
-                    </div>
-                `;
-                break;
-            default:
-                messageContent = `<div class="message-content">${escapeHtml(messageData.content).replace(/\n/g, '<br>')}</div>`;
-        }
-
-        // Форматируем время на клиенте
-        const formattedTime = formatMessageTime(messageData.timestamp);
-        const fullDate = messageData.timestamp ? moment.utc(messageData.timestamp).local().format('LLLL') : '';
-
-        messageWrapper.innerHTML = `
-            <div class="message-bubble ${isOwn ? 'own-bubble' : 'other-bubble'}">
-                ${!isOwn ? `<div class="message-sender mb-1"><small class="text-primary fw-bold">${escapeHtml(senderName)}</small></div>` : ''}
-                ${messageContent}
-                <div class="message-time text-end mt-1">
-                    <small class="${isOwn ? 'text-light' : 'text-muted'} message-timestamp" 
-                           data-timestamp="${messageData.timestamp}"
-                           title="${fullDate}">
-                        ${formattedTime}
-                    </small>
-                    ${isOwn ? '<i class="fas fa-check-double text-light ms-1" style="font-size: 10px;"></i>' : ''}
-                </div>
-            </div>
-        `;
-
-        if (!messageData.is_temp || messageData.is_own) {
-            messageWrapper.style.animation = 'messageSlideIn 0.3s ease-out';
-        }
-        
-        messagesContainer.appendChild(messageWrapper);
-        scrollToBottom();
-        
-        if (messageData.message_type === 'voice') {
-            const playBtn = messageWrapper.querySelector('.play-voice-btn');
-            if (playBtn) {
-                playBtn.addEventListener('click', function() {
-                    playVoiceMessage(this.dataset.audioUrl, this);
+            
+            try {
+                const formData = new FormData(this);
+                
+                const response = await fetch(`/interactions/comment/${routeId}/`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': csrfToken
+                    }
                 });
-            }
-        }
-    }
-
-    showEmptyChatMessage() {
-        const messagesContainer = document.querySelector('#chat-messages');
-        messagesContainer.innerHTML = `
-            <div class="text-center text-muted py-5" id="empty-chat-message">
-                <div class="empty-state-icon mb-4">
-                    <i class="fas fa-comments fa-4x text-light"></i>
-                </div>
-                <h4 class="fw-light">Начните диалог</h4>
-                <p class="text-muted">Отправьте первое сообщение {{ other_user.username }}</p>
-            </div>
-        `;
-    }
-
-    destroy() {
-        if (this.messagesRef) this.messagesRef.off();
-        if (this.typingRef) this.typingRef.off();
-        if (this.usersRef) this.usersRef.off();
-        if (this.connectedRef) this.connectedRef.off();
-    }
-}
-
-// Настройка обработчиков событий
-function setupEventListeners() {
-    const messageInput = document.querySelector('#chat-message-input');
-    
-    let typingTimer;
-    messageInput.addEventListener('input', function() {
-        if (firebaseChat && messageInput.value.trim().length > 0) {
-            firebaseChat.setTyping(true);
-            clearTimeout(typingTimer);
-            typingTimer = setTimeout(() => {
-                if (firebaseChat) {
-                    firebaseChat.setTyping(false);
+                
+                const responseText = await response.text();
+                
+                if (!response.ok) {
+                    throw new Error(`Ошибка сервера: ${response.status}`);
                 }
-            }, 1000);
-        }
-        updateCharCounter();
-    });
+                
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (jsonError) {
+                    console.error('Невалидный JSON:', responseText.substring(0, 200));
+                    throw new Error('Ошибка обработки ответа сервера');
+                }
+                
+                if (data.success) {
+                    // Обновляем HTML комментариев
+                    if (data.html) {
+                        commentsList.innerHTML = data.html;
+                        // После обновления HTML обновляем время
+                        setTimeout(updateAllCommentTimes, 100);
+                        // Прокручиваем вниз
+                        setTimeout(scrollCommentsToBottom, 150);
+                    }
+                    
+                    // Обновляем счетчик
+                    if (data.comments_count !== undefined) {
+                        commentsCount.textContent = data.comments_count;
+                    }
+                    
+                    // Очищаем форму
+                    document.getElementById('comment-text').value = '';
+                    
+                    console.log('Комментарий успешно добавлен');
+                } else {
+                    alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+                }
+            } catch (error) {
+                console.error('Ошибка отправки:', error);
+                alert('Произошла ошибка: ' + error.message);
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+    }
     
-    messageInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
+    // Функция для удаления комментария
+    if (commentsList) {
+        commentsList.addEventListener('click', async function(e) {
+            const deleteBtn = e.target.closest('.delete-comment-btn');
+            if (!deleteBtn) return;
+            
             e.preventDefault();
-            handleMessageSubmit(e);
-        }
-    });
-    
-    window.addEventListener('resize', scrollToBottom);
-    
-    document.getElementById('file-input').addEventListener('change', handleFileSelect);
-    document.getElementById('image-input').addEventListener('change', handleFileSelect);
-    document.getElementById('video-input').addEventListener('change', handleFileSelect);
-    document.getElementById('audio-input').addEventListener('change', handleFileSelect);
-}
-
-// Обработка отправки сообщения
-async function handleMessageSubmit(e) {
-    e.preventDefault();
-    
-    const messageInput = document.querySelector('#chat-message-input');
-    const message = messageInput.value.trim();
-    
-    if (!message && !mediaFile) {
-        showWarning('Введите сообщение или добавьте файл');
-        messageInput.focus();
-        return;
+            const commentId = deleteBtn.dataset.commentId;
+            
+            if (!confirm('Вы уверены, что хотите удалить этот комментарий?')) {
+                return;
+            }
+            
+            // Блокируем кнопку
+            deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            deleteBtn.disabled = true;
+            
+            try {
+                const response = await fetch(`/interactions/comment/delete/${commentId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': csrfToken,
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `csrfmiddlewaretoken=${encodeURIComponent(csrfToken)}`
+                });
+                
+                const responseText = await response.text();
+                
+                if (!response.ok) {
+                    throw new Error(`Ошибка сервера: ${response.status}`);
+                }
+                
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (jsonError) {
+                    throw new Error('Ошибка обработки ответа сервера');
+                }
+                
+                if (data.success) {
+                    // Обновляем HTML комментариев
+                    if (data.html) {
+                        commentsList.innerHTML = data.html;
+                        // После обновления HTML обновляем время
+                        setTimeout(updateAllCommentTimes, 100);
+                    }
+                    
+                    // Обновляем счетчик
+                    if (data.comments_count !== undefined) {
+                        commentsCount.textContent = data.comments_count;
+                    }
+                    
+                    console.log('Комментарий успешно удален');
+                } else {
+                    alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+                }
+            } catch (error) {
+                console.error('Ошибка удаления:', error);
+                alert('Произошла ошибка: ' + error.message);
+            }
+        });
     }
     
-    if (!firebaseChat) {
-        showError('Чат не инициализирован. Обновите страницу.');
-        return;
-    }
-    
-    await firebaseChat.sendMessage(message, mediaType || 'text', mediaFile);
-}
-
-// Функции для работы со статусом активности
-function updateActivityStatus() {
-    const isOnline = Math.random() > 0.5;
-    const lastSeen = new Date(Date.now() - Math.floor(Math.random() * 24 * 60 * 60 * 1000));
-    
-    updateUserStatus({
-        userId: otherUserId,
-        isOnline: isOnline,
-        lastSeen: lastSeen.getTime()
-    });
-}
-
-function updateUserStatus(userData) {
-    const onlineStatus = document.getElementById('online-status');
-    const lastSeen = document.getElementById('last-seen');
-    const activityText = document.getElementById('activity-text');
-    const activityIcon = document.querySelector('#last-activity i');
-    const strings = getLocalizedStrings();
-    
-    if (userData.isOnline) {
-        onlineStatus.className = 'badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill';
-        onlineStatus.innerHTML = `<i class="fas fa-circle me-1" style="font-size: 8px;"></i>${strings.online}`;
-        lastSeen.textContent = strings.online;
-        lastSeen.className = 'text-success';
-        activityText.textContent = strings.online;
-        activityIcon.className = 'fas fa-circle text-success me-1';
-    } else {
-        onlineStatus.className = 'badge bg-secondary bg-opacity-10 text-secondary px-3 py-2 rounded-pill';
-        onlineStatus.innerHTML = `<i class="fas fa-circle me-1" style="font-size: 8px;"></i>${strings.offline}`;
+    // Функция для добавления меток автора, если они слетели
+    function fixAuthorBadges() {
+        const routeAuthorId = '{{ route.author.id }}';
+        const commentItems = commentsList.querySelectorAll('.comment-item');
         
-        const timeAgo = getTimeAgo(userData.lastSeen);
-        lastSeen.textContent = timeAgo;
-        lastSeen.className = 'text-muted';
-        activityText.textContent = `${strings.wasAgo} ${timeAgo} ${strings.minutesAgo}`;
-        activityIcon.className = 'fas fa-circle text-secondary me-1';
-    }
-}
-
-function getTimeAgo(timestamp) {
-    const now = Date.now();
-    const diff = now - timestamp;
-    
-    const minutes = Math.floor(diff / (1000 * 60));
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    
-    const strings = getLocalizedStrings();
-    
-    if (minutes < 1) return strings.justNow;
-    if (minutes < 60) return `${minutes} ${getLocalizedMinutes(minutes, moment.locale())}`;
-    if (hours < 24) return `${hours} ${strings.hoursAgo.replace('ago', '').trim()}`;
-    return `${days} ${days === 1 ? 'day' : 'days'}`;
-}
-
-// ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
-
-// Функции для работы с медиа (оставьте без изменений)
-function triggerFileInput(type) { /* ... */ }
-function handleFileSelect(event) { /* ... */ }
-function showMediaPreview(file, type) { /* ... */ }
-function clearMedia() { /* ... */ }
-
-// Функции для голосовых сообщений (оставьте без изменений)
-async function startVoiceRecording() { /* ... */ }
-function stopVoiceRecording() { /* ... */ }
-function cancelVoiceRecording() { /* ... */ }
-function showRecordingIndicator() { /* ... */ }
-function hideRecordingIndicator() { /* ... */ }
-function updateRecordingTimer() { /* ... */ }
-async function sendVoiceMessage() { /* ... */ }
-function playVoiceMessage(audioUrl, button) { /* ... */ }
-
-// Функции для интерфейса (оставьте без изменений)
-function toggleUserInfo() { /* ... */ }
-function showTypingIndicator(username) { /* ... */ }
-function hideTypingIndicator() { /* ... */ }
-function updateCharCounter() { /* ... */ }
-function updateConnectionStatus(status, message) { /* ... */ }
-function scrollToBottom() { /* ... */ }
-function escapeHtml(text) { /* ... */ }
-function getCSRFToken() { /* ... */ }
-function refreshChat() { /* ... */ }
-function blockUser() { /* ... */ }
-function startRouteChat() { /* ... */ }
-
-// Функции уведомлений (оставьте без изменений)
-function showError(message) { showNotification(message, 'error'); }
-function showSuccess(message) { showNotification(message, 'success'); }
-function showWarning(message) { showNotification(message, 'warning'); }
-function showInfo(message) { showNotification(message, 'info'); }
-
-function showNotification(message, type = 'info') {
-    const notifications = document.getElementById('notifications');
-    const notificationId = 'notification-' + Date.now();
-    
-    const typeConfig = {
-        'success': { class: 'notification-success', icon: 'fa-check-circle', duration: 3000 },
-        'error': { class: 'notification-error', icon: 'fa-exclamation-circle', duration: 5000 },
-        'warning': { class: 'notification-warning', icon: 'fa-exclamation-triangle', duration: 4000 },
-        'info': { class: 'notification-info', icon: 'fa-info-circle', duration: 3000 }
-    };
-    
-    const config = typeConfig[type] || typeConfig.info;
-    
-    const notification = document.createElement('div');
-    notification.id = notificationId;
-    notification.className = `notification ${config.class}`;
-    notification.innerHTML = `
-        <div class="notification-content">
-            <div class="notification-icon"><i class="fas ${config.icon}"></i></div>
-            <div class="notification-message">${escapeHtml(message)}</div>
-            <button type="button" class="notification-close" onclick="closeNotification('${notificationId}')">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="notification-progress"></div>
-    `;
-    
-    notifications.appendChild(notification);
-    setTimeout(() => notification.classList.add('show'), 10);
-    
-    setTimeout(() => closeNotification(notificationId), config.duration);
-}
-
-function closeNotification(notificationId) {
-    const notification = document.getElementById(notificationId);
-    if (notification) {
-        notification.classList.remove('show');
-        notification.classList.add('hide');
-        setTimeout(() => notification.remove(), 400);
-    }
-}
-
-// Обработка перед закрытием страницы
-window.addEventListener('beforeunload', function() {
-    if (firebaseChat) {
-        firebaseChat.destroy();
+        commentItems.forEach(item => {
+            const userId = item.dataset.userId;
+            const usernameElement = item.querySelector('h6.mb-0');
+            
+            if (userId && usernameElement) {
+                // Проверяем, есть ли уже метка
+                const existingBadge = item.querySelector('.author-badge');
+                const hasBadgeInHTML = item.innerHTML.includes('Автор');
+                
+                // Если пользователь - автор и нет метки
+                if (userId == routeAuthorId && !existingBadge && !hasBadgeInHTML) {
+                    const authorBadge = document.createElement('span');
+                    authorBadge.className = 'badge bg-light text-muted border px-2 py-1 ms-2';
+                    authorBadge.style.cssText = 'font-size: 0.65rem; font-weight: 500;';
+                    authorBadge.innerHTML = '<i class="fas fa-feather-alt me-1"></i>Автор';
+                    
+                    // Вставляем после имени пользователя
+                    usernameElement.parentNode.insertBefore(authorBadge, usernameElement.nextSibling);
+                }
+            }
+        });
     }
     
-    if (currentAudio) {
-        currentAudio.pause();
-    }
+    // Проверяем метки каждые 2 секунды на случай, если они слетели
+    setInterval(fixAuthorBadges, 2000);
+    
+    // Также проверяем после загрузки страницы
+    setTimeout(fixAuthorBadges, 1000);
 });
-
-console.log('🎉 Чат с поддержкой разных часовых поясов инициализирован!');
-console.log('🌍 Текущий часовой пояс:', moment.tz.guess());
-console.log('🗣️ Текущая локаль:', moment.locale());
 </script>
-{% endblock %}
+
+<style>
+.comments-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.comments-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.comments-container::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.comments-container::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+.comment-time {
+    transition: all 0.3s ease;
+    font-size: 0.85em;
+    color: #6c757d !important;
+}
+
+.comment-time:hover {
+    color: #495057 !important;
+    text-decoration: underline;
+    cursor: help;
+}
+
+/* Адаптивность для мобильных */
+@media (max-width: 768px) {
+    .comments-container {
+        max-height: 300px !important;
+    }
+}
+</style>

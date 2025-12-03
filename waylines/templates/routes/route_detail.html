@@ -5,6 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
 <style>
 .route-detail-page {
     background: #fafafa;
@@ -225,8 +226,188 @@ audio::-webkit-media-controls-time-remaining-display {
 }
 
 .route-walking { border-left: 4px solid #48bb78; }
-.route-driving { border-left: 4px solid #2563eb; }
+.route-driving { border-left: px solid #2563eb; }
 .route-cycling { border-left: 4px solid #f59e0b; }
+
+/* Стили для галереи */
+.gallery-thumbnail, .gallery-item {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.gallery-thumbnail:hover, .gallery-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.photo-caption-overlay {
+    transition: all 0.3s ease;
+}
+
+.gallery-thumbnail:hover .photo-caption-overlay,
+.gallery-item:hover .photo-caption-overlay {
+    background-color: rgba(0,0,0,0.7) !important;
+}
+
+/* Адаптивность галереи */
+@media (max-width: 768px) {
+    #fullGallery .col-6 {
+        width: 100% !important;
+    }
+    
+    .gallery-item {
+        height: 150px !important;
+    }
+}
+
+/* Анимация появления */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.gallery-thumbnail, .gallery-item {
+    animation: fadeIn 0.5s ease forwards;
+}
+
+/* Стили для описания маршрута */
+.route-description {
+    line-height: 1.6;
+    font-size: 1rem;
+    color: #495057;
+}
+
+.route-description p {
+    margin-bottom: 1rem;
+}
+
+.route-description strong {
+    color: #212529;
+    font-weight: 600;
+}
+
+.route-description em {
+    font-style: italic;
+}
+
+.route-description ul, .route-description ol {
+    padding-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.route-description li {
+    margin-bottom: 0.5rem;
+}
+
+/* Стили для отображения описания */
+.description-container {
+    max-height: none !important; /* Убираем ограничение высоты */
+    overflow: visible !important; /* Убираем скролл */
+}
+
+/* Стили для фото точек */
+.point-photos-container {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #e9ecef;
+}
+
+.point-photo-thumbnail {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+}
+
+.point-photo-thumbnail:hover {
+    transform: scale(1.05);
+    border-color: #3b82f6;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.point-photos-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.point-photo-count {
+    display: inline-block;
+    margin-left: 10px;
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+.view-point-gallery-btn {
+    font-size: 0.85rem;
+    padding: 4px 12px;
+    margin-top: 10px;
+}
+
+/* Модальные окна для фото точек */
+.point-photo-modal .modal-content {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.point-photo-modal .modal-body {
+    padding: 0;
+}
+
+.point-photo-modal .carousel-item img {
+    max-height: 70vh;
+    object-fit: contain;
+    margin: 0 auto;
+}
+
+.point-photo-modal .carousel-caption {
+    background: rgba(0,0,0,0.6);
+    border-radius: 8px;
+    padding: 10px 15px;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: auto;
+}
+
+/* Фото превью в списке точек */
+.point-photo-preview {
+    position: relative;
+    cursor: pointer;
+}
+
+.point-photo-preview img {
+    border-radius: 6px;
+    border: 2px solid #dee2e6;
+}
+
+.point-photo-preview:hover img {
+    border-color: #3b82f6;
+}
+
+.point-photo-more {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.8rem;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.point-photo-preview:hover .point-photo-more {
+    opacity: 1;
+}
 </style>
 {% endblock %}
 
@@ -389,7 +570,7 @@ audio::-webkit-media-controls-time-remaining-display {
                     <div class="card-body">
                         <h5 class="card-title text-dark mb-3">О маршруте</h5>
                         {% if route.description %}
-                        <div class="route-description text-muted">
+                        <div class="route-description description-container">
                             {{ route.description|linebreaks }}
                         </div>
                         {% else %}
@@ -420,6 +601,74 @@ audio::-webkit-media-controls-time-remaining-display {
                         </div>
                     </div>
                 </div>
+
+                <!-- Галерея фото маршрута -->
+                {% if route.photos.all %}
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0 text-dark">
+                            <i class="fas fa-images me-2 text-muted"></i>Фотогалерея маршрута
+                            <span class="badge bg-primary ms-2">{{ route.photos.count }}</span>
+                        </h5>
+                        {% if route.photos.count > 3 %}
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#galleryModal">
+                            <i class="fas fa-expand-alt me-1"></i>Открыть все фото
+                        </button>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="card-body">
+                        <!-- Основные превью фото -->
+                        <div class="route-gallery-preview">
+                            <div class="row g-2">
+                                {% for photo in route.photos.all|slice:":3" %}
+                                <div class="col-4">
+                                    <div class="gallery-thumbnail rounded overflow-hidden position-relative" 
+                                         style="height: 150px; cursor: pointer;"
+                                         data-bs-toggle="modal" 
+                                         data-bs-target="#photoModal"
+                                         data-photo-index="{{ forloop.counter0 }}">
+                                        <img src="{{ photo.image.url }}" 
+                                             class="img-fluid w-100 h-100 object-fit-cover" 
+                                             alt="{{ photo.caption|default:'Фото маршрута' }}"
+                                             loading="lazy">
+                                        {% if photo.caption %}
+                                        <div class="photo-caption-overlay position-absolute bottom-0 start-0 end-0 bg-dark bg-opacity-50 text-white p-2">
+                                            <small class="d-block text-truncate">{{ photo.caption }}</small>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                                
+                                {% if route.photos.count > 3 %}
+                                <div class="col-4">
+                                    <div class="gallery-more-thumbnail rounded overflow-hidden position-relative bg-light border" 
+                                         style="height: 150px; cursor: pointer;"
+                                         data-bs-toggle="modal" 
+                                         data-bs-target="#galleryModal">
+                                        <div class="d-flex flex-column align-items-center justify-content-center h-100 text-center text-muted">
+                                            <i class="fas fa-images fa-2x mb-2"></i>
+                                            <small>+{{ route.photos.count|add:"-3" }} фото</small>
+                                            <small class="text-primary">Нажмите чтобы увидеть все</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Счетчик фото для мобильных -->
+                        {% if route.photos.count > 3 %}
+                        <div class="d-block d-md-none text-center mt-3">
+                            <a href="#" class="text-decoration-none" data-bs-toggle="modal" data-bs-target="#galleryModal">
+                                <i class="fas fa-images me-1"></i>Показать все {{ route.photos.count }} фото
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
 
                 {% if full_audio_guide and full_audio_guide.audio_file %}
                 <div class="card border-0 shadow-sm mb-4">
@@ -506,7 +755,7 @@ audio::-webkit-media-controls-time-remaining-display {
                     <div class="card-body">
                         <div class="points-list">
                             {% for point in points %}
-                            <div class="point-item mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}">
+                            <div class="point-item mb-4 pb-3 {% if not forloop.last %}border-bottom{% endif %}" data-point-id="{{ point.id }}">
                                 <div class="d-flex align-items-start">
                                     <div class="point-number me-3">
                                         <div class="number-circle">{{ forloop.counter }}</div>
@@ -520,10 +769,12 @@ audio::-webkit-media-controls-time-remaining-display {
                                         {% endif %}
 
                                         {% if point.description %}
-                                        <p class="point-description text-muted mb-2">{{ point.description }}</p>
+                                        <div class="point-description text-muted mb-2">
+                                            {{ point.description|linebreaks }}
+                                        </div>
                                         {% endif %}
 
-                                        <!-- ДОБАВЬ ЭТОТ БЛОК ДЛЯ AI АУДИО -->
+                                        <!-- AI Аудио -->
                                         {% if point.audio_guide %}
                                         <div class="point-audio-section mt-3">
                                             <div class="audio-player-card bg-light rounded p-3">
@@ -547,15 +798,41 @@ audio::-webkit-media-controls-time-remaining-display {
                                             </div>
                                         </div>
                                         {% endif %}
-                                        <!-- КОНЕЦ БЛОКА AI АУДИО -->
 
+                                        <!-- Фото точки -->
                                         {% if point.photos.all %}
-                                        <div class="point-photos d-flex gap-2 mb-2">
-                                            {% for photo in point.photos.all %}
-                                            <img src="{{ photo.image.url }}" class="point-photo rounded"
-                                                alt="{{ photo.caption }}"
-                                                style="width: 60px; height: 60px; object-fit: cover;">
-                                            {% endfor %}
+                                        <div class="point-photos-container">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <h6 class="mb-0 text-dark small">
+                                                    <i class="fas fa-camera me-1 text-muted"></i>Фотографии точки
+                                                    <span class="point-photo-count">({{ point.photos.count }})</span>
+                                                </h6>
+                                                {% if point.photos.count > 3 %}
+                                                <button type="button" class="btn btn-outline-primary btn-sm view-point-gallery-btn"
+                                                        data-bs-toggle="modal" data-bs-target="#pointPhotoModal{{ point.id }}">
+                                                    <i class="fas fa-expand-alt me-1"></i>Показать все
+                                                </button>
+                                                {% endif %}
+                                            </div>
+                                            
+                                            <div class="point-photos-grid">
+                                                {% for photo in point.photos.all|slice:":6" %}
+                                                <div class="point-photo-preview" 
+                                                     data-bs-toggle="modal" 
+                                                     data-bs-target="#pointPhotoModal{{ point.id }}"
+                                                     data-photo-index="{{ forloop.counter0 }}">
+                                                    <img src="{{ photo.image.url }}" 
+                                                         class="point-photo-thumbnail"
+                                                         alt="{{ photo.caption|default:'Фото точки' }}"
+                                                         loading="lazy">
+                                                    {% if forloop.last and point.photos.count > 6 %}
+                                                    <div class="point-photo-more">
+                                                        +{{ point.photos.count|add:"-6" }}
+                                                    </div>
+                                                    {% endif %}
+                                                </div>
+                                                {% endfor %}
+                                            </div>
                                         </div>
                                         {% endif %}
                                     </div>
@@ -566,7 +843,7 @@ audio::-webkit-media-controls-time-remaining-display {
                     </div>
                 </div>
 
-                <!-- Комментарии -->
+                <!-- Комментарии (из отдельного шаблона) -->
                 {% include "interactions/comments.html" %}
 
                 <!-- Чат маршрута -->
@@ -700,6 +977,144 @@ audio::-webkit-media-controls-time-remaining-display {
         </div>
     </div>
 </div>
+
+<!-- Модальные окна для фото маршрута -->
+<div class="modal fade" id="photoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="carouselExampleIndicators" class="carousel slide">
+                    <div class="carousel-inner" id="photoCarousel">
+                        {% for photo in route.photos.all %}
+                        <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                            <img src="{{ photo.image.url }}" 
+                                 class="d-block w-100" 
+                                 alt="{{ photo.caption|default:'Фото маршрута' }}"
+                                 style="max-height: 70vh; object-fit: contain;">
+                            {% if photo.caption %}
+                            <div class="carousel-caption d-none d-md-block bg-dark bg-opacity-50 rounded p-3">
+                                <p class="mb-0">{{ photo.caption }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% if route.photos.count > 1 %}
+                    <button class="carousel-control-prev" type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Предыдущее</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Следующее</span>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <div class="text-muted small">
+                    Фото {{ '<span id="currentPhoto">1</span>'|safe }} из {{ route.photos.count }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="galleryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-fullscreen-lg-down">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-images me-2"></i>Фотогалерея маршрута "{{ route.name }}"
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3" id="fullGallery">
+                    {% for photo in route.photos.all %}
+                    <div class="col-6 col-md-4 col-lg-3">
+                        <div class="gallery-item rounded overflow-hidden position-relative" 
+                             style="height: 200px; cursor: pointer;"
+                             data-bs-toggle="modal" 
+                             data-bs-target="#photoModal"
+                             data-photo-index="{{ forloop.counter0 }}">
+                            <img src="{{ photo.image.url }}" 
+                                 class="img-fluid w-100 h-100 object-fit-cover" 
+                                 alt="{{ photo.caption|default:'Фото маршрута' }}"
+                                 loading="lazy">
+                            {% if photo.caption %}
+                            <div class="photo-caption-overlay position-absolute bottom-0 start-0 end-0 bg-dark bg-opacity-75 text-white p-2">
+                                <small class="d-block">{{ photo.caption|truncatechars:50 }}</small>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="text-muted small">
+                    Всего фото: {{ route.photos.count }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальные окна для фото точек (генерируются динамически) -->
+{% for point in points %}
+{% if point.photos.all %}
+<div class="modal fade point-photo-modal" id="pointPhotoModal{{ point.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h6 class="modal-title text-dark">
+                    <i class="fas fa-camera me-2"></i>{{ point.name }} - фотографии
+                </h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="pointCarousel{{ point.id }}" class="carousel slide">
+                    <div class="carousel-inner">
+                        {% for photo in point.photos.all %}
+                        <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                            <img src="{{ photo.image.url }}" 
+                                 class="d-block w-100" 
+                                 alt="{{ photo.caption|default:'Фото точки' }}"
+                                 style="max-height: 70vh; object-fit: contain;">
+                            {% if photo.caption %}
+                            <div class="carousel-caption d-none d-md-block bg-dark bg-opacity-50 rounded p-3">
+                                <p class="mb-0">{{ photo.caption }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% if point.photos.count > 1 %}
+                    <button class="carousel-control-prev" type="button" data-bs-target="#pointCarousel{{ point.id }}" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Предыдущее</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#pointCarousel{{ point.id }}" data-bs-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Следующее</span>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <div class="text-muted small">
+                    Фото {{ '<span class="current-point-photo">1</span>'|safe }} из {{ point.photos.count }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
 {% endblock %}
 
 {% block extra_js %}
@@ -707,6 +1122,8 @@ audio::-webkit-media-controls-time-remaining-display {
 <script>
 // Конфигурация
 const ORS_API_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjYyMzA1OTQzOTI2NzQ1MDBiMTUwOGUxYmVhZTUwMGM4IiwiaCI6Im11cm11cjY0In0=';
+
+// ==================== КАРТА МАРШРУТА ====================
 
 function initMap() {
     const points = [
@@ -790,7 +1207,6 @@ async function buildRouteWithORS(points, map, routeType) {
     try {
         console.log('Начинаем построение маршрута через ORS...');
 
-        // Определяем тип маршрута для OpenRouteService с правильными профилями
         const profiles = {
             'walking': 'foot-walking',
             'driving': 'driving-car',
@@ -798,8 +1214,6 @@ async function buildRouteWithORS(points, map, routeType) {
         };
 
         const profile = profiles[routeType] || 'foot-walking';
-
-        // Подготавливаем координаты в правильном формате [долгота, широта]
         const coordinates = points.map(point => [point.lng, point.lat]);
 
         console.log('Отправляем запрос к ORS:', {
@@ -809,7 +1223,6 @@ async function buildRouteWithORS(points, map, routeType) {
             pointsCount: coordinates.length
         });
 
-        // Формируем тело запроса
         const requestBody = {
             coordinates: coordinates,
             instructions: false,
@@ -846,30 +1259,23 @@ async function buildRouteWithORS(points, map, routeType) {
         const data = await response.json();
         console.log('ORS Response data:', data);
 
-        // Проверяем структуру ответа
         if (data.features && data.features.length > 0 && data.features[0].geometry) {
             const route = data.features[0];
             const routeGeometry = route.geometry;
-
-            // Получаем информацию о маршруте
             const routeInfo = route.properties;
             console.log('Route properties:', routeInfo);
 
             let distanceKm = 0;
             let durationMinutes = 0;
 
-            // Разные способы получения информации о маршруте
             if (routeInfo.segments && routeInfo.segments.length > 0) {
-                // Стандартный случай - есть сегменты
                 const segment = routeInfo.segments[0];
                 distanceKm = (segment.distance / 1000).toFixed(2);
                 durationMinutes = Math.round(segment.duration / 60);
             } else if (routeInfo.summary) {
-                // Альтернативный случай - есть summary
                 distanceKm = (routeInfo.summary.distance / 1000).toFixed(2);
                 durationMinutes = Math.round(routeInfo.summary.duration / 60);
             } else {
-                // Если нет стандартной информации, рассчитываем самостоятельно
                 console.warn('Нет стандартной информации о маршруте, используем расчеты');
                 distanceKm = calculateStraightDistance(points).toFixed(2);
                 durationMinutes = estimateDuration(distanceKm, routeType);
@@ -877,10 +1283,7 @@ async function buildRouteWithORS(points, map, routeType) {
 
             console.log(`Маршрут построен: ${distanceKm} км, ${durationMinutes} мин`);
 
-            // Конвертируем координаты из [lng, lat] в [lat, lng] для Leaflet
             const routeCoordinates = routeGeometry.coordinates.map(coord => [coord[1], coord[0]]);
-
-            // Отображаем маршрут на карте
             displayRouteOnMap(routeCoordinates, map, routeType, distanceKm, durationMinutes);
 
         } else {
@@ -891,7 +1294,6 @@ async function buildRouteWithORS(points, map, routeType) {
     } catch (error) {
         console.error('Ошибка построения маршрута через ORS:', error);
 
-        // Показываем пользователю понятное сообщение об ошибке
         let userMessage = 'Не удалось построить маршрут по дорогам. ';
 
         if (error.message.includes('авторизации') || error.message.includes('ключ')) {
@@ -907,8 +1309,6 @@ async function buildRouteWithORS(points, map, routeType) {
         }
 
         showToast(userMessage, 'warning');
-
-        // Резервный вариант - прямая линия
         buildStraightRoute(points, map, routeType);
     }
 }
@@ -928,7 +1328,6 @@ function estimateDuration(distanceKm, routeType) {
 
 // Функция отображения маршрута на карте
 function displayRouteOnMap(coordinates, map, routeType, distance, duration) {
-    // Определяем цвет и толщину линии в зависимости от типа маршрута
     const routeStyles = {
         'walking': { color: '#48bb78', weight: 4, opacity: 0.8 },
         'driving': { color: '#2563eb', weight: 6, opacity: 0.8 },
@@ -937,7 +1336,6 @@ function displayRouteOnMap(coordinates, map, routeType, distance, duration) {
 
     const style = routeStyles[routeType] || routeStyles.walking;
 
-    // Создаем линию маршрута
     const routeLine = L.polyline(coordinates, {
         color: style.color,
         weight: style.weight,
@@ -946,7 +1344,6 @@ function displayRouteOnMap(coordinates, map, routeType, distance, duration) {
         lineCap: 'round'
     }).addTo(map);
 
-    // Добавляем popup с информацией о маршруте
     routeLine.bindPopup(`
         <div style="min-width: 200px; text-align: center;">
             <strong>${getRouteTypeName(routeType)} маршрут</strong><br>
@@ -956,9 +1353,7 @@ function displayRouteOnMap(coordinates, map, routeType, distance, duration) {
         </div>
     `);
 
-    // Подгоняем карту под маршрут
     map.fitBounds(routeLine.getBounds(), { padding: [20, 20] });
-
     console.log('Маршрут отображен на карте');
 }
 
@@ -983,7 +1378,6 @@ function buildStraightRoute(points, map, routeType) {
         lineJoin: 'round'
     }).addTo(map);
 
-    // Рассчитываем расстояние для прямого маршрута
     const distance = calculateStraightDistance(points).toFixed(2);
     const duration = estimateDuration(distance, routeType);
 
@@ -1032,7 +1426,6 @@ function calculateDistance(lat1, lng1, lat2, lng2) {
 }
 
 function showToast(message, type = 'info') {
-    // Создаем простой toast
     const toast = document.createElement('div');
     toast.className = `toast-message toast-${type}`;
     toast.style.cssText = `
@@ -1068,10 +1461,118 @@ function showToast(message, type = 'info') {
     }, 5000);
 }
 
-// Инициализация после загрузки DOM
+// Инициализация карты после загрузки DOM
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Инициализация карты маршрута...');
     setTimeout(initMap, 100);
+    
+    // Галерея фото маршрута
+    document.querySelectorAll('.gallery-thumbnail, .gallery-item').forEach(thumb => {
+        thumb.addEventListener('click', function() {
+            const photoIndex = parseInt(this.dataset.photoIndex);
+            const carousel = document.getElementById('photoCarousel');
+            const carouselItems = carousel.querySelectorAll('.carousel-item');
+            
+            // Активируем нужный слайд
+            carouselItems.forEach((item, index) => {
+                item.classList.remove('active');
+                if (index === photoIndex) {
+                    item.classList.add('active');
+                }
+            });
+            
+            // Обновляем счетчик
+            document.getElementById('currentPhoto').textContent = photoIndex + 1;
+            
+            // Активируем карусель если нужно
+            const carouselInstance = bootstrap.Carousel.getInstance('#carouselExampleIndicators');
+            if (carouselInstance) {
+                carouselInstance.to(photoIndex);
+            }
+        });
+    });
+    
+    // Обновление счетчика при смене слайдов (маршрут)
+    const photoCarousel = document.getElementById('carouselExampleIndicators');
+    if (photoCarousel) {
+        photoCarousel.addEventListener('slide.bs.carousel', function(event) {
+            document.getElementById('currentPhoto').textContent = event.to + 1;
+        });
+    }
+    
+    // Галерея фото точек
+    document.querySelectorAll('.point-photo-preview').forEach(preview => {
+        preview.addEventListener('click', function() {
+            const photoIndex = parseInt(this.dataset.photoIndex);
+            const pointId = this.closest('.point-item').dataset.pointId;
+            const carousel = document.getElementById(`pointCarousel${pointId}`);
+            
+            if (carousel) {
+                const carouselItems = carousel.querySelectorAll('.carousel-item');
+                
+                // Активируем нужный слайд
+                carouselItems.forEach((item, index) => {
+                    item.classList.remove('active');
+                    if (index === photoIndex) {
+                        item.classList.add('active');
+                    }
+                });
+                
+                // Обновляем счетчик
+                const modal = document.getElementById(`pointPhotoModal${pointId}`);
+                const counter = modal.querySelector('.current-point-photo');
+                if (counter) {
+                    counter.textContent = photoIndex + 1;
+                }
+                
+                // Активируем карусель если нужно
+                const carouselInstance = bootstrap.Carousel.getInstance(carousel);
+                if (carouselInstance) {
+                    carouselInstance.to(photoIndex);
+                }
+            }
+        });
+    });
+    
+    // Обновление счетчика при смене слайдов (точки)
+    document.querySelectorAll('[id^="pointCarousel"]').forEach(carousel => {
+        carousel.addEventListener('slide.bs.carousel', function(event) {
+            const pointId = this.id.replace('pointCarousel', '');
+            const modal = document.getElementById(`pointPhotoModal${pointId}`);
+            if (modal) {
+                const counter = modal.querySelector('.current-point-photo');
+                if (counter) {
+                    counter.textContent = event.to + 1;
+                }
+            }
+        });
+    });
+    
+    // Плавная прокрутка к точке при клике на маркер карты
+    document.querySelectorAll('.view-point-gallery-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            const modalId = this.dataset.bsTarget;
+            const pointId = modalId.replace('#pointPhotoModal', '');
+            const pointElement = document.querySelector(`[data-point-id="${pointId}"]`);
+            if (pointElement) {
+                pointElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                pointElement.style.backgroundColor = '#f0f7ff';
+                setTimeout(() => {
+                    pointElement.style.backgroundColor = '';
+                }, 2000);
+            }
+        });
+    });
+    
+    // Отладочная информация в консоль
+    console.log('Маршрут загружен:', {
+        id: {{ route.id }},
+        name: "{{ route.name|escapejs }}",
+        descriptionLength: {{ route.description|length }},
+        hasDescription: {% if route.description %}true{% else %}false{% endif %},
+        pointsCount: {{ points|length }},
+        totalPhotos: {{ route.photos.count }}
+    });
 });
 </script>
 {% endblock %}

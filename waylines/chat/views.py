@@ -141,6 +141,8 @@ def chat_dashboard(request):
         conversations = ChatService.get_user_conversations(request.user)
 
         conversations_data = []
+        total_unread_count = 0
+        
         for conversation in conversations:
             other_user = conversation.get_other_participant(request.user)
             if other_user:
@@ -148,12 +150,17 @@ def chat_dashboard(request):
                     "-created_at"
                 ).first()
 
+                # Получаем количество непрочитанных сообщений
+                unread_count = conversation.unread_count
+                total_unread_count += unread_count
+
                 conversations_data.append(
                     {
                         "conversation": conversation,
                         "other_user": other_user,
-                        "unread_count": conversation.unread_count,
+                        "unread_count": unread_count,
                         "last_message": last_message,
+                        "is_online": True,  # Здесь нужно подключить логику онлайн статуса
                     }
                 )
 
@@ -161,39 +168,28 @@ def chat_dashboard(request):
         user_routes_chats = (
             RouteChat.objects.filter(route__author=request.user)
             .select_related("route")
-            .prefetch_related("messages")
-            .annotate(messages_count=Count("messages"))
             .order_by("-route__created_at")
         )
 
         # Чаты маршрутов, где пользователь участник
         participant_chats = (
-            RouteChat.objects.filter(
-                route__privacy="personal", route__shared_with=request.user
+        RouteChat.objects.filter(
+                route__shared_with=request.user
             )
+            .exclude(route__author=request.user)
             .select_related("route")
-            .prefetch_related("messages")
-            .annotate(messages_count=Count("messages"))
             .order_by("-route__created_at")
         )
 
-        # Публичные маршруты с чатами (кешируем)
-        public_chats_cache_key = "public_chats_list"
-        public_chats = cache.get(public_chats_cache_key)
-
-        if not public_chats:
-            public_chats = (
-                RouteChat.objects.filter(
-                    route__privacy="public", route__is_active=True
-                )
-                .select_related("route", "route__author")
-                .exclude(route__author=request.user)
-                .annotate(messages_count=Count("messages"))
-                .order_by("-route__created_at")[:10]
+        # Публичные маршруты с чатами
+        public_chats = (
+            RouteChat.objects.filter(
+                route__privacy="public", route__is_active=True
             )
-            cache.set(
-                public_chats_cache_key, public_chats, 300
-            )  # Кеш на 5 минут
+            .select_related("route", "route__author")
+            .exclude(route__author=request.user)
+            .order_by("-route__created_at")[:10]
+        )
 
         # Друзья для быстрого начала диалога
         friends = (
@@ -208,8 +204,16 @@ def chat_dashboard(request):
                 )
             )
             .distinct()
-            .only("id", "username")[:20]
-        )  # Ограничиваем количество
+            .only("id", "username")
+        )
+
+        # Находим друзей без диалогов
+        friends_without_chats = []
+        if friends.exists() and conversations_data:
+            existing_user_ids = [data['other_user'].id for data in conversations_data]
+            friends_without_chats = friends.exclude(id__in=existing_user_ids)
+        elif friends.exists():
+            friends_without_chats = friends
 
         context = {
             "conversations_data": conversations_data,
@@ -217,6 +221,8 @@ def chat_dashboard(request):
             "participant_chats": participant_chats,
             "public_chats": public_chats,
             "friends": friends,
+            "friends_without_chats": friends_without_chats[:5],  # Ограничиваем до 5
+            "total_unread_count": total_unread_count,
         }
 
         # Кешируем данные дашборда на 2 минуты
@@ -238,6 +244,8 @@ def chat_dashboard(request):
                 "participant_chats": [],
                 "public_chats": [],
                 "friends": [],
+                "friends_without_chats": [],
+                "total_unread_count": 0,
             },
         )
 

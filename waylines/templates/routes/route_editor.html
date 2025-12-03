@@ -246,23 +246,63 @@
                                 <span class="badge bg-primary bg-opacity-10 text-primary">До 10 фото</span>
                             </div>
                             <div class="card-body">
+                                <!-- Скрытые поля для существующих фото -->
+                                <div id="existing-photos-data" style="display: none;">
+                                    {% if route and route.photos.all %}
+                                        {% for photo in route.photos.all %}
+                                            <div class="existing-photo-data"
+                                                 data-photo-id="{{ photo.id }}"
+                                                 data-image-url="{{ photo.image.url }}"
+                                                 data-caption="{{ photo.caption|default:'' }}"
+                                                 data-is-main="{% if photo.is_main %}true{% else %}false{% endif %}">
+                                            </div>
+                                        {% endfor %}
+                                    {% endif %}
+                                </div>
+                                
                                 <!-- Основное фото -->
                                 <div class="main-photo-section mb-4">
                                     <label class="form-label fw-semibold small text-muted mb-3">Главное фото</label>
                                     <div class="main-photo-upload position-relative border-2 border-dashed rounded-4 p-4 text-center cursor-pointer bg-light bg-opacity-50"
                                          onclick="document.getElementById('route-main-photo').click()">
                                         <input type="file" id="route-main-photo" class="d-none" accept="image/*">
-                                        <div class="h-100 d-flex flex-column align-items-center justify-content-center text-muted">
-                                            <i class="fas fa-camera fa-3x mb-3 opacity-50"></i>
-                                            <div class="fw-medium mb-1">Добавить главное фото</div>
-                                            <small class="opacity-75">Рекомендуется 16:9</small>
-                                        </div>
-                                        <div class="main-photo-preview position-absolute top-0 start-0 w-100 h-100 rounded-3" style="display: none;">
-                                            <img src="" class="w-100 h-100 object-fit-cover rounded-3 shadow-sm">
-                                            <button type="button" class="btn btn-sm btn-light position-absolute top-0 end-0 m-3 photo-remove-btn shadow">
-                                                <i class="fas fa-times text-danger"></i>
-                                            </button>
-                                        </div>
+                                        
+                                        <!-- Определяем есть ли главное фото -->
+                                        {% with main_photo=route.photos.all|dictsort:"is_main"|last %}
+                                        {% if route and route.photos.all and main_photo.is_main %}
+                                            <!-- Если есть главное фото - показываем его -->
+                                            <div class="main-photo-preview position-absolute top-0 start-0 w-100 h-100 rounded-3">
+                                                <img src="{{ main_photo.image.url }}" 
+                                                     class="w-100 h-100 object-fit-cover rounded-3 shadow-sm"
+                                                     data-photo-id="{{ main_photo.id }}">
+                                                <button type="button" class="btn btn-sm btn-light position-absolute top-0 end-0 m-3 photo-remove-btn shadow"
+                                                        onclick="removeMainRoutePhoto('{{ main_photo.id }}')">
+                                                    <i class="fas fa-times text-danger"></i>
+                                                </button>
+                                            </div>
+                                            <!-- Скрываем плейсхолдер -->
+                                            <div class="h-100 d-flex flex-column align-items-center justify-content-center text-muted placeholder-content" 
+                                                 style="display: none;">
+                                                <i class="fas fa-camera fa-3x mb-3 opacity-50"></i>
+                                                <div class="fw-medium mb-1">Добавить главное фото</div>
+                                                <small class="opacity-75">Рекомендуется 16:9</small>
+                                            </div>
+                                        {% else %}
+                                            <!-- Если нет фото - показываем плейсхолдер -->
+                                            <div class="h-100 d-flex flex-column align-items-center justify-content-center text-muted placeholder-content">
+                                                <i class="fas fa-camera fa-3x mb-3 opacity-50"></i>
+                                                <div class="fw-medium mb-1">Добавить главное фото</div>
+                                                <small class="opacity-75">Рекомендуется 16:9</small>
+                                            </div>
+                                            <!-- Скрываем превью -->
+                                            <div class="main-photo-preview position-absolute top-0 start-0 w-100 h-100 rounded-3" style="display: none;">
+                                                <img src="" class="w-100 h-100 object-fit-cover rounded-3 shadow-sm">
+                                                <button type="button" class="btn btn-sm btn-light position-absolute top-0 end-0 m-3 photo-remove-btn shadow">
+                                                    <i class="fas fa-times text-danger"></i>
+                                                </button>
+                                            </div>
+                                        {% endif %}
+                                        {% endwith %}
                                     </div>
                                 </div>
 
@@ -270,6 +310,25 @@
                                 <div class="additional-photos-section">
                                     <label class="form-label fw-semibold small text-muted mb-3">Дополнительные фото</label>
                                     <div class="additional-photos-grid">
+                                        <!-- Показываем существующие дополнительные фото -->
+                                        {% if route and route.photos.all %}
+                                            {% for photo in route.photos.all %}
+                                                {% if not photo.is_main %} {# Пропускаем главное фото #}
+                                                    <div class="additional-photo-item existing-photo" 
+                                                         data-photo-id="{{ photo.id }}">
+                                                        <img src="{{ photo.image.url }}" 
+                                                             class="w-100 h-100 object-fit-cover"
+                                                             data-caption="{{ photo.caption|default:'' }}">
+                                                        <button type="button" class="btn btn-sm btn-light position-absolute top-0 end-0 m-1 photo-remove-btn shadow-sm" 
+                                                                onclick="removeAdditionalRoutePhoto(this, '{{ photo.id }}')">
+                                                            <i class="fas fa-times text-danger" style="font-size: 10px;"></i>
+                                                        </button>
+                                                    </div>
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% endif %}
+                                        
+                                        <!-- Кнопка добавления новых фото -->
                                         <div class="additional-photo-upload border-2 border-dashed rounded-3 p-3 text-center cursor-pointer bg-light bg-opacity-50"
                                              onclick="document.getElementById('route-additional-photos').click()">
                                             <input type="file" id="route-additional-photos" class="d-none" accept="image/*" multiple>
@@ -450,6 +509,76 @@
     line-height: 1.4;
 }
 
+/* Стили для дополнительных фото */
+.additional-photos-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.additional-photo-item {
+    width: 80px;
+    height: 80px;
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 2px solid #e5e7eb;
+    transition: all 0.3s ease;
+}
+
+.additional-photo-item:hover {
+    transform: scale(1.05);
+    border-color: #3b82f6;
+}
+
+.additional-photo-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.additional-photo-upload {
+    width: 80px;
+    height: 80px;
+    border: 2px dashed #d1d5db;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #f9fafb;
+    color: #6b7280;
+}
+
+.additional-photo-upload:hover {
+    border-color: #3b82f6;
+    background: #f0f4ff;
+    color: #3b82f6;
+}
+
+/* Основное фото */
+.main-photo-upload {
+    min-height: 200px;
+    position: relative;
+}
+
+.main-photo-preview {
+    display: block !important; /* Важно: переопределяем inline стили */
+}
+
+.main-photo-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.h-100 {
+    min-height: 200px;
+}
+
 /* Галерея фото точки */
 .point-photos-gallery {
     display: grid;
@@ -610,6 +739,10 @@
     .left-panel-scrollable {
         height: auto;
         max-height: 50vh;
+    }
+    
+    .additional-photos-grid {
+        justify-content: center;
     }
 }
 
@@ -788,6 +921,39 @@
 {% else %}
     window.routeData = null;
 {% endif %}
+
+// Глобальные переменные для хранения информации о фото
+let removedExistingPhotos = new Set(); // ID удаленных существующих фото
+let newMainPhotoFile = null;
+let newAdditionalPhotoFiles = [];
+
+// Сохраняем информацию о существующих фото
+let existingPhotos = {
+    main: null,
+    additional: []
+};
+
+// Инициализируем существующие фото при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    // Собираем информацию о существующих фото из скрытых полей
+    const existingPhotoData = document.querySelectorAll('#existing-photos-data .existing-photo-data');
+    existingPhotoData.forEach(div => {
+        const photoId = parseInt(div.dataset.photoId);
+        const isMain = div.dataset.isMain === 'true';
+        const caption = div.dataset.caption || '';
+        
+        if (isMain) {
+            existingPhotos.main = { id: photoId, caption: caption };
+        } else {
+            existingPhotos.additional.push({ id: photoId, caption: caption });
+        }
+    });
+    
+    console.log('📸 Существующие фото загружены:', existingPhotos);
+});
+
+// URL для сохранения
+window.routeSaveUrl = '{% if route %}/routes/api/routes/{{ route.id }}/{% else %}/routes/api/routes/{% endif %}';
 </script>
 <script src="{% static 'js/audio_generation.js' %}"></script>
 <script src="{% static 'js/route_editor.js' %}"></script>
@@ -818,7 +984,359 @@ document.addEventListener('DOMContentLoaded', function() {
             e.stopPropagation();
         });
     }
+
+    // Обработчик для сохранения маршрута
+    const saveBtn = document.getElementById('save-btn');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            console.log('🔄 Кнопка сохранения нажата');
+            saveRouteWithPhotos();
+        });
+    }
+
+    // Обработчики для загрузки фото
+    setupPhotoUploadHandlers();
 });
+
+// Настройка обработчиков загрузки фото
+function setupPhotoUploadHandlers() {
+    // Обработчик основного фото
+    const mainPhotoInput = document.getElementById('route-main-photo');
+    if (mainPhotoInput) {
+        mainPhotoInput.addEventListener('change', handleMainPhotoUpload);
+    }
+    
+    // Обработчик дополнительных фото
+    const additionalPhotosInput = document.getElementById('route-additional-photos');
+    if (additionalPhotosInput) {
+        additionalPhotosInput.addEventListener('change', handleAdditionalPhotosUpload);
+    }
+}
+
+// Обработчик загрузки основного фото
+function handleMainPhotoUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (!validateImageFile(file)) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const uploadSection = document.querySelector('.main-photo-upload');
+        const preview = uploadSection.querySelector('.main-photo-preview');
+        const placeholder = uploadSection.querySelector('.placeholder-content');
+        
+        // Создаем превью если его нет
+        if (!preview) {
+            const previewDiv = document.createElement('div');
+            previewDiv.className = 'main-photo-preview position-absolute top-0 start-0 w-100 h-100 rounded-3';
+            previewDiv.innerHTML = `
+                <img src="" class="w-100 h-100 object-fit-cover rounded-3 shadow-sm">
+                <button type="button" class="btn btn-sm btn-light position-absolute top-0 end-0 m-3 photo-remove-btn shadow" onclick="removeMainRoutePhoto('new')">
+                    <i class="fas fa-times text-danger"></i>
+                </button>
+            `;
+            uploadSection.appendChild(previewDiv);
+        }
+        
+        const newPreview = uploadSection.querySelector('.main-photo-preview');
+        if (newPreview) {
+            const img = newPreview.querySelector('img');
+            if (img) img.src = e.target.result;
+            newPreview.style.display = 'block';
+        }
+        
+        if (placeholder) placeholder.style.display = 'none';
+        
+        // Сохраняем файл
+        newMainPhotoFile = file;
+        console.log('🖼️ Новое основное фото загружено:', file.name);
+    };
+    reader.readAsDataURL(file);
+}
+
+// Обработчик загрузки дополнительных фото
+function handleAdditionalPhotosUpload(e) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    const grid = document.querySelector('.additional-photos-grid');
+    if (!grid) return;
+    
+    // Считаем сколько уже есть фото (существующие + новые)
+    const existingCount = grid.querySelectorAll('.additional-photo-item').length;
+    const uploadButton = grid.querySelector('.additional-photo-upload');
+    
+    if (existingCount + files.length > 10) {
+        showToast('Максимум можно загрузить 10 фото', 'warning');
+        return;
+    }
+    
+    Array.from(files).forEach(file => {
+        if (!validateImageFile(file)) return;
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const photoItem = document.createElement('div');
+            photoItem.className = 'additional-photo-item new-photo';
+            photoItem.style.cssText = 'width: 80px; height: 80px; position: relative; border-radius: 8px; overflow: hidden;';
+            photoItem.innerHTML = `
+                <img src="${e.target.result}" class="w-100 h-100 object-fit-cover">
+                <button type="button" class="btn btn-sm btn-light position-absolute top-0 end-0 m-1 photo-remove-btn shadow-sm" 
+                        style="width: 20px; height: 20px; padding: 0; display: flex; align-items: center; justify-content: center;"
+                        onclick="removeAdditionalRoutePhoto(this, 'new')">
+                    <i class="fas fa-times text-danger" style="font-size: 10px;"></i>
+                </button>
+            `;
+            
+            // Сохраняем файл с ссылкой на элемент
+            const fileWithPreview = file;
+            fileWithPreview.previewElement = photoItem;
+            newAdditionalPhotoFiles.push(fileWithPreview);
+            console.log('🖼️ Новое дополнительное фото загружено:', file.name);
+            
+            // Вставляем перед кнопкой загрузки
+            if (uploadButton) {
+                grid.insertBefore(photoItem, uploadButton);
+            } else {
+                grid.appendChild(photoItem);
+            }
+        };
+        reader.readAsDataURL(file);
+    });
+    
+    // Очищаем input для возможности повторной загрузки
+    e.target.value = '';
+}
+
+// Функция для сохранения маршрута с фото
+async function saveRouteWithPhotos() {
+    try {
+        console.log('💾 Начинаем сохранение маршрута с фото...');
+        
+        // Получаем данные формы
+        const formData = getRouteFormData();
+        
+        // Собираем данные о фото
+        const photosData = collectPhotosData();
+        console.log('📷 Данные о фото:', photosData);
+        
+        // Добавляем данные о фото в formData
+        formData.append('photos_data', JSON.stringify(photosData));
+        
+        // Если есть новое основное фото, добавляем его
+        if (newMainPhotoFile) {
+            console.log('🖼️ Добавляем новое основное фото');
+            formData.append('main_photo', newMainPhotoFile);
+        }
+        
+        // Добавляем новые дополнительные фото
+        newAdditionalPhotoFiles.forEach((file, index) => {
+            console.log(`🖼️ Добавляем дополнительное фото ${index + 1}`);
+            formData.append(`additional_photos_${index}`, file);
+        });
+        
+        // Добавляем ID удаленных фото
+        if (removedExistingPhotos.size > 0) {
+            console.log('🗑️ Удаленные фото:', Array.from(removedExistingPhotos));
+            formData.append('removed_photo_ids', JSON.stringify(Array.from(removedExistingPhotos)));
+        }
+        
+        // Показываем индикатор загрузки
+        showLoading('Сохранение маршрута...');
+        
+        console.log('📤 Отправляем запрос по URL:', window.routeSaveUrl);
+        
+        // Отправляем данные
+        const response = await fetch(window.routeSaveUrl, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': getCSRFToken()
+            }
+        });
+        
+        console.log('📥 Получен ответ, статус:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`Ошибка сервера: ${response.status} ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        console.log('✅ Результат сохранения:', result);
+        
+        if (result.success) {
+            showToast('Маршрут успешно сохранен!', 'success');
+            
+            // Перенаправляем на страницу маршрута
+            setTimeout(() => {
+                if (result.route_id) {
+                    window.location.href = `/routes/${result.route_id}/`;
+                } else if (window.routeData && window.routeData.id) {
+                    window.location.href = `/routes/${window.routeData.id}/`;
+                } else {
+                    window.location.href = '/routes/my/';
+                }
+            }, 1500);
+        } else {
+            showToast(result.error || 'Ошибка при сохранении маршрута', 'danger');
+        }
+    } catch (error) {
+        console.error('❌ Ошибка при сохранении:', error);
+        showToast(error.message || 'Произошла ошибка при сохранении', 'danger');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Функция для сбора данных о фото (исправленная)
+function collectPhotosData() {
+    const photosData = {
+        existing_main_photo_id: null,
+        existing_additional_photo_ids: [],
+        captions: {}
+    };
+    
+    // Получаем информацию о существующем основном фото
+    if (existingPhotos.main && !removedExistingPhotos.has(existingPhotos.main.id)) {
+        photosData.existing_main_photo_id = existingPhotos.main.id;
+        
+        // Добавляем подпись если есть
+        if (existingPhotos.main.caption) {
+            photosData.captions[existingPhotos.main.id] = existingPhotos.main.caption;
+        }
+    }
+    
+    // Получаем информацию о существующих дополнительных фото
+    existingPhotos.additional.forEach(photo => {
+        if (!removedExistingPhotos.has(photo.id)) {
+            photosData.existing_additional_photo_ids.push(photo.id);
+            
+            // Добавляем подпись если есть
+            if (photo.caption) {
+                photosData.captions[photo.id] = photo.caption;
+            }
+        }
+    });
+    
+    return photosData;
+}
+
+// Функция для получения данных формы маршрута
+function getRouteFormData() {
+    const formData = new FormData();
+    
+    // Основные данные маршрута
+    formData.append('name', document.getElementById('name').value || 'Без названия');
+    formData.append('short_description', document.getElementById('short_description').value || '');
+    formData.append('difficulty', document.getElementById('difficulty').value || 'medium');
+    formData.append('mood', document.getElementById('mood').value || '');
+    formData.append('theme', document.getElementById('theme').value || '');
+    formData.append('duration_display', document.getElementById('duration_display').value || '');
+    formData.append('privacy', document.getElementById('privacy').value || 'public');
+    formData.append('has_audio_guide', document.getElementById('has_audio_guide').checked);
+    formData.append('is_elderly_friendly', document.getElementById('is_elderly_friendly').checked);
+    formData.append('is_child_friendly', document.getElementById('is_child_friendly').checked);
+    
+    // Тип маршрута
+    const routeTypeBtn = document.querySelector('.route-type-btn.active');
+    formData.append('route_type', routeTypeBtn ? routeTypeBtn.dataset.type : 'walking');
+    
+    // Данные о точках маршрута
+    if (window.routeEditor && window.routeEditor.getRouteData) {
+        const routeData = window.routeEditor.getRouteData();
+        formData.append('route_data', JSON.stringify(routeData));
+    } else if (window.routeData) {
+        formData.append('route_data', JSON.stringify(window.routeData));
+    }
+    
+    console.log('📝 Данные формы:', {
+        name: document.getElementById('name').value,
+        route_type: routeTypeBtn ? routeTypeBtn.dataset.type : 'walking',
+        points_count: window.routeData ? window.routeData.points.length : 0
+    });
+    
+    return formData;
+}
+
+// Функция для удаления основного фото маршрута
+function removeMainRoutePhoto(photoId = null) {
+    const uploadSection = document.querySelector('.main-photo-upload');
+    const preview = uploadSection.querySelector('.main-photo-preview');
+    const placeholder = uploadSection.querySelector('.placeholder-content');
+    const fileInput = document.getElementById('route-main-photo');
+    
+    // Если есть ID существующего фото, добавляем его в список удаленных
+    if (photoId && photoId !== 'new') {
+        removedExistingPhotos.add(parseInt(photoId));
+        console.log('🗑️ Основное фото добавлено в список удаленных, ID:', photoId);
+    }
+    
+    // Если это новое фото - удаляем файл
+    if (photoId === 'new') {
+        newMainPhotoFile = null;
+        console.log('🗑️ Новое основное фото удалено');
+    }
+    
+    // Показываем плейсхолдер
+    if (placeholder) {
+        placeholder.style.display = 'flex';
+    }
+    
+    // Скрываем превью
+    if (preview) {
+        preview.style.display = 'none';
+    }
+    
+    // Очищаем файловый инпут
+    if (fileInput) {
+        fileInput.value = '';
+    }
+}
+
+// Функция для удаления дополнительного фото
+function removeAdditionalRoutePhoto(button, photoId = null) {
+    const photoItem = button.closest('.additional-photo-item');
+    if (photoItem) {
+        // Если это существующее фото, добавляем в список удаленных
+        if (photoId && photoId !== 'new') {
+            removedExistingPhotos.add(parseInt(photoId));
+            console.log('🗑️ Дополнительное фото добавлено в список удаленных, ID:', photoId);
+        }
+        
+        // Если это новое фото, удаляем из массива
+        if (photoId === 'new') {
+            const index = newAdditionalPhotoFiles.findIndex(file => 
+                file.previewElement === photoItem
+            );
+            if (index !== -1) {
+                newAdditionalPhotoFiles.splice(index, 1);
+                console.log('🗑️ Новое фото удалено из массива, индекс:', index);
+            }
+        }
+        
+        photoItem.remove();
+    }
+}
+
+// Валидация файла
+function validateImageFile(file) {
+    if (!file.type.startsWith('image/')) {
+        showToast('Пожалуйста, выбирайте только изображения', 'warning');
+        return false;
+    }
+    
+    if (file.size > 5 * 1024 * 1024) {
+        showToast('Размер файла не должен превышать 5MB', 'warning');
+        return false;
+    }
+    
+    return true;
+}
 
 // Функция для обновления расчетного времени
 function updateEstimatedTime() {
@@ -904,41 +1422,30 @@ function updateRouteStats(distance, pointsCount) {
     updateEstimatedTime();
 }
 
-function createAdditionalPhotoItem(src) {
-    const div = document.createElement('div');
-    div.className = 'additional-photo-item';
-    div.style.cssText = 'width: 80px; height: 80px; position: relative; border-radius: 8px; overflow: hidden;';
-    div.innerHTML = `
-        <img src="${src}" class="w-100 h-100 object-fit-cover">
-        <button type="button" class="btn btn-sm btn-light position-absolute top-0 end-0 m-1 photo-remove-btn shadow-sm" style="width: 20px; height: 20px; padding: 0; display: flex; align-items: center; justify-content: center;">
-            <i class="fas fa-times text-danger" style="font-size: 10px;"></i>
-        </button>
-    `;
-    
-    const removeBtn = div.querySelector('.photo-remove-btn');
-    removeBtn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        div.remove();
-    });
-    
-    return div;
+// Вспомогательные функции
+function getCSRFToken() {
+    const cookieValue = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('csrftoken='))
+        ?.split('=')[1];
+    return cookieValue;
 }
 
-function validateImageFile(file) {
-    if (!file.type.startsWith('image/')) {
-        showToast('Пожалуйста, выбирайте только изображения', 'warning');
-        return false;
+function showLoading(message = 'Загрузка...') {
+    const loadingDiv = document.getElementById('route-loading');
+    if (loadingDiv) {
+        loadingDiv.querySelector('.fw-medium').textContent = message;
+        loadingDiv.style.display = 'block';
     }
-    
-    if (file.size > 5 * 1024 * 1024) {
-        showToast('Размер файла не должен превышать 5MB', 'warning');
-        return false;
-    }
-    
-    return true;
 }
 
-// Вспомогательная функция для показа уведомлений
+function hideLoading() {
+    const loadingDiv = document.getElementById('route-loading');
+    if (loadingDiv) {
+        loadingDiv.style.display = 'none';
+    }
+}
+
 function showToast(message, type = 'info') {
     // Используем существующую функцию из route_editor.js
     if (window.routeEditor && typeof window.routeEditor.showToast === 'function') {
@@ -993,10 +1500,15 @@ window.routeEditorUtils = {
     updateRouteStats,
     updateEstimatedTime,
     showToast,
-    closePointDetails
+    closePointDetails,
+    saveRouteWithPhotos,
+    collectPhotosData,
+    getRouteFormData
 };
 
 // Глобальные функции для вызова из HTML
 window.closePointDetails = closePointDetails;
+window.removeMainRoutePhoto = removeMainRoutePhoto;
+window.removeAdditionalRoutePhoto = removeAdditionalRoutePhoto;
 </script>
 {% endblock %}

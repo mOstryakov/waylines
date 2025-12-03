@@ -297,6 +297,10 @@
     background: var(--success);
 }
 
+.user-status.offline {
+    background: var(--text-muted);
+}
+
 /* Текст и утилиты */
 .conversation-content {
     flex: 1;
@@ -605,6 +609,37 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
+
+/* Стили для модального окна */
+.modal-content {
+    border: none;
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.modal-header {
+    background: var(--primary-light);
+    border-bottom: 1px solid var(--border-light);
+}
+
+.friend-item {
+    margin-bottom: 0.5rem;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.friend-item:hover {
+    background: var(--primary-light);
+    border-color: var(--primary-blue);
+}
+
+/* Стили для поиска */
+.no-results-message {
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-muted);
+}
 </style>
 {% endblock %}
 
@@ -677,16 +712,17 @@
                     
                     <div class="conversations-list-container">
                         {% if conversations_data %}
-                        <div class="conversations-list">
+                        <div class="conversations-list" id="conversationsList">
                             <!-- Показываем все активные диалоги -->
                             {% for conv_data in conversations_data %}
                             <div class="conversation-item d-flex align-items-center {% if conv_data.unread_count > 0 %}unread{% endif %} fade-in"
-                                 onclick="window.location.href='{% url 'chat:private_chat' conv_data.other_user.id %}'">
+                                 onclick="window.location.href='{% url 'chat:private_chat' conv_data.other_user.id %}'"
+                                 data-username="{{ conv_data.other_user.username|lower }}">
                                 <div class="position-relative">
                                     <div class="user-avatar small">
                                         {{ conv_data.other_user.username|first|upper }}
                                     </div>
-                                    <div class="user-status bg-{% if conv_data.is_online %}success{% else %}secondary{% endif %}"></div>
+                                    <div class="user-status {% if conv_data.is_online %}bg-success{% else %}bg-secondary offline{% endif %}"></div>
                                 </div>
                                 
                                 <div class="conversation-content">
@@ -694,7 +730,7 @@
                                         <div class="conversation-username">{{ conv_data.other_user.username }}</div>
                                         {% if conv_data.last_message %}
                                         <div class="conversation-time">
-                                            {{ conv_data.last_message.created_at|time }}
+                                            {{ conv_data.last_message.created_at|date:"H:i" }}
                                         </div>
                                         {% endif %}
                                     </div>
@@ -718,47 +754,49 @@
                                 </div>
                             </div>
                             {% endfor %}
-                        </div>
-                        
-                        <!-- Если есть друзья без диалогов, показываем их как быстрый доступ -->
-                        {% if friends_without_chats %}
-                        <div class="quick-chat-friends">
-                            <div class="quick-chat-title">Быстрый доступ</div>
-                            {% for friend in friends_without_chats|slice:":3" %}
-                            <div class="conversation-item d-flex align-items-center fade-in"
-                                 onclick="window.location.href='{% url 'chat:private_chat' friend.id %}'">
-                                <div class="position-relative">
-                                    <div class="user-avatar small">
-                                        {{ friend.username|first|upper }}
-                                    </div>
-                                    <div class="user-status bg-{% if forloop.counter|divisibleby:2 %}success{% else %}secondary{% endif %}"></div>
-                                </div>
-                                
-                                <div class="conversation-content">
-                                    <div class="conversation-username">{{ friend.username }}</div>
-                                    <div class="conversation-message text-muted">
-                                        Начать диалог
-                                    </div>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        {% endif %}
-                        
-                        {% else %}
-                        <!-- Если нет диалогов, показываем друзей как быстрый доступ -->
-                        {% if friends %}
-                        <div class="conversations-list">
+                            
+                            <!-- Если есть друзья без диалогов, показываем их как быстрый доступ -->
+                            {% if friends_without_chats %}
                             <div class="quick-chat-friends">
-                                <div class="quick-chat-title">Начните общение с друзьями</div>
-                                {% for friend in friends|slice:":5" %}
+                                <div class="quick-chat-title">Быстрый доступ</div>
+                                {% for friend in friends_without_chats %}
                                 <div class="conversation-item d-flex align-items-center fade-in"
-                                     onclick="window.location.href='{% url 'chat:private_chat' friend.id %}'">
+                                     onclick="window.location.href='{% url 'chat:private_chat' friend.id %}'"
+                                     data-username="{{ friend.username|lower }}">
                                     <div class="position-relative">
                                         <div class="user-avatar small">
                                             {{ friend.username|first|upper }}
                                         </div>
-                                        <div class="user-status bg-{% if forloop.counter|divisibleby:2 %}success{% else %}secondary{% endif %}"></div>
+                                        <div class="user-status bg-secondary offline"></div>
+                                    </div>
+                                    
+                                    <div class="conversation-content">
+                                        <div class="conversation-username">{{ friend.username }}</div>
+                                        <div class="conversation-message text-muted">
+                                            Начать диалог
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        {% else %}
+                        <!-- Если нет диалогов, показываем друзей как быстрый доступ -->
+                        {% if friends %}
+                        <div class="conversations-list" id="conversationsList">
+                            <div class="quick-chat-friends">
+                                <div class="quick-chat-title">Начните общение с друзьями</div>
+                                {% for friend in friends|slice:":5" %}
+                                <div class="conversation-item d-flex align-items-center fade-in"
+                                     onclick="window.location.href='{% url 'chat:private_chat' friend.id %}'"
+                                     data-username="{{ friend.username|lower }}">
+                                    <div class="position-relative">
+                                        <div class="user-avatar small">
+                                            {{ friend.username|first|upper }}
+                                        </div>
+                                        <div class="user-status bg-secondary offline"></div>
                                     </div>
                                     
                                     <div class="conversation-content">
@@ -819,9 +857,9 @@
                                 <div class="route-card-info">
                                     <div class="route-name">
                                         {{ route.name }}
-                                        {% if route.is_public %}
-                                        <span class="route-status published">Публичный</span>
-                                        {% elif route.participants.exists %}
+                                        {% if route.privacy == 'public' %}
+                                        <span class="route-status public">Публичный</span>
+                                        {% elif route.shared_with.exists %}
                                         <span class="route-status participant">Закрытый</span>
                                         {% else %}
                                         <span class="route-status draft">Черновик</span>
@@ -836,7 +874,7 @@
                             
                             {% if route.description %}
                             <div class="route-description">
-                                {{ route.description }}
+                                {{ route.description|truncatechars:100 }}
                             </div>
                             {% endif %}
                             
@@ -845,15 +883,9 @@
                                     <i class="fas fa-calendar"></i>
                                     {{ route.created_at|date:"d.m.Y" }}
                                 </div>
-                                {% if route.distance %}
-                                <div class="route-meta-item">
-                                    <i class="fas fa-route"></i>
-                                    {{ route.distance }}км
-                                </div>
-                                {% endif %}
                                 <div class="route-messages">
                                     <i class="fas fa-comment"></i>
-                                    {{ route.messages.count }} сообщ.
+                                    Чат маршрута
                                 </div>
                             </div>
                         </div>
@@ -871,9 +903,7 @@
                     <h5 class="container-title">
                         <i class="fas fa-users" style="color: var(--success);"></i>
                         Доступные маршруты
-                        <span class="badge bg-success ms-2">
-                            {{ participant_chats|length|add:public_chats|length }}
-                        </span>
+                        <span class="badge bg-success ms-2">{{ participant_chats|length|add:public_chats|length }}</span>
                     </h5>
                 </div>
                 
@@ -898,22 +928,18 @@
                             
                             {% if route.description %}
                             <div class="route-description">
-                                {{ route.description }}
+                                {{ route.description|truncatechars:100 }}
                             </div>
                             {% endif %}
                             
                             <div class="route-meta">
-                                <div class="route-meta-item">
-                                    <i class="fas fa-users"></i>
-                                    {{ route.participants.count|add:1 }} участников
-                                </div>
                                 <div class="route-meta-item">
                                     <i class="fas fa-calendar"></i>
                                     {{ route.created_at|date:"d.m.Y" }}
                                 </div>
                                 <div class="route-messages">
                                     <i class="fas fa-comment"></i>
-                                    {{ route.messages.count }} сообщ.
+                                    Чат маршрута
                                 </div>
                             </div>
                         </div>
@@ -939,22 +965,18 @@
                             
                             {% if route.description %}
                             <div class="route-description">
-                                {{ route.description }}
+                                {{ route.description|truncatechars:100 }}
                             </div>
                             {% endif %}
                             
                             <div class="route-meta">
-                                <div class="route-meta-item">
-                                    <i class="fas fa-users"></i>
-                                    {{ route.participants.count }} участников
-                                </div>
                                 <div class="route-meta-item">
                                     <i class="fas fa-calendar"></i>
                                     {{ route.created_at|date:"d.m.Y" }}
                                 </div>
                                 <div class="route-messages">
                                     <i class="fas fa-comment"></i>
-                                    {{ route.messages.count }} сообщ.
+                                    Чат маршрута
                                 </div>
                             </div>
                         </div>
@@ -965,7 +987,7 @@
             </div>
             {% endif %}
 
-            <!-- Друзья онлайн -->
+            <!-- Друзья -->
             {% if friends %}
             <div class="scrollable-container">
                 <div class="container-header">
@@ -985,15 +1007,11 @@
                                 <div class="user-avatar">
                                     {{ friend.username|first|upper }}
                                 </div>
-                                <div class="user-status bg-{% if forloop.counter|divisibleby:2 %}success{% else %}warning{% endif %}"></div>
+                                <div class="user-status bg-success"></div>
                             </div>
                             <div class="friend-name">{{ friend.username }}</div>
                             <div class="friend-status">
-                                {% if forloop.counter|divisibleby:2 %}
-                                <span class="text-success">Online</span>
-                                {% else %}
-                                <span class="text-warning">Недавно</span>
-                                {% endif %}
+                                <span class="text-success">Друг</span>
                             </div>
                         </div>
                         {% endfor %}
@@ -1048,25 +1066,22 @@
                     </div>
                 </div>
                 
-                <div class="friends-list" style="max-height: 400px; overflow-y: auto;">
+                <div class="friends-list" style="max-height: 400px; overflow-y: auto;" id="modalFriendsList">
                     {% for friend in friends %}
                     <div class="conversation-item d-flex align-items-center p-3 mb-2 rounded-3 friend-item"
                          onclick="window.location.href='{% url 'chat:private_chat' friend.id %}'"
-                         style="cursor: pointer;">
+                         style="cursor: pointer;"
+                         data-username="{{ friend.username|lower }}">
                         <div class="position-relative">
                             <div class="user-avatar small">
                                 {{ friend.username|first|upper }}
                             </div>
-                            <div class="user-status bg-{% if forloop.counter|divisibleby:2 %}success{% else %}secondary{% endif %}"></div>
+                            <div class="user-status bg-success"></div>
                         </div>
                         <div class="conversation-content">
                             <div class="conversation-username">{{ friend.username }}</div>
                             <div class="conversation-message">
-                                {% if forloop.counter|divisibleby:2 %}
-                                <span class="text-success">Online</span>
-                                {% else %}
-                                <span class="text-muted">Был(а) недавно</span>
-                                {% endif %}
+                                <span class="text-success">Друг</span>
                             </div>
                         </div>
                         <i class="fas fa-chevron-right text-muted ms-2"></i>
@@ -1094,33 +1109,59 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Поиск в чатах
+    // Поиск в чатах на боковой панели
     const chatSearch = document.getElementById('chatSearch');
     if (chatSearch) {
         chatSearch.addEventListener('input', function(e) {
             const searchTerm = e.target.value.toLowerCase().trim();
-            const conversationItems = document.querySelectorAll('.conversation-item');
-            const chatUsernames = document.querySelectorAll('.conversation-username');
+            const conversationItems = document.querySelectorAll('#conversationsList .conversation-item');
+            const noResultsMessage = document.querySelector('.no-results-message');
             
-            conversationItems.forEach((item, index) => {
-                if (chatUsernames[index]) {
-                    const username = chatUsernames[index].textContent.toLowerCase();
-                    if (username.includes(searchTerm)) {
-                        item.style.display = 'flex';
-                        item.classList.add('highlight-search');
-                        chatUsernames[index].innerHTML = highlightText(chatUsernames[index].textContent, searchTerm);
-                    } else {
-                        item.style.display = 'none';
+            let hasVisibleItems = false;
+            
+            conversationItems.forEach((item) => {
+                const username = item.getAttribute('data-username');
+                const usernameElement = item.querySelector('.conversation-username');
+                
+                if (username && username.includes(searchTerm)) {
+                    item.style.display = 'flex';
+                    item.classList.add('highlight-search');
+                    hasVisibleItems = true;
+                    
+                    // Подсветка текста
+                    if (usernameElement && searchTerm) {
+                        const originalText = usernameElement.textContent;
+                        const regex = new RegExp(`(${searchTerm})`, 'gi');
+                        usernameElement.innerHTML = originalText.replace(regex, '<span class="text-primary fw-bold">$1</span>');
+                    }
+                } else {
+                    item.style.display = 'none';
+                    if (usernameElement) {
+                        // Восстанавливаем оригинальный текст
+                        usernameElement.innerHTML = usernameElement.textContent;
                     }
                 }
             });
             
-            // Показать сообщение, если ничего не найдено
-            const visibleItems = Array.from(conversationItems).filter(item => item.style.display !== 'none');
-            if (searchTerm && visibleItems.length === 0) {
-                showNoResultsMessage(searchTerm);
-            } else {
-                hideNoResultsMessage();
+            // Показать/скрыть сообщение "не найдено"
+            if (searchTerm && !hasVisibleItems) {
+                if (!noResultsMessage) {
+                    const conversationsList = document.querySelector('#conversationsList');
+                    if (conversationsList) {
+                        const messageDiv = document.createElement('div');
+                        messageDiv.className = 'no-results-message';
+                        messageDiv.innerHTML = `
+                            <div class="text-muted mb-2">
+                                <i class="fas fa-search fa-lg"></i>
+                            </div>
+                            <p class="mb-1">Не найдено чатов по запросу</p>
+                            <p class="small text-muted">"${searchTerm}"</p>
+                        `;
+                        conversationsList.appendChild(messageDiv);
+                    }
+                }
+            } else if (noResultsMessage) {
+                noResultsMessage.remove();
             }
         });
     }
@@ -1130,55 +1171,30 @@ document.addEventListener('DOMContentLoaded', function() {
     if (friendSearch) {
         friendSearch.addEventListener('input', function(e) {
             const searchTerm = e.target.value.toLowerCase().trim();
-            const friendItems = document.querySelectorAll('.friend-item');
-            const friendNames = document.querySelectorAll('.conversation-username');
+            const friendItems = document.querySelectorAll('#modalFriendsList .friend-item');
             
-            friendItems.forEach((item, index) => {
-                if (friendNames[index]) {
-                    const username = friendNames[index].textContent.toLowerCase();
-                    if (username.includes(searchTerm)) {
-                        item.style.display = 'flex';
-                        friendNames[index].innerHTML = highlightText(friendNames[index].textContent, searchTerm);
-                    } else {
-                        item.style.display = 'none';
+            friendItems.forEach((item) => {
+                const username = item.getAttribute('data-username');
+                const usernameElement = item.querySelector('.conversation-username');
+                
+                if (username && username.includes(searchTerm)) {
+                    item.style.display = 'flex';
+                    
+                    // Подсветка текста
+                    if (usernameElement && searchTerm) {
+                        const originalText = usernameElement.textContent;
+                        const regex = new RegExp(`(${searchTerm})`, 'gi');
+                        usernameElement.innerHTML = originalText.replace(regex, '<span class="text-primary fw-bold">$1</span>');
+                    }
+                } else {
+                    item.style.display = 'none';
+                    if (usernameElement) {
+                        // Восстанавливаем оригинальный текст
+                        usernameElement.innerHTML = usernameElement.textContent;
                     }
                 }
             });
         });
-    }
-    
-    // Функция для подсветки текста
-    function highlightText(text, searchTerm) {
-        if (!searchTerm) return text;
-        const regex = new RegExp(`(${searchTerm})`, 'gi');
-        return text.replace(regex, '<span class="text-primary fw-bold">$1</span>');
-    }
-    
-    // Функция для показа сообщения "не найдено"
-    function showNoResultsMessage(searchTerm) {
-        let noResults = document.querySelector('.no-results-message');
-        if (!noResults) {
-            noResults = document.createElement('div');
-            noResults.className = 'no-results-message text-center py-4';
-            const conversationsList = document.querySelector('.conversations-list');
-            if (conversationsList) {
-                conversationsList.appendChild(noResults);
-            }
-        }
-        noResults.innerHTML = `
-            <div class="text-muted mb-2">
-                <i class="fas fa-search fa-lg"></i>
-            </div>
-            <p class="mb-1">Не найдено чатов по запросу</p>
-            <p class="small text-muted">"${searchTerm}"</p>
-        `;
-    }
-    
-    function hideNoResultsMessage() {
-        const noResults = document.querySelector('.no-results-message');
-        if (noResults) {
-            noResults.remove();
-        }
     }
     
     // Анимация для непрочитанных сообщений
@@ -1191,12 +1207,17 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Автоматический фокус на поиске при открытии модального окна
-    $('#newChatModal').on('shown.bs.modal', function () {
-        const friendSearch = document.getElementById('friendSearch');
-        if (friendSearch) {
-            friendSearch.focus();
-        }
-    });
+    const newChatModal = document.getElementById('newChatModal');
+    if (newChatModal) {
+        newChatModal.addEventListener('shown.bs.modal', function () {
+            const friendSearch = document.getElementById('friendSearch');
+            if (friendSearch) {
+                setTimeout(() => {
+                    friendSearch.focus();
+                }, 100);
+            }
+        });
+    }
     
     // Добавить стили для анимации
     const style = document.createElement('style');
@@ -1226,6 +1247,11 @@ document.addEventListener('DOMContentLoaded', function() {
         .conversation-item:hover,
         .friend-item:hover {
             background-color: var(--primary-light) !important;
+        }
+        
+        /* Скрытие элементов при поиске */
+        .search-hidden {
+            display: none !important;
         }
     `;
     document.head.appendChild(style);
