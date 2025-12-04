@@ -253,7 +253,7 @@
                                             <div class="existing-photo-data"
                                                  data-photo-id="{{ photo.id }}"
                                                  data-image-url="{{ photo.image.url }}"
-                                                 data-caption="{{ photo.caption|default:'' }}"
+                                                 data-caption="{{ photo.caption|safe|default:'' }}"
                                                  data-is-main="{% if photo.is_main %}true{% else %}false{% endif %}">
                                             </div>
                                         {% endfor %}
