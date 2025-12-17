@@ -3,15 +3,19 @@ __all__ = ()
 
 import json
 import math
+import os
+import time
 from io import BytesIO
 from django.core.files.base import ContentFile
 import base64
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
-from django.db.models import Q, Count, Avg
+from django.db.models import Q, Count, Avg, Max
+from django.db.models import Prefetch
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.shortcuts import render, get_object_or_404, redirect
@@ -20,19 +24,23 @@ from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.core.files import File
 from django.http import HttpResponse
+from django.conf import settings
+from pathlib import Path
+from django.core.files.base import ContentFile
+import traceback
 
 from routes.models import (
     Route,
     RoutePoint,
     RouteFavorite,
     RouteRating,
-    SavedPlace,
     RouteComment,
     PointComment,
     User,
 )
-from routes.models import RoutePhoto, PointPhoto  # ДОБАВЬТЕ ЭТОТ ИМПОРТ
+from routes.models import RoutePhoto, PointPhoto
 from users.models import Friendship
+from interactions.models import Favorite, Rating, Comment
 
 
 def home(request):
@@ -58,24 +66,27 @@ def home(request):
     cycling_count = Route.objects.filter(
         route_type="cycling", is_active=True
     ).count()
-    adventure_count = Route.objects.filter(
-        mood="adventure", is_active=True
-    ).count()
 
     # Популярные маршруты
     popular_routes = Route.objects.filter(is_active=True).order_by(
         "-created_at"
     )[:6]
 
+    user_favorites_ids = []
+    if request.user.is_authenticated:
+        user_favorites_ids = Favorite.objects.filter(
+            user=request.user
+        ).values_list("route_id", flat=True)
+
     context = {
         "popular_routes": popular_routes,
         "walking_count": walking_count,
         "driving_count": driving_count,
         "cycling_count": cycling_count,
-        "adventure_count": adventure_count,
         "total_routes": total_routes,
         "total_users": total_users,
         "total_countries": total_countries,
+        "user_favorites_ids": list(user_favorites_ids),
     }
 
     return render(request, "home.html", context)
@@ -83,47 +94,74 @@ def home(request):
 
 def all_routes(request):
     """Все публичные маршруты"""
+    # Получаем параметры фильтрации
+    route_type = request.GET.get("type", "")
+    search_query = request.GET.get("q", "")
+    sort_by = request.GET.get("sort", "newest")
+    
+    # Начинаем с базового QuerySet
     routes = Route.objects.filter(privacy="public", is_active=True).prefetch_related('photos')
 
-    # Фильтрация
-    route_type = request.GET.get("type")
-    mood = request.GET.get("mood")
-    theme = request.GET.get("theme")
-    search_query = request.GET.get("q")
-
+    # Применяем фильтры
     if route_type:
         routes = routes.filter(route_type=route_type)
-    if mood:
-        routes = routes.filter(mood=mood)
-    if theme:
-        routes = routes.filter(theme=theme)
+    
     if search_query:
         routes = routes.filter(
             Q(name__icontains=search_query)
             | Q(description__icontains=search_query)
-            | Q(short_description__icontains=search_query)
+            | Q(short_description__icontains=search_query)  # ИСПРАВЛЕНО: было icontains(search_query)
             | Q(points__name__icontains=search_query)
             | Q(points__description__icontains=search_query)
         ).distinct()
 
-    # Аннотируем средний рейтинг
+    # Аннотируем для сортировки
     routes = routes.annotate(
-        rating=Avg("ratings__rating"),
-        rating_count=Count("ratings")
-    ).order_by("-created_at")
+        avg_rating=Avg("ratings__rating"),  # или "ratings__score" в зависимости от модели
+        rating_count=Count("ratings"),
+        favorites_count=Count("favorites")
+    )
+
+    # Применяем сортировку
+    if sort_by == "popular":
+        routes = routes.order_by("-favorites_count", "-created_at")
+    elif sort_by == "rating":
+        # Сначала сортируем по рейтингу, затем по количеству оценок
+        routes = routes.order_by(
+            "-avg_rating", 
+            "-rating_count", 
+            "-created_at"
+        )
+    else:  # newest - по умолчанию
+        routes = routes.order_by("-created_at")
 
     # Пагинация
     paginator = Paginator(routes, 12)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
+    user_favorites_ids = []
+    if request.user.is_authenticated:
+        user_favorites_ids = Favorite.objects.filter(
+            user=request.user
+        ).values_list("route_id", flat=True)
+
+    # Подготовка контекста
     context = {
         "page_obj": page_obj,
         "route_types": Route.ROUTE_TYPE_CHOICES,
-        "moods": Route.MOOD_CHOICES,
-        "themes": Route.THEME_CHOICES,
+        "current_sort": sort_by,
+        "search_query": search_query,
+        "selected_type": route_type,
+        "user_favorites_ids": list(user_favorites_ids),
+        "get_params": {
+            "q": search_query,
+            "type": route_type,
+            "sort": sort_by
+        }
     }
 
+    # Уведомления о друзьях
     if request.user.is_authenticated:
         context["pending_friend_requests"] = Friendship.objects.filter(
             to_user=request.user, status="pending"
@@ -137,31 +175,94 @@ def all_routes(request):
 
 @login_required
 def my_routes(request):
-    """Маршруты пользователя с разделением на активные/неактивные"""
-    routes = Route.objects.filter(author=request.user).prefetch_related('photos')
-    
-    # Аннотируем средний рейтинг
-    routes = routes.annotate(
-        rating=Avg("ratings__rating"),
-        rating_count=Count("ratings")
-    ).order_by("-created_at")
-    
-    # Разделяем маршруты на активные и неактивные
-    active_routes = routes.filter(is_active=True)
-    inactive_routes = routes.filter(is_active=False)
-    
-    context = {
-        "routes": routes,
-        "active_routes": active_routes,
-        "inactive_routes": inactive_routes,
-        "pending_friend_requests": Friendship.objects.filter(
-            to_user=request.user, status="pending"
-        )[:5],
-        "pending_requests_count": Friendship.objects.filter(
-            to_user=request.user, status="pending"
-        ).count(),
-    }
-    return render(request, "routes/my_routes.html", context)
+    """Маршруты пользователя с разделением на активные/неактивные/избранное"""
+    try:
+        # 1. Маршруты пользователя (авторские)
+        user_routes = Route.objects.filter(author=request.user).prefetch_related('photos')
+        
+        # Аннотируем средний рейтинг
+        user_routes = user_routes.annotate(
+            rating=Avg("ratings__rating"),
+            rating_count=Count("ratings")
+        ).order_by("-created_at")
+        
+        # Разделяем маршруты на активные и неактивные
+        active_routes = user_routes.filter(is_active=True)
+        inactive_routes = user_routes.filter(is_active=False)
+        
+        # 2. Избранные маршруты пользователя (из interactions)
+        user_favorites_ids = []
+        favorite_routes_list = []
+        
+        if request.user.is_authenticated:
+            # Получаем ID всех избранных маршрутов для индикаторов в карточках
+            user_favorites_ids = Favorite.objects.filter(
+                user=request.user
+            ).values_list("route_id", flat=True)
+            
+            # Получаем маршруты для вкладки "Избранное"
+            favorites = Favorite.objects.filter(
+                user=request.user
+            ).select_related('route').order_by('-created_at')
+            
+            for fav in favorites:
+                if fav.route.is_active:  # Показываем только активные маршруты
+                    favorite_routes_list.append(fav.route)
+            
+            # Аннотируем избранные маршруты
+            favorite_routes = Route.objects.filter(
+                id__in=[r.id for r in favorite_routes_list]
+            ).prefetch_related('photos').annotate(
+                rating=Avg("ratings__rating"),
+                rating_count=Count("ratings")
+            )
+        else:
+            favorite_routes = []
+        
+        # Считаем количество
+        total_count = active_routes.count() + inactive_routes.count()
+        favorites_count = len(favorite_routes_list)
+        
+        context = {
+            "active_routes": active_routes,
+            "inactive_routes": inactive_routes,
+            "favorite_routes": favorite_routes,
+            "favorites_count": favorites_count,
+            "total_count": total_count,
+            "user_favorites_ids": list(user_favorites_ids),
+        }
+        
+        # Добавляем уведомления о друзьях если пользователь авторизован
+        if request.user.is_authenticated:
+            context["pending_friend_requests"] = Friendship.objects.filter(
+                to_user=request.user, status="pending"
+            )[:5]
+            context["pending_requests_count"] = Friendship.objects.filter(
+                to_user=request.user, status="pending"
+            ).count()
+        
+        return render(request, 'routes/my_routes.html', context)
+        
+    except Exception as e:
+        print(f"Ошибка в my_routes: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        # Возвращаем пустые данные в случае ошибки
+        context = {
+            'active_routes': [],
+            'inactive_routes': [],
+            'favorite_routes': [],
+            'favorites_count': 0,
+            'total_count': 0,
+            'user_favorites_ids': [],
+        }
+        
+        if request.user.is_authenticated:
+            context["pending_friend_requests"] = []
+            context["pending_requests_count"] = 0
+        
+        return render(request, 'routes/my_routes.html', context)
 
 
 @login_required
@@ -171,6 +272,12 @@ def shared_routes(request):
         Q(shared_with=request.user) | Q(privacy="link"),
         is_active=True
     ).exclude(author=request.user).prefetch_related('photos').distinct()
+
+    user_favorites_ids = []
+    if request.user.is_authenticated:
+        user_favorites_ids = Favorite.objects.filter(
+            user=request.user
+        ).values_list("route_id", flat=True)
     
     # Аннотируем средний рейтинг
     routes = routes.annotate(
@@ -191,6 +298,7 @@ def shared_routes(request):
         "routes": routes,
         "shared_count": shared_count,
         "link_count": link_count,
+        "user_favorites_ids": list(user_favorites_ids),
     }
 
     if request.user.is_authenticated:
@@ -206,31 +314,45 @@ def shared_routes(request):
 
 def route_detail(request, route_id):
     """Детальная страница маршрута"""
-    route = get_object_or_404(Route, id=route_id)
+    # Получаем маршрут с базовой оптимизацией
+    route = get_object_or_404(
+        Route.objects.select_related('author')
+        .prefetch_related(
+            'photos',
+            'shared_with',
+        ),
+        id=route_id
+    )
 
     # Проверка доступа
     if not can_view_route(request.user, route):
         messages.error(request, "У вас нет доступа к этому маршруту")
         return redirect("home")
 
-    points = route.points.all().order_by("order").prefetch_related("photos")
-    comments = route.comments.all().order_by("-created_at")[:10]
+    # Получаем точки с фото отдельно
+    points = RoutePoint.objects.filter(route=route).prefetch_related('photos').order_by('order')
+    
+    # Получаем фото маршрута
     route_photos = route.photos.all().order_by("order")
-
+    
+    # Получаем комментарии из interactions
+    comments = Comment.objects.filter(route=route).select_related('user').order_by('-created_at')[:10]
+    
+    # Получаем рейтинги из interactions
+    ratings = Rating.objects.filter(route=route)
+    
     # ДОБАВЛЯЕМ: Получаем информацию об AI аудио
     full_audio_guide = None
     points_with_audio = []
 
     try:
         from ai_audio.models import RouteAudioGuide
-
         full_audio_guide = RouteAudioGuide.objects.filter(route=route).first()
-
+        
         # Собираем точки с AI аудио
         for point in points:
             if point.audio_guide:  # Проверяем есть ли аудио файл у точки
                 points_with_audio.append(point.id)
-
     except ImportError:
         # Если приложение ai_audio не установлено
         pass
@@ -244,21 +366,29 @@ def route_detail(request, route_id):
             .order_by("-timestamp")[:20]
         )
 
+    # Избранное из interactions - ЕДИНАЯ МОДЕЛЬ
     user_favorites_ids = []
+    is_favorite = False
+    
     if request.user.is_authenticated:
-        user_favorites_ids = RouteFavorite.objects.filter(
+        user_favorites_ids = Favorite.objects.filter(
             user=request.user
         ).values_list("route_id", flat=True)
+        
+        # Проверяем, является ли текущий маршрут избранным
+        is_favorite = route.id in user_favorites_ids
 
+    # Рейтинг пользователя из interactions
     user_rating = None
     if request.user.is_authenticated:
         try:
-            user_rating = RouteRating.objects.get(
+            user_rating = Rating.objects.get(
                 user=request.user, route=route
-            ).rating
-        except RouteRating.DoesNotExist:
+            ).score
+        except Rating.DoesNotExist:
             pass
 
+    # Похожие маршруты
     similar_routes = Route.objects.filter(
         route_type=route.route_type, privacy="public", is_active=True
     ).exclude(id=route.id)[:5]
@@ -268,22 +398,22 @@ def route_detail(request, route_id):
         "points": points,
         "route_photos": route_photos,
         "comments": comments,
+        "ratings": ratings,
         "route_chat_messages": route_chat_messages,
         "user_favorites_ids": list(user_favorites_ids),
+        "is_favorite": is_favorite,
         "user_rating": user_rating,
         "similar_routes": similar_routes,
-        # ДОБАВЛЯЕМ AI аудио данные
         "full_audio_guide": full_audio_guide,
         "points_with_audio": points_with_audio,
     }
 
     if request.user.is_authenticated:
-        context["pending_friend_requests"] = Friendship.objects.filter(
+        pending_friend_requests = Friendship.objects.filter(
             to_user=request.user, status="pending"
-        )[:5]
-        context["pending_requests_count"] = Friendship.objects.filter(
-            to_user=request.user, status="pending"
-        ).count()
+        )
+        context["pending_friend_requests"] = pending_friend_requests[:5]
+        context["pending_requests_count"] = pending_friend_requests.count()
 
     return render(request, "routes/route_detail.html", context)
 
@@ -406,8 +536,6 @@ def create_route(request):
                 short_description=data.get("short_description", ""),
                 privacy=data.get("privacy", "public"),
                 route_type=data.get("route_type", "walking"),
-                mood=data.get("mood", ""),
-                theme=data.get("theme", ""),
                 duration_minutes=data.get("duration_minutes", 0),
                 total_distance=data.get("total_distance", 0),
                 has_audio_guide=data.get("has_audio_guide", False),
@@ -419,19 +547,20 @@ def create_route(request):
             for i, photo_data in enumerate(route_photos):
                 if photo_data:
                     try:
-                        # Проверяем формат фото
-                        if photo_data.startswith("data:"):
-                            # Это DataURL - новое фото
-                            photo = save_base64_photo(
-                                photo_data, route, RoutePhoto, order=i
-                            )
-                        elif photo_data.startswith(
-                            "/uploads/"
-                        ) or photo_data.startswith("/media/"):
-                            # Это уже сохраненное фото - копируем из существующего
-                            photo = copy_existing_photo(
-                                photo_data, route, RoutePhoto, order=i
-                            )
+                        # Поддерживаем разные форматы: строка (data:/media) или объект {url, caption}
+                        if isinstance(photo_data, dict):
+                            photo_url = photo_data.get('url', '')
+                            caption = photo_data.get('caption', '')
+                            if photo_url and isinstance(photo_url, str) and photo_url.startswith('data:'):
+                                photo = save_base64_photo(photo_url, route, RoutePhoto, order=i, caption=caption)
+                            elif photo_url and isinstance(photo_url, str) and (photo_url.startswith('/uploads/') or photo_url.startswith('/media/')):
+                                photo = copy_existing_photo(photo_url, route, RoutePhoto, order=i, caption=caption)
+                        else:
+                            # Проверяем формат фото (строка)
+                            if isinstance(photo_data, str) and photo_data.startswith('data:'):
+                                photo = save_base64_photo(photo_data, route, RoutePhoto, order=i)
+                            elif isinstance(photo_data, str) and (photo_data.startswith('/uploads/') or photo_data.startswith('/media/')):
+                                photo = copy_existing_photo(photo_data, route, RoutePhoto, order=i)
                     except Exception as e:
                         print(f"Ошибка сохранения фото маршрута: {e}")
                         continue
@@ -447,8 +576,6 @@ def create_route(request):
                     latitude=point_data.get("lat", 0),
                     longitude=point_data.get("lng", 0),
                     category=point_data.get("category", ""),
-                    hint_author=point_data.get("hint_author", ""),
-                    tags=point_data.get("tags", []),
                     order=i,
                 )
 
@@ -457,16 +584,19 @@ def create_route(request):
                 for j, photo_data in enumerate(point_photos):
                     if photo_data:
                         try:
-                            if photo_data.startswith("data:"):
-                                save_base64_photo(
-                                    photo_data, point, PointPhoto, order=j
-                                )
-                            elif photo_data.startswith(
-                                "/uploads/"
-                            ) or photo_data.startswith("/media/"):
-                                copy_existing_photo(
-                                    photo_data, point, PointPhoto, order=j
-                                )
+                            # Поддерживаем объекты {url, caption} и строки
+                            if isinstance(photo_data, dict):
+                                photo_url = photo_data.get('url', '')
+                                caption = photo_data.get('caption', '')
+                                if photo_url and isinstance(photo_url, str) and photo_url.startswith('data:'):
+                                    save_base64_photo(photo_url, point, PointPhoto, order=j, caption=caption)
+                                elif photo_url and isinstance(photo_url, str) and (photo_url.startswith('/uploads/') or photo_url.startswith('/media/')):
+                                    copy_existing_photo(photo_url, point, PointPhoto, order=j, caption=caption)
+                            else:
+                                if isinstance(photo_data, str) and photo_data.startswith('data:'):
+                                    save_base64_photo(photo_data, point, PointPhoto, order=j)
+                                elif isinstance(photo_data, str) and (photo_data.startswith('/uploads/') or photo_data.startswith('/media/')):
+                                    copy_existing_photo(photo_data, point, PointPhoto, order=j)
                         except Exception as e:
                             print(f"Ошибка сохранения фото точки: {e}")
                             continue
@@ -501,7 +631,6 @@ def create_route(request):
     return render(request, "routes/route_editor.html", context)
 
 
-@login_required
 def edit_route(request, route_id):
     """Редактирование маршрута"""
     route = get_object_or_404(Route, id=route_id, author=request.user)
@@ -509,36 +638,37 @@ def edit_route(request, route_id):
     if request.method == "POST":
         try:
             data = json.loads(request.body)
+            print("="*80)
             print("=== РЕДАКТИРОВАНИЕ МАРШРУТА ===")
-            print("Полученные данные:", data.get("name"), "точек:", len(data.get("points", [])))
-            
+            print("="*80)
+            print("📝 Маршрут:", data.get("name"))
+            print("📍 Количество точек:", len(data.get("points", [])))
+            print("📷 Фото маршрута в данных:", len(data.get("route_photos", [])))
+            # === ВАЖНО: Считаем фото точек ===
+            total_point_photos = 0
+            for i, point in enumerate(data.get("points", [])):
+                point_photos = point.get("photos", [])
+                print(f"📍 Точка {i+1} '{point.get('name')}': {len(point_photos)} фото")
+                total_point_photos += len(point_photos)
+            print(f"📊 ИТОГО: {total_point_photos} фото точек, {len(data.get('route_photos', []))} фото маршрута")
+            print("="*80)
+
             # Обновляем основные поля маршрута
             route.name = data.get("name", route.name)
             route.description = data.get("description", route.description)
             route.short_description = data.get("short_description", route.short_description)
             route.privacy = data.get("privacy", route.privacy)
             route.route_type = data.get("route_type", route.route_type)
-            route.mood = data.get("mood", route.mood)
-            route.theme = data.get("theme", route.theme)
             route.duration_minutes = data.get("duration_minutes", route.duration_minutes)
             route.total_distance = data.get("total_distance", route.total_distance)
             route.has_audio_guide = data.get("has_audio_guide", route.has_audio_guide)
             route.is_elderly_friendly = data.get("is_elderly_friendly", route.is_elderly_friendly)
             route.is_active = data.get("is_active", route.is_active)
+            route.duration_display = data.get("duration_display", route.duration_display)
             route.save()
-            
+
             # === ОБРАБОТКА ФОТО МАРШРУТА ===
-            photos_data = data.get("photos_data", {})
-            
-            # Обрабатываем существующие фото
-            existing_main_photo_id = photos_data.get("existing_main_photo_id")
-            existing_additional_ids = photos_data.get("existing_additional_photo_ids", [])
             removed_photo_ids = data.get("removed_photo_ids", [])
-            
-            # Обновляем существующие фото (подписи и порядок)
-            captions = photos_data.get("captions", {})
-            
-            # Помечаем фото как удаленные
             for photo_id in removed_photo_ids:
                 try:
                     photo = RoutePhoto.objects.get(id=photo_id, route=route)
@@ -546,56 +676,145 @@ def edit_route(request, route_id):
                     print(f"🗑️ Удалено фото ID: {photo_id}")
                 except RoutePhoto.DoesNotExist:
                     pass
-            
-            # Удаляем все существующие точки (для простоты)
-            route.points.all().delete()
-            
-            # === ОБРАБОТКА ТОЧЕК ===
+
+            # === ОБРАБОТКА ТОЧЕК (БЕЗ УДАЛЕНИЯ ВСЕХ!) ===
             points_data = data.get("points", [])
-            print(f"Точек получено: {len(points_data)}")
-            
-            # Создаем новые точки
+            incoming_point_ids = []
+
             for i, point_data in enumerate(points_data):
-                point_name = point_data.get("name", f"Точка {i+1}")
-                print(f"Создание точки {i}: {point_name}")
-                
-                point = RoutePoint.objects.create(
-                    route=route,
-                    name=point_name,
-                    description=point_data.get("description", ""),
-                    address=point_data.get("address", ""),
-                    latitude=point_data.get("lat", point_data.get("latitude", 0)),
-                    longitude=point_data.get("lng", point_data.get("longitude", 0)),
-                    category=point_data.get("category", ""),
-                    hint_author=point_data.get("hint_author", ""),
-                    tags=point_data.get("tags", []),
-                    order=i,
-                )
-                
-                # Обрабатываем фото точки
-                point_photos_data = point_data.get("photos", [])
-                print(f"  Фото точки: {len(point_photos_data)} шт.")
-                
-                for j, photo_data in enumerate(point_photos_data):
-                    if isinstance(photo_data, dict):
-                        photo_url = photo_data.get("url", "")
-                        photo_caption = photo_data.get("caption", "")
-                        
-                        if photo_url and photo_url.startswith("data:"):
-                            # Новое фото в base64
-                            save_base64_photo(photo_url, point, PointPhoto, order=j, caption=photo_caption)
-                            print(f"  ✅ Добавлено новое фото из base64")
-                        elif photo_url and (photo_url.startswith("/media/") or photo_url.startswith("/uploads/")):
-                            # Копируем существующее фото
-                            copy_existing_photo(photo_url, point, PointPhoto, order=j, caption=photo_caption)
-                            print(f"  ✅ Скопировано существующее фото")
-                    elif isinstance(photo_data, str) and photo_data:
-                        # Старый формат - строка URL
-                        if photo_data.startswith("data:"):
-                            save_base64_photo(photo_data, point, PointPhoto, order=j)
-                        elif photo_data.startswith("/media/") or photo_data.startswith("/uploads/"):
-                            copy_existing_photo(photo_data, point, PointPhoto, order=j)
-            
+                point_id = point_data.get("id")
+                if point_id:
+                    # Обновляем существующую точку
+                    try:
+                        point = RoutePoint.objects.get(id=point_id, route=route)
+                        point.name = point_data.get("name", f"Точка {i+1}")
+                        point.description = point_data.get("description", "")
+                        point.address = point_data.get("address", "")
+                        point.latitude = point_data.get("lat", point.latitude)
+                        point.longitude = point_data.get("lng", point.longitude)
+                        point.category = point_data.get("category", "")
+                        point.order = i
+                        point.save()
+                        incoming_point_ids.append(point_id)
+                    except RoutePoint.DoesNotExist:
+                        # Создаём новую, если не найдена
+                        point = RoutePoint.objects.create(
+                            route=route,
+                            name=point_data.get("name", f"Точка {i+1}"),
+                            description=point_data.get("description", ""),
+                            address=point_data.get("address", ""),
+                            latitude=point_data.get("lat", 0),
+                            longitude=point_data.get("lng", 0),
+                            category=point_data.get("category", ""),
+                            order=i,
+                        )
+                        incoming_point_ids.append(point.id)
+                else:
+                    # Создаём новую точку
+                    point = RoutePoint.objects.create(
+                        route=route,
+                        name=point_data.get("name", f"Точка {i+1}"),
+                        description=point_data.get("description", ""),
+                        address=point_data.get("address", ""),
+                        latitude=point_data.get("lat", 0),
+                        longitude=point_data.get("lng", 0),
+                        category=point_data.get("category", ""),
+                        order=i,
+                    )
+                    incoming_point_ids.append(point.id)
+
+            # Удаляем ТОЛЬКО те точки, которых нет во входящих данных
+            RoutePoint.objects.filter(route=route).exclude(id__in=incoming_point_ids).delete()
+
+            # === ОБРАБОТКА ФОТО ТОЧЕК ===
+            for point_data in points_data:
+                point_id = point_data.get("id")
+                if not point_id:
+                    continue
+                try:
+                    point = RoutePoint.objects.get(id=point_id, route=route)
+                except RoutePoint.DoesNotExist:
+                    continue
+
+                point_photos_data = point_data.get("photos")
+
+                if point_photos_data is not None and isinstance(point_photos_data, list):
+                    print(f"  📸 Фронтенд прислал {len(point_photos_data)} фото для точки {point.id}")
+                    
+                    # Получаем существующие фото
+                    existing_photos = list(point.photos.all().order_by('order'))
+                    
+                    # Создаем словарь существующих фото по их URL
+                    existing_photos_dict = {}
+                    for photo in existing_photos:
+                        if photo.image:
+                            existing_photos_dict[photo.image.url] = photo
+                    
+                    # Создаем множество входящих фото URL
+                    incoming_photo_urls = set()
+                    for photo_data in point_photos_data:
+                        if isinstance(photo_data, dict):
+                            url = photo_data.get('url', '')
+                        else:
+                            url = str(photo_data)
+                        if url.startswith('/media/') or url.startswith('/uploads/'):
+                            incoming_photo_urls.add(url)
+                    
+                    # Удаляем только те фото, которых нет во входящих данных
+                    photos_to_delete = []
+                    for photo_url, photo in existing_photos_dict.items():
+                        if photo_url not in incoming_photo_urls:
+                            photos_to_delete.append(photo.id)
+                    
+                    if photos_to_delete:
+                        PointPhoto.objects.filter(id__in=photos_to_delete).delete()
+                        print(f"    🗑️ Удалено {len(photos_to_delete)} фото")
+                    
+                    # Добавляем новые фото
+                    for j, photo_data in enumerate(point_photos_data):
+                        if not photo_data:
+                            continue
+                            
+                        try:
+                            # Проверяем, существует ли уже это фото
+                            photo_url = ''
+                            caption = ''
+                            
+                            if isinstance(photo_data, dict):
+                                photo_url = photo_data.get("url", "")
+                                caption = photo_data.get("caption", "")
+                            elif isinstance(photo_data, str):
+                                photo_url = photo_data
+                            
+                            # Пропускаем если это DataURL (новое фото) или если фото уже существует
+                            if photo_url.startswith("data:"):
+                                # Это новое фото в формате base64
+                                photo = save_base64_photo(photo_url, point, PointPhoto, order=j, caption=caption)
+                                if photo:
+                                    print(f"    ✅ Добавлено новое фото из base64")
+                            elif photo_url and (photo_url.startswith("/media/") or photo_url.startswith("/uploads/")):
+                                # Это ссылка на существующее фото
+                                # Проверяем, есть ли уже такое фото у точки
+                                existing = point.photos.filter(image__url=photo_url).first()
+                                if not existing:
+                                    # Копируем только если фото еще нет у точки
+                                    photo = copy_existing_photo(photo_url, point, PointPhoto, order=j, caption=caption)
+                                    if photo:
+                                        print(f"    ✅ Скопировано существующее фото")
+                                else:
+                                    # Обновляем существующее фото
+                                    existing.order = j
+                                    if caption:
+                                        existing.caption = caption
+                                    existing.save()
+                                    print(f"    🔄 Обновлено существующее фото ID {existing.id}")
+                                    
+                        except Exception as e:
+                            print(f"    ❌ Ошибка при сохранении фото точки {point.id}: {e}")
+                            continue
+                else:
+                    print(f"  ℹ️ Фото для точки {point.id} не присланы → оставляем как есть")
+
             print("=== УСПЕШНО СОХРАНЕНО ===")
             return JsonResponse({"success": True, "route_id": route.id})
             
@@ -618,13 +837,12 @@ def edit_route(request, route_id):
         "short_description": route.short_description,
         "privacy": route.privacy,
         "route_type": route.route_type,
-        "mood": route.mood,
-        "theme": route.theme,
         "duration_minutes": route.duration_minutes,
         "total_distance": route.total_distance,
         "has_audio_guide": route.has_audio_guide,
         "is_elderly_friendly": route.is_elderly_friendly,
         "is_active": route.is_active,
+        "duration_display": route.duration_display,
         "route_photos": [],
         "points": []
     }
@@ -656,8 +874,6 @@ def edit_route(request, route_id):
             "lat": float(point.latitude) if point.latitude else 0,
             "lng": float(point.longitude) if point.longitude else 0,
             "category": point.category or "",
-            "hint_author": point.hint_author or "",
-            "tags": point.tags if point.tags else [],
             "photos": []
         }
         
@@ -690,11 +906,11 @@ def edit_route(request, route_id):
 
 
 def save_base64_photo(photo_data, parent_obj, photo_model, order=0, caption=""):
-    """Сохранение фото из base64 DataURL"""
+    """Сохранение фото из base64 DataURL с четким разделением типов"""
     try:
         print(f"=== DEBUG SAVE BASE64 PHOTO ===")
-        print(f"🔧 Сохранение фото для {parent_obj.__class__.__name__} {parent_obj.id if hasattr(parent_obj, 'id') else 'new'}")
-        print(f"📷 Photo model: {photo_model.__name__}")
+        print(f"🔧 Сохранение фото для {photo_model.__name__}")
+        print(f"📷 Родительский объект: {parent_obj.__class__.__name__} ID: {parent_obj.id}")
         print(f"📝 Caption: {caption}")
         print(f"📊 Order: {order}")
 
@@ -739,26 +955,39 @@ def save_base64_photo(photo_data, parent_obj, photo_model, order=0, caption=""):
             print(f"❌ Ошибка декодирования base64: {e}")
             return None
 
-        # Создаем имя файла
+        # Создаем уникальное имя файла с указанием типа
         timestamp = int(timezone.now().timestamp())
-        filename = f"{parent_obj.__class__.__name__.lower()}_{photo_model.__name__.lower()}_{timestamp}_{order}{ext}"
+        parent_type = parent_obj.__class__.__name__.lower()
+        
+        if photo_model.__name__ == "RoutePhoto":
+            prefix = "route"
+        elif photo_model.__name__ == "PointPhoto":
+            prefix = "point"
+        else:
+            prefix = "photo"
+            
+        filename = f"{prefix}_{parent_type}_{parent_obj.id}_{timestamp}_{order}{ext}"
 
         print(f"📁 Имя файла: {filename}")
         print(f"📁 MIME type: {mime_type}")
 
         # Создаем объект фото
-        kwargs = {}
-        if parent_obj.__class__.__name__ == "Route":
-            kwargs["route"] = parent_obj
-        elif parent_obj.__class__.__name__ == "RoutePoint":
-            kwargs["point"] = parent_obj
-
-        # Добавляем caption и order
-        photo = photo_model.objects.create(
-            **kwargs, 
-            order=order, 
-            caption=caption
-        )
+        if photo_model == RoutePhoto:
+            photo = RoutePhoto.objects.create(
+                route=parent_obj,
+                order=order, 
+                caption=caption,
+                is_main=False  # Явно указываем, что это не главное фото
+            )
+        elif photo_model == PointPhoto:
+            photo = PointPhoto.objects.create(
+                point=parent_obj,
+                order=order, 
+                caption=caption
+            )
+        else:
+            print(f"❌ Неизвестная модель фото: {photo_model}")
+            return None
 
         print(f"📸 Создан объект фото: {photo.id}")
 
@@ -780,69 +1009,141 @@ def save_base64_photo(photo_data, parent_obj, photo_model, order=0, caption=""):
 
 
 def copy_existing_photo(photo_url, parent_obj, photo_model, order=0, caption=""):
-    """Копирование существующего фото"""
+    """Копирование существующего фото БЕЗ удаления оригинала"""
     try:
         print(f"=== DEBUG COPY EXISTING PHOTO ===")
         print(f"🔧 Копирование фото: {photo_url}")
-        print(f"📷 Для: {parent_obj.__class__.__name__} {parent_obj.id}")
+        print(f"📷 Модель: {photo_model.__name__}")
         print(f"📝 Caption: {caption}")
 
-        # Ищем существующее фото
-        from django.conf import settings
-        import os
-
-        # Определяем путь к файлу из URL
         if photo_url.startswith("/media/"):
-            media_path = photo_url.replace("/media/", "")
+            media_path = photo_url.replace("/media/", "", 1)
         elif photo_url.startswith("/uploads/"):
-            media_path = photo_url.replace("/uploads/", "")
+            media_path = photo_url.replace("/uploads/", "", 1)
         else:
             print(f"❌ Неверный URL фото: {photo_url}")
             return None
-            
-        full_path = os.path.join(settings.MEDIA_ROOT, media_path)
 
-        if not os.path.exists(full_path):
+        # Получаем абсолютный путь к файлу
+        full_path = Path(settings.MEDIA_ROOT) / media_path
+
+        if not full_path.exists():
             print(f"❌ Файл не найден: {full_path}")
             return None
 
-        # Создаем новое имя файла
-        timestamp = int(timezone.now().timestamp())
-        ext = os.path.splitext(full_path)[1]
-        filename = f"{parent_obj.__class__.__name__.lower()}_{parent_obj.id}_{photo_model.__name__.lower()}_{timestamp}_{order}{ext}"
-
-        # Читаем существующий файл
+        # Читаем файл (копируем, не удаляем!)
         with open(full_path, "rb") as f:
             file_data = f.read()
 
+        # Создаем уникальное имя для копии
+        import uuid
+        from django.utils import timezone
+        timestamp = int(timezone.now().timestamp())
+        random_str = str(uuid.uuid4())[:8]
+        
+        # Определяем расширение
+        ext = full_path.suffix
+        if not ext:
+            ext = ".jpg"
+        
+        parent_type = parent_obj.__class__.__name__.lower()
+        prefix = "point" if photo_model.__name__ == "PointPhoto" else "route"
+        
+        # Создаем уникальное имя файла для копии
+        filename = f"{prefix}_{parent_type}_{parent_obj.id}_{timestamp}_{random_str}{ext}"
+
         # Создаем объект фото
-        kwargs = {}
-        if parent_obj.__class__.__name__ == "Route":
-            kwargs["route"] = parent_obj
-        elif parent_obj.__class__.__name__ == "RoutePoint":
-            kwargs["point"] = parent_obj
+        if photo_model == RoutePhoto:
+            photo = RoutePhoto.objects.create(
+                route=parent_obj, 
+                order=order, 
+                caption=caption, 
+                is_main=False
+            )
+        elif photo_model == PointPhoto:
+            photo = PointPhoto.objects.create(
+                point=parent_obj, 
+                order=order, 
+                caption=caption
+            )
+        else:
+            print(f"❌ Неизвестная модель фото: {photo_model}")
+            return None
 
-        photo = photo_model.objects.create(
-            **kwargs, 
-            order=order, 
-            caption=caption
-        )
-
-        # Сохраняем копию файла
+        # Сохраняем копию файла (оригинал остается нетронутым)
         photo.image.save(filename, ContentFile(file_data), save=True)
-
-        print(f"✅ Фото скопировано успешно!")
-        print(f"📁 Новый URL: {photo.image.url}")
-        print(f"=== END DEBUG COPY PHOTO ===")
-
+        print(f"✅ Фото скопировано успешно! Новый URL: {photo.image.url} (оригинал сохранен)")
         return photo
 
     except Exception as e:
         print(f"❌ Ошибка копирования фото: {e}")
-        import traceback
-        print(f"🔍 Traceback: {traceback.format_exc()}")
+        traceback.print_exc()
         return None
 
+
+@require_POST
+def delete_route(request, route_id):
+    """Удаление маршрута со всеми связанными данными"""
+    try:
+        route = get_object_or_404(Route, id=route_id, user=request.user)
+        
+        data = json.loads(request.body)
+        delete_all_data = data.get('delete_all_data', True)
+        clear_cache = data.get('clear_cache', True)
+        
+        # Удаляем фото маршрута
+        if delete_all_data:
+            for photo in route.photos.all():
+                # Удаляем файл из медиа
+                if photo.image and photo.image.name:
+                    photo_path = os.path.join(settings.MEDIA_ROOT, photo.image.name)
+                    if os.path.exists(photo_path):
+                        os.remove(photo_path)
+        
+        # Удаляем фото точек
+        for point in route.points.all():
+            if delete_all_data:
+                for photo in point.photos.all():
+                    if photo.image and photo.image.name:
+                        photo_path = os.path.join(settings.MEDIA_ROOT, photo.image.name)
+                        if os.path.exists(photo_path):
+                            os.remove(photo_path)
+        
+        # Удаляем аудиофайлы
+        if hasattr(route, 'audio_guides'):
+            for audio in route.audio_guides.all():
+                if delete_all_data and audio.audio_file and audio.audio_file.name:
+                    audio_path = os.path.join(settings.MEDIA_ROOT, audio.audio_file.name)
+                    if os.path.exists(audio_path):
+                        os.remove(audio_path)
+        
+        # Очищаем кеш маршрута
+        if clear_cache:
+            cache_keys = [
+                f'route_{route_id}',
+                f'route_{route_id}_points',
+                f'route_{route_id}_photos',
+                f'route_{route_id}_audio',
+            ]
+            for key in cache_keys:
+                cache.delete(key)
+            
+            # Очищаем кеш для связанных карт
+            cache.delete_pattern(f'*route_{route_id}*')
+        
+        # Удаляем сам маршрут (каскадно удалятся все связанные объекты)
+        route.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Маршрут успешно удален'
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
 
 @login_required
 def toggle_route_active(request, route_id):
@@ -940,49 +1241,6 @@ def add_point_comment(request, point_id):
     return redirect("route_detail", route_id=point.route.id)
 
 
-# Сохраненные места
-@login_required
-def saved_places(request):
-    """Управление сохраненными местами"""
-    places = SavedPlace.objects.filter(user=request.user).order_by(
-        "-created_at"
-    )
-
-    context = {
-        "places": places,
-        "pending_friend_requests": Friendship.objects.filter(
-            to_user=request.user, status="pending"
-        )[:5],
-        "pending_requests_count": Friendship.objects.filter(
-            to_user=request.user, status="pending"
-        ).count(),
-    }
-    return render(request, "places/saved_places.html", context)
-
-
-@login_required
-@csrf_exempt
-def add_saved_place(request):
-    """Добавление сохраненного места"""
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body)
-            place = SavedPlace.objects.create(
-                user=request.user,
-                name=data["name"],
-                category=data.get("category", "other"),
-                address=data["address"],
-                latitude=data["lat"],
-                longitude=data["lng"],
-                notes=data.get("notes", ""),
-            )
-            return JsonResponse({"success": True, "place_id": place.id})
-        except Exception as e:
-            return JsonResponse({"success": False, "error": str(e)})
-
-    return JsonResponse({"success": False, "error": "Only POST allowed"})
-
-
 def map_view(request):
     routes = (
         Route.objects.filter(privacy="public", is_active=True)
@@ -1001,7 +1259,6 @@ def map_view(request):
             "rating": route.avg_rating or 0,
             "has_audio": route.has_audio_guide,
             "difficulty": route.route_type,
-            "category": {"name": route.theme} if route.theme else None,
             "photos": [
                 {"url": photo.image.url, "caption": photo.caption}
                 for photo in route.photos.all()[:3]
@@ -1148,11 +1405,18 @@ def driving_routes(request):
     """Страница с автомобильными маршрутами"""
     routes = Route.objects.filter(route_type="driving", is_active=True).prefetch_related('photos')
 
+    user_favorites_ids = []
+    if request.user.is_authenticated:
+        user_favorites_ids = Favorite.objects.filter(
+            user=request.user
+        ).values_list("route_id", flat=True)
+
     context = {
         "routes": routes,
         "page_title": "Автомобильные маршруты",
         "route_type": "driving",
         "total_count": routes.count(),
+        "user_favorites_ids": list(user_favorites_ids),
     }
     return render(request, "routes/filtered_routes.html", context)
 
@@ -1160,23 +1424,36 @@ def cycling_routes(request):
     """Страница с велосипедными маршрутами"""
     routes = Route.objects.filter(route_type="cycling", is_active=True).prefetch_related('photos')
 
+    user_favorites_ids = []
+    if request.user.is_authenticated:
+        user_favorites_ids = Favorite.objects.filter(
+            user=request.user
+        ).values_list("route_id", flat=True)
+
     context = {
         "routes": routes,
         "page_title": "Велосипедные маршруты",
         "route_type": "cycling",
         "total_count": routes.count(),
+        "user_favorites_ids": list(user_favorites_ids),
     }
     return render(request, "routes/filtered_routes.html", context)
 
 def adventure_routes(request):
     """Страница с приключенческими маршрутами"""
-    routes = Route.objects.filter(mood="adventure", is_active=True).prefetch_related('photos')
+    routes = Route.objects.filter(is_active=True).prefetch_related('photos')
+
+    user_favorites_ids = []
+    if request.user.is_authenticated:
+        user_favorites_ids = Favorite.objects.filter(
+            user=request.user
+        ).values_list("route_id", flat=True)
 
     context = {
         "routes": routes,
         "page_title": "Приключенческие маршруты",
-        "mood_type": "adventure",
         "total_count": routes.count(),
+        "user_favorites_ids": list(user_favorites_ids),
     }
     return render(request, "routes/filtered_routes.html", context)
 
@@ -1185,7 +1462,6 @@ def search_routes(request):
     """Отдельная view для поиска"""
     query = request.GET.get("q", "")
     route_type = request.GET.get("type", "")
-    mood = request.GET.get("mood", "")
 
     routes = Route.objects.filter(is_active=True)
 
@@ -1199,15 +1475,18 @@ def search_routes(request):
     if route_type:
         routes = routes.filter(route_type=route_type)
 
-    if mood:
-        routes = routes.filter(mood=mood)
+    user_favorites_ids = []
+    if request.user.is_authenticated:
+        user_favorites_ids = Favorite.objects.filter(
+            user=request.user
+        ).values_list("route_id", flat=True)
 
     context = {
         "routes": routes,
         "query": query,
         "route_type": route_type,
-        "mood": mood,
         "total_count": routes.count(),
+        "user_favorites_ids": list(user_favorites_ids),
     }
     return render(request, "routes/search_results.html", context)
 
@@ -1215,7 +1494,47 @@ def search_routes(request):
 class RouteCreateView(LoginRequiredMixin, View):
     def post(self, request):
         try:
-            data = json.loads(request.body)
+            # КРИТИЧНО: Кэшируем body ОДИН РАЗ в начале
+            try:
+                cached_body = request.body
+                if isinstance(cached_body, bytes):
+                    cached_body = cached_body.decode('utf-8')
+            except Exception as e:
+                print(f"❌ Ошибка при кэшировании body: {e}")
+                return JsonResponse({"success": False, "error": "Ошибка при чтении данных запроса"})
+            
+            data = {}
+            point_photo_files = {}
+            
+            # Проверяем формат данных
+            content_type = request.META.get('CONTENT_TYPE', '')
+            print(f"📋 Content-Type: {content_type}")
+            
+            if 'application/json' in content_type:
+                # JSON формат - используем кэшированный body
+                try:
+                    data = json.loads(cached_body)
+                    print("📝 Получены данные в формате JSON для создания маршрута")
+                except Exception as e:
+                    print(f"❌ Ошибка при парсинге JSON: {e}")
+                    return JsonResponse({"success": False, "error": f"Ошибка при чтении JSON: {str(e)}"})
+            else:
+                # FormData формат
+                try:
+                    # Парсим route_data из POST
+                    route_data_str = request.POST.get('route_data', '{}')
+                    data = json.loads(route_data_str)
+                    print("📁 Получены данные в FormData для создания маршрута")
+                    print(f"POST ключи: {list(request.POST.keys())}")
+                    print(f"FILES ключи: {list(request.FILES.keys())}")
+                except Exception as e:
+                    print(f"❌ Ошибка парсинга FormData: {e}")
+                    return JsonResponse({"success": False, "error": f"Ошибка при обработке FormData: {str(e)}"})
+                
+                # Извлекаем файлы фото точек из FILES
+                for key, file in request.FILES.items():
+                    print(f"  📷 Файл: {key} - {file.name} ({file.size} байт)")
+                    point_photo_files[key] = file
 
             # Валидация обязательных полей
             if not data.get("name"):
@@ -1241,12 +1560,11 @@ class RouteCreateView(LoginRequiredMixin, View):
                 short_description=data.get("short_description", ""),
                 privacy=data.get("privacy", "public"),
                 route_type=data.get("route_type", "walking"),
-                mood=data.get("mood", ""),
-                theme=data.get("theme", ""),
                 duration_minutes=data.get("duration_minutes", 0),
                 total_distance=data.get("total_distance", 0),
                 has_audio_guide=data.get("has_audio_guide", False),
                 is_elderly_friendly=data.get("is_elderly_friendly", False),
+                duration_display=data.get("duration_display", ""),
             )
 
             # Добавляем фото маршрута
@@ -1279,25 +1597,41 @@ class RouteCreateView(LoginRequiredMixin, View):
                     latitude=point_data.get("lat", 0),
                     longitude=point_data.get("lng", 0),
                     category=point_data.get("category", ""),
-                    hint_author=point_data.get("hint_author", ""),
-                    tags=point_data.get("tags", []),
                     order=i,
                 )
 
-                # Добавляем фото точки
+                # Обрабатываем загруженные файлы фото точки (из FormData)
+                main_photo_key = f"point_{i}_main_photo"
+                if main_photo_key in point_photo_files:
+                    file_obj = point_photo_files[main_photo_key]
+                    save_base64_photo(file_obj, point, PointPhoto, order=0)
+                    print(f"  ✅ Добавлено основное фото из файла: {file_obj.name}")
+                
+                # Дополнительные фото из файлов
+                additional_counter = 0
+                while True:
+                    additional_key = f"point_{i}_additional_{additional_counter}"
+                    if additional_key not in point_photo_files:
+                        break
+                    file_obj = point_photo_files[additional_key]
+                    save_base64_photo(file_obj, point, PointPhoto, order=additional_counter + 1)
+                    print(f"  ✅ Добавлено доп. фото {additional_counter} из файла: {file_obj.name}")
+                    additional_counter += 1
+
+                # Добавляем фото точки из JSON (URLs и data-urls)
                 point_photos = point_data.get("photos", [])
                 for j, photo_data in enumerate(point_photos):
                     if photo_data:
                         try:
-                            if photo_data.startswith("data:"):
+                            if isinstance(photo_data, str) and photo_data.startswith("data:"):
                                 save_base64_photo(
-                                    photo_data, point, PointPhoto, order=j
+                                    photo_data, point, PointPhoto, order=j + additional_counter
                                 )
-                            elif photo_data.startswith(
+                            elif isinstance(photo_data, str) and (photo_data.startswith(
                                 "/uploads/"
-                            ) or photo_data.startswith("/media/"):
+                            ) or photo_data.startswith("/media/")):
                                 copy_existing_photo(
-                                    photo_data, point, PointPhoto, order=j
+                                    photo_data, point, PointPhoto, order=j + additional_counter
                                 )
                         except Exception as e:
                             print(f"Ошибка сохранения фото точки: {e}")
@@ -1328,7 +1662,68 @@ class RouteUpdateView(LoginRequiredMixin, View):
     def put(self, request, pk):
         try:
             route = get_object_or_404(Route, id=pk, author=request.user)
-            data = json.loads(request.body)
+            
+            # Проверяем формат данных - JSON или FormData
+            content_type = request.content_type or ''
+            print(f"🔍 content_type: {repr(content_type)}")
+            
+            if 'application/json' in content_type:
+                # JSON формат
+                print(f"  → JSON format detected")
+                data = json.loads(request.body)
+            else:
+                # FormData формат
+                print(f"  → FormData format detected")
+                print(f"  POST.keys(): {list(request.POST.keys())}")
+                print(f"  FILES.keys(): {list(request.FILES.keys())}")
+                
+                # Преобразуем POST в словарь
+                data = request.POST.dict()
+                
+                # DEBUG: Показываем все значения из POST
+                print(f"  POST values:")
+                for key, value in request.POST.items():
+                    value_str = str(value)[:100] if isinstance(value, str) else str(value)
+                    print(f"    {key}: {value_str}")
+                
+                # Добавляем файлы
+                if 'main_photo' in request.FILES:
+                    data['main_photo'] = request.FILES['main_photo']
+                
+                # Добавляем остальные файлы фото
+                for key in request.FILES:
+                    if key.startswith('additional_photos_'):
+                        data[key] = request.FILES[key]
+                
+                # Парсим JSON поля если они есть
+                if 'photos_data' in data:
+                    print(f"  ✅ photos_data найдена в POST: {data['photos_data'][:100]}...")
+                    try:
+                        data['photos_data'] = json.loads(data['photos_data'])
+                    except (json.JSONDecodeError, TypeError) as e:
+                        print(f"  ❌ Ошибка парсинга photos_data: {e}")
+                else:
+                    print(f"  ❌ photos_data НЕ найдена в POST")
+                
+                if 'removed_photo_ids' in data:
+                    try:
+                        data['removed_photo_ids'] = json.loads(data['removed_photo_ids'])
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+                
+                if 'route_data' in data:
+                    try:
+                        data['route_data'] = json.loads(data['route_data'])
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+            
+            print(f"\n{'='*80}")
+            print(f"🎯 API PUT /routes/api/routes/{pk}/")
+            print(f"{'='*80}")
+            print(f"Ключи данных: {list(data.keys())}")
+            print(f"main_photo_id: {data.get('main_photo_id')}")
+            print(f"photos_data: {data.get('photos_data')}")
+            print(f"route_photos: {data.get('route_photos')}")
 
             # Обновляем маршрут
             route.name = data.get("name", route.name)
@@ -1338,8 +1733,6 @@ class RouteUpdateView(LoginRequiredMixin, View):
             )
             route.privacy = data.get("privacy", route.privacy)
             route.route_type = data.get("route_type", route.route_type)
-            route.mood = data.get("mood", route.mood)
-            route.theme = data.get("theme", route.theme)
             route.duration_minutes = data.get(
                 "duration_minutes", route.duration_minutes
             )
@@ -1353,11 +1746,66 @@ class RouteUpdateView(LoginRequiredMixin, View):
                 "is_elderly_friendly", route.is_elderly_friendly
             )
             route.is_active = data.get("is_active", route.is_active)
+            route.duration_display = data.get("duration_display", route.duration_display)
             route.save()
 
-            # Удаляем старые точки и фото
-            route.points.all().delete()
-            route.photos.all().delete()
+            # Сохраняем фото существующих точек (чтобы восстановить, если фронтенд не прислал фото)
+            old_point_photos = {}
+            old_points_qs = route.points.all()
+            old_points = {p.id: p for p in old_points_qs}
+            for old_point in old_points_qs:
+                photos_for_point = []
+                for photo in old_point.photos.all().order_by("order"):
+                    photos_for_point.append({
+                        "url": photo.image.url if photo.image else "",
+                        "caption": photo.caption or "",
+                        "order": photo.order
+                    })
+                if photos_for_point:
+                    old_point_photos[old_point.id] = photos_for_point
+
+            # Если клиент указал явный список удаляемых фото — удаляем только их.
+            removed_photo_ids = data.get('removed_photo_ids', [])
+            if removed_photo_ids:
+                for photo_id in removed_photo_ids:
+                    try:
+                        photo = RoutePhoto.objects.get(id=photo_id, route=route)
+                        photo.delete()
+                    except RoutePhoto.DoesNotExist:
+                        pass
+
+            # === ОБРАБОТКА ГЛАВНОГО ФОТО ===
+            # Проверяем есть ли данные о главном фото
+            main_photo_id = data.get("main_photo_id")
+            
+            # Если main_photo_id в photos_data, используем оттуда
+            photos_data = data.get("photos_data")
+            if photos_data and isinstance(photos_data, dict):
+                main_photo_id = photos_data.get("main_photo_id", main_photo_id)
+            
+            if main_photo_id:
+                print(f"🎯 API PUT: Установка главного фото ID {main_photo_id}")
+                try:
+                    main_photo_id = int(main_photo_id)
+                    main_photo = RoutePhoto.objects.filter(id=main_photo_id, route=route).first()
+                    if main_photo:
+                        # Сбрасываем is_main для всех
+                        RoutePhoto.objects.filter(route=route).update(is_main=False)
+                        # Устанавливаем это фото как главное
+                        main_photo.is_main = True
+                        main_photo.order = 0
+                        main_photo.save()
+                        print(f"  ✅ Фото {main_photo_id} установлено как главное")
+                        
+                        # Переиндексируем остальные фото
+                        other_photos = RoutePhoto.objects.filter(route=route).exclude(id=main_photo_id).order_by('id')
+                        for idx, photo in enumerate(other_photos, start=1):
+                            photo.order = idx
+                            photo.save()
+                    else:
+                        print(f"  ❌ Фото {main_photo_id} не найдено")
+                except (ValueError, TypeError) as e:
+                    print(f"  ❌ Ошибка: {e}")
 
             # Добавляем фото маршрута
             route_photos = data.get("route_photos", [])
@@ -1378,40 +1826,101 @@ class RouteUpdateView(LoginRequiredMixin, View):
                         print(f"Ошибка сохранения фото маршрута: {e}")
                         continue
 
-            # Добавляем точки
+            # Обновляем/создаём точки (не удаляем все сразу)
             waypoints_data = data.get("waypoints", [])
-            for i, point_data in enumerate(waypoints_data):
-                point = RoutePoint.objects.create(
-                    route=route,
-                    name=point_data.get("name", f"Точка {i+1}"),
-                    description=point_data.get("description", ""),
-                    address=point_data.get("address", ""),
-                    latitude=point_data.get("lat", 0),
-                    longitude=point_data.get("lng", 0),
-                    category=point_data.get("category", ""),
-                    hint_author=point_data.get("hint_author", ""),
-                    tags=point_data.get("tags", []),
-                    order=i,
-                )
 
-                # Добавляем фото точки
-                point_photos = point_data.get("photos", [])
-                for j, photo_data in enumerate(point_photos):
-                    if photo_data:
+            # Нормализуем входящие ID точек
+            incoming_ids = []
+            for pd in waypoints_data:
+                pid = pd.get('id')
+                if pid:
+                    try:
+                        incoming_ids.append(int(pid))
+                    except Exception:
+                        incoming_ids.append(pid)
+
+            # Удаляем только те точки, которые отсутствуют во входящих данных
+            if incoming_ids:
+                to_delete_qs = route.points.exclude(id__in=incoming_ids)
+                deleted_count = to_delete_qs.count()
+                if deleted_count:
+                    to_delete_qs.delete()
+            else:
+                # Если incoming_ids пуст — не трогаем существующие точки
+                pass
+
+            for i, point_data in enumerate(waypoints_data):
+                point_name = point_data.get("name", f"Точка {i+1}")
+                incoming_id = point_data.get('id')
+                incoming_id_key = None
+                if incoming_id is not None:
+                    try:
+                        incoming_id_key = int(incoming_id)
+                    except Exception:
+                        incoming_id_key = incoming_id
+
+                if incoming_id_key and incoming_id_key in old_points:
+                    # Обновляем существующую точку
+                    point = old_points[incoming_id_key]
+                    point.name = point_name
+                    point.description = point_data.get('description', '')
+                    point.address = point_data.get('address', '')
+                    point.latitude = point_data.get('lat', point.latitude)
+                    point.longitude = point_data.get('lng', point.longitude)
+                    point.category = point_data.get('category', point.category)
+                    point.order = i
+                    point.save()
+                else:
+                    # Создаём новую точку
+                    point = RoutePoint.objects.create(
+                        route=route,
+                        name=point_name,
+                        description=point_data.get('description', ''),
+                        address=point_data.get('address', ''),
+                        latitude=point_data.get('lat', point_data.get('latitude', 0)),
+                        longitude=point_data.get('lng', point_data.get('longitude', 0)),
+                        category=point_data.get('category', ''),
+                        order=i,
+                    )
+
+                # === ОБРАБОТКА ФОТО ТОЧКИ (БЕЗ АВТОМАТИЧЕСКОГО УДАЛЕНИЯ!) ===
+                point_photos = point_data.get('photos', None)
+
+                # 1. Удаляем только явно указанные фото (из removed_point_photo_ids)
+                removed_point_photo_ids = data.get('removed_point_photo_ids', [])
+                if isinstance(removed_point_photo_ids, list):
+                    for photo_id in removed_point_photo_ids:
                         try:
-                            if photo_data.startswith("data:"):
-                                save_base64_photo(
-                                    photo_data, point, PointPhoto, order=j
-                                )
-                            elif photo_data.startswith(
-                                "/uploads/"
-                            ) or photo_data.startswith("/media/"):
-                                copy_existing_photo(
-                                    photo_data, point, PointPhoto, order=j
-                                )
-                        except Exception as e:
-                            print(f"Ошибка сохранения фото точки: {e}")
+                            photo = PointPhoto.objects.get(id=photo_id, point=point)
+                            photo.delete()
+                            print(f"🗑️ Удалено фото точки ID: {photo_id}")
+                        except PointPhoto.DoesNotExist:
+                            pass
+
+                # 2. Добавляем/сохраняем фото ТОЛЬКО если они присланы
+                if isinstance(point_photos, list):
+                    # НЕ удаляем старые фото! Только добавляем/сохраняем новые
+                    for j, photo_data in enumerate(point_photos):
+                        if not photo_data:
                             continue
+                        try:
+                            if isinstance(photo_data, str) and photo_data.startswith('data:'):
+                                save_base64_photo(photo_data, point, PointPhoto, order=j)
+                            elif isinstance(photo_data, str) and (photo_data.startswith('/uploads/') or photo_data.startswith('/media/')):
+                                copy_existing_photo(photo_data, point, PointPhoto, order=j)
+                            elif isinstance(photo_data, dict):
+                                photo_url = photo_data.get('url', '')
+                                caption = photo_data.get('caption', '')
+                                if photo_url.startswith('data:'):
+                                    save_base64_photo(photo_url, point, PointPhoto, order=j, caption=caption)
+                                elif photo_url.startswith('/uploads/') or photo_url.startswith('/media/'):
+                                    copy_existing_photo(photo_url, point, PointPhoto, order=j, caption=caption)
+                        except Exception as e:
+                            print(f"Ошибка сохранения фото точки {point.id}: {e}")
+                            continue
+                else:
+                    # Если 'photos' вообще не передано — оставляем как есть (не трогаем)
+                    print(f"ℹ️ Фото для точки {point.id} не переданы → оставляем текущие")
 
             return JsonResponse(
                 {"success": True, "route_id": route.id, "id": route.id}

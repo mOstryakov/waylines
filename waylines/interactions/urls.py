@@ -25,7 +25,4 @@ urlpatterns = [
         interactions.views.delete_comment,
         name="delete_comment",
     ),
-    path(
-        "my-favorites/", interactions.views.my_favorites, name="my_favorites"
-    ),
 ]

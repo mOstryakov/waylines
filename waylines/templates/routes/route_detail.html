@@ -226,7 +226,7 @@ audio::-webkit-media-controls-time-remaining-display {
 }
 
 .route-walking { border-left: 4px solid #48bb78; }
-.route-driving { border-left: px solid #2563eb; }
+.route-driving { border-left: 4px solid #2563eb; }
 .route-cycling { border-left: 4px solid #f59e0b; }
 
 /* Стили для галереи */
@@ -412,32 +412,14 @@ audio::-webkit-media-controls-time-remaining-display {
 {% endblock %}
 
 {% block content %}
-<div style="background: #e3f2fd; padding: 15px; margin: 10px; border-radius: 8px; border: 2px solid #2196f3;">
-    <h6>🔍 Отладка фото в route_detail:</h6>
-    <p><strong>Route ID:</strong> {{ route.id }}</p>
-    <p><strong>Route Photos:</strong> {{ route.photos.count }} шт.</p>
-    
-    {% for photo in route.photos.all %}
-    <p>📷 Фото {{ forloop.counter }}: <code>{{ photo.image.url }}</code></p>
-    {% empty %}
-    <p>❌ Нет фото маршрута</p>
-    {% endfor %}
-    
-    <p><strong>Points Photos:</strong></p>
-    {% for point in points %}
-    <p>📍 Точка "{{ point.name }}": {{ point.photos.count }} фото</p>
-    {% for photo in point.photos.all %}
-    <p style="margin-left: 20px;">📸 <code>{{ photo.image.url }}</code></p>
-    {% endfor %}
-    {% endfor %}
-</div>
-
 <div class="route-detail-page">
     <div class="route-hero position-relative mb-4">
         {% if route.photos.all %}
         <div class="route-hero-carousel">
+            {# Сначала показываем главное фото #}
             {% for photo in route.photos.all %}
-            <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                {% if photo.is_main %}
+            <div class="carousel-item active">
                 <div class="hero-image" style="background-image: url('{{ photo.image.url }}');"></div>
                 {% if photo.caption %}
                 <div class="hero-caption">
@@ -447,6 +429,22 @@ audio::-webkit-media-controls-time-remaining-display {
                 </div>
                 {% endif %}
             </div>
+                {% endif %}
+            {% endfor %}
+            {# Затем показываем остальные фото #}
+            {% for photo in route.photos.all %}
+                {% if not photo.is_main %}
+            <div class="carousel-item">
+                <div class="hero-image" style="background-image: url('{{ photo.image.url }}');"></div>
+                {% if photo.caption %}
+                <div class="hero-caption">
+                    <div class="container">
+                        <p class="mb-0 text-white">{{ photo.caption }}</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+                {% endif %}
             {% endfor %}
         </div>
         {% else %}
@@ -569,9 +567,20 @@ audio::-webkit-media-controls-time-remaining-display {
                 <div class="card border-0 shadow-sm mb-4">
                     <div class="card-body">
                         <h5 class="card-title text-dark mb-3">О маршруте</h5>
-                        {% if route.description %}
+                        {% if route.short_description or route.description %}
                         <div class="route-description description-container">
-                            {{ route.description|linebreaks }}
+                            <!-- Сначала показываем короткое описание, если оно есть -->
+                            {% if route.short_description %}
+                                <p>{{ route.short_description }}</p>
+                            {% endif %}
+                            
+                            <!-- Затем полное описание -->
+                            {% if route.description %}
+                                {% if route.short_description %}
+                                    <hr class="my-3">
+                                {% endif %}
+                                {{ route.description|linebreaks }}
+                            {% endif %}
                         </div>
                         {% else %}
                         <p class="text-muted">Описание отсутствует</p>
@@ -587,7 +596,23 @@ audio::-webkit-media-controls-time-remaining-display {
                                 </div>
                                 <div class="col-sm-4">
                                     <div class="stat-item text-center">
-                                        <div class="stat-value text-success">{{ route.duration_minutes }} мин</div>
+                                        <div class="stat-value text-success">
+                                            {% if route.duration_display %}
+                                                {{ route.duration_display }}
+                                            {% elif route.duration_minutes %}
+                                                {% if route.duration_minutes >= 1440 %}
+                                                    {% widthratio route.duration_minutes 1440 1 as days %}
+                                                    {{ days|floatformat:0 }} д
+                                                {% elif route.duration_minutes >= 60 %}
+                                                    {% widthratio route.duration_minutes 60 1 as hours %}
+                                                    {{ hours|floatformat:0 }} ч
+                                                {% else %}
+                                                    {{ route.duration_minutes }} мин
+                                                {% endif %}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </div>
                                         <div class="stat-label text-muted small">Время</div>
                                     </div>
                                 </div>
@@ -865,11 +890,11 @@ audio::-webkit-media-controls-time-remaining-display {
                 <div class="card border-0 shadow-sm mb-4">
                     <div class="card-body text-center">
                         <div class="rating-display mb-3">
-                            <div class="rating-score text-dark">{{ route.get_average_rating|default:0|floatformat:1 }}</div>
+                            <div class="rating-score text-dark">{{ route.get_average_rating|floatformat:1 }}</div>
                             <div class="rating-stars mb-2">
-                                {% with rating=route.get_average_rating|default:0 %}
+                                {% with rating=route.get_average_rating|floatformat:1 %}
                                 {% for i in "12345" %}
-                                    {% if forloop.counter <= rating %}
+                                    {% if forloop.counter <= rating|add:"0" %}
                                     <i class="fas fa-star text-warning"></i>
                                     {% else %}
                                     <i class="far fa-star text-warning"></i>
@@ -877,7 +902,7 @@ audio::-webkit-media-controls-time-remaining-display {
                                 {% endfor %}
                                 {% endwith %}
                             </div>
-                            <small class="text-muted">на основе {{ route.ratings.count }} оценок</small>
+                            <small class="text-muted">на основе {{ route.get_ratings_count }} оценок</small>
                         </div>
 
                         {% if user.is_authenticated and route.author != user %}
@@ -893,6 +918,7 @@ audio::-webkit-media-controls-time-remaining-display {
                                     {% endfor %}
                                 </div>
                                 <input type="hidden" name="score" id="rating-score" value="{{ user_rating|default:0 }}">
+                                <button type="submit" class="btn btn-primary btn-sm mt-2">Оценить</button>
                             </form>
                         </div>
                         {% endif %}
@@ -1563,6 +1589,62 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    // Обработка рейтинга
+    const ratingForm = document.getElementById('rating-form');
+    const ratingScoreInput = document.getElementById('rating-score');
+    const starButtons = document.querySelectorAll('.star-btn');
+
+    if (ratingForm && starButtons.length > 0) {
+        // Обновляем отображение звезд
+        function updateStars(rating) {
+            starButtons.forEach((btn, index) => {
+                const star = btn.querySelector('i');
+                const starValue = index + 1;
+                
+                if (starValue <= rating) {
+                    star.classList.remove('far');
+                    star.classList.add('fas');
+                } else {
+                    star.classList.remove('fas');
+                    star.classList.add('far');
+                }
+            });
+        }
+        
+        // Обработка клика на звезду
+        starButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const rating = parseInt(this.dataset.rating);
+                
+                // Устанавливаем значение в скрытое поле
+                ratingScoreInput.value = rating;
+                
+                // Обновляем отображение звезд
+                updateStars(rating);
+                
+                // Показываем сообщение о выборе
+                showToast(`Вы выбрали ${rating} звезд(ы)`, 'info');
+            });
+        });
+        
+        // Инициализация текущего рейтинга пользователя
+        if (ratingScoreInput.value && ratingScoreInput.value !== '0') {
+            updateStars(parseInt(ratingScoreInput.value));
+        }
+        
+        // Обработка отправки формы
+        ratingForm.addEventListener('submit', function(e) {
+            if (ratingScoreInput.value === '0') {
+                e.preventDefault();
+                showToast('Пожалуйста, выберите оценку', 'warning');
+                return;
+            }
+            
+            // Можно добавить AJAX отправку, если нужно
+            // Для простоты оставляем стандартную отправку формы
+        });
+    }
     
     // Отладочная информация в консоль
     console.log('Маршрут загружен:', {

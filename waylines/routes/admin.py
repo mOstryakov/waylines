@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Route, RoutePoint
+from routes.models import Route, RoutePoint
 
 
 class RoutePointInline(admin.TabularInline):

@@ -1,301 +1,2683 @@
 <!-- templates/routes/modals/point_editor_modal.html -->
 <div class="modal fade" id="point-editor-modal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Редактирование точки</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form id="point-form">
-                    <input type="hidden" id="edit-point-index">
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Название точки *</label>
-                                <input type="text" id="point-name" class="form-control" required>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label class="form-label">Категория</label>
-                                <select id="point-category" class="form-select">
-                                    <option value="">Выберите категорию</option>
-                                    <option value="attraction">Изюминка</option>
-                                    <option value="nature">Естественная</option>
-                                    <option value="forest">Лес</option>
-                                    <option value="bus_stop">Автобусная остановка</option>
-                                    <option value="viewpoint">Смотровая площадка</option>
-                                    <option value="restaurant">Ресторан</option>
-                                    <option value="hotel">Отель</option>
-                                    <option value="museum">Музей</option>
-                                    <option value="park">Парк</option>
-                                    <option value="monument">Памятник</option>
-                                    <option value="church">Храм</option>
-                                    <option value="beach">Пляж</option>
-                                </select>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label class="form-label">Адрес</label>
-                                <input type="text" id="point-address" class="form-control">
-                                <div class="form-text">Если адрес не определился автоматически, введите его вручную</div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Координаты</label>
-                                <div class="input-group mb-1">
-                                    <span class="input-group-text">Широта</span>
-                                    <input type="text" id="point-lat" class="form-control" readonly>
-                                </div>
-                                <div class="input-group">
-                                    <span class="input-group-text">Долгота</span>
-                                    <input type="text" id="point-lng" class="form-control" readonly>
-                                </div>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label class="form-label">Автор подсказки</label>
-                                <input type="text" id="point-hint-author" class="form-control" placeholder="Имя автора подсказки">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Описание</label>
-                        <textarea id="point-description" class="form-control" rows="3" placeholder="Расскажите об этом месте..."></textarea>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Теги</label>
-                        <input type="text" id="point-tags" class="form-control" placeholder="тег1, тег2, тег3...">
-                        <div class="form-text">Введите теги через запятую</div>
-                    </div>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fas fa-map-marker-alt text-primary me-2"></i>
+          Редактирование точки
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="point-form">
+          <!-- Скрытые поля -->
+          <input type="hidden" id="edit-point-index">
+          <input type="hidden" id="edit-point-id">
 
-                    <!-- СЕКЦИЯ ФОТОГРАФИЙ ТОЧКИ (КОМПАКТНАЯ) -->
-                    <div class="mb-4">
-                        <label class="form-label fw-bold mb-3">
-                            <i class="fas fa-camera me-2"></i>Фотографии места
-                            <small class="text-muted">(до 5 фото, только для этой точки)</small>
+          <div class="row">
+            <!-- Левая колонка -->
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Название точки *</label>
+                <input type="text" id="point-name" class="form-control border-0 bg-light" required
+                       placeholder="Введите название точки"
+                       style="border-radius: 12px; padding: 12px 16px;">
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Категория</label>
+                <select id="point-category" class="form-select border-0 bg-light" 
+                        style="border-radius: 12px; padding: 12px 16px;">
+                  <option value="">Выберите категорию</option>
+                  <option value="attraction">🏛️ Изюминка</option>
+                  <option value="nature">🌿 Естественная</option>
+                  <option value="forest">🌲 Лес</option>
+                  <option value="bus_stop">🚌 Автобусная остановка</option>
+                  <option value="viewpoint">👁️ Смотровая площадка</option>
+                  <option value="restaurant">🍽️ Ресторан</option>
+                  <option value="hotel">🏨 Отель</option>
+                  <option value="museum">🏛️ Музей</option>
+                  <option value="park">🌳 Парк</option>
+                  <option value="monument">🗽 Памятник</option>
+                  <option value="church">⛪ Храм</option>
+                  <option value="beach">🏖️ Пляж</option>
+                </select>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Адрес</label>
+                <input type="text" id="point-address" class="form-control border-0 bg-light"
+                       placeholder="Адрес места"
+                       style="border-radius: 12px; padding: 12px 16px;">
+                <div class="form-text small text-muted mt-1">
+                  Если адрес не определился автоматически, введите его вручную
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Автор подсказки</label>
+                <input type="text" id="point-hint-author" class="form-control border-0 bg-light"
+                       placeholder="Имя автора подсказки"
+                       style="border-radius: 12px; padding: 12px 16px;">
+              </div>
+            </div>
+
+            <!-- Правая колонка -->
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Координаты</label>
+                <div class="coord-inputs">
+                  <div class="input-group mb-2">
+                    <span class="input-group-text bg-light border-0" style="border-radius: 12px 0 0 12px;">
+                      <i class="fas fa-latitude me-1"></i>Широта
+                    </span>
+                    <input type="text" id="point-lat" class="form-control border-0 bg-light" readonly
+                           style="border-radius: 0 12px 12px 0;">
+                  </div>
+                  <div class="input-group">
+                    <span class="input-group-text bg-light border-0" style="border-radius: 12px 0 0 12px;">
+                      <i class="fas fa-longitude me-1"></i>Долгота
+                    </span>
+                    <input type="text" id="point-lng" class="form-control border-0 bg-light" readonly
+                           style="border-radius: 0 12px 12px 0;">
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Теги</label>
+                <input type="text" id="point-tags" class="form-control border-0 bg-light"
+                       placeholder="тег1, тег2, тег3..."
+                       style="border-radius: 12px; padding: 12px 16px;">
+                <div class="form-text small text-muted mt-1">
+                  Введите теги через запятую
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Описание точки</label>
+            <textarea id="point-description" class="form-control border-0 bg-light" rows="4" 
+                      placeholder="Расскажите об этом месте..."
+                      style="border-radius: 12px; padding: 12px 16px; resize: none;"></textarea>
+          </div>
+
+          <!-- СЕКЦИЯ ФОТОГРАФИЙ ТОЧКИ -->
+          <div class="card border-0 bg-light mb-4">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                  <h6 class="fw-bold text-dark mb-1">
+                    <i class="fas fa-camera text-primary me-2"></i>
+                    Фотографии точки
+                  </h6>
+                  <p class="small text-muted mb-0">Добавьте фото этого места</p>
+                </div>
+                <span class="badge bg-primary bg-opacity-10 text-primary" id="photo-count-badge">0/5 фото</span>
+              </div>
+
+              <!-- Галерея фото точки -->
+              <div class="point-photos-section">
+                <label class="form-label fw-semibold small text-muted mb-3 d-block">
+                  Загрузите фото. Нажмите на ⭐ чтобы сделать фото главным
+                </label>
+
+                <div class="additional-photos-grid" id="point-photos-grid">
+                  <!-- Фотографии будут загружены сюда -->
+                  <!-- Кнопка добавления новых фото -->
+                  <div class="additional-photo-upload"
+                       onclick="document.getElementById('point-photos-input').click()">
+                    <input type="file" id="point-photos-input" class="d-none" accept="image/*" multiple>
+                    <i class="fas fa-plus-circle fa-2x text-muted mb-2"></i>
+                    <div class="small text-muted fw-medium">Добавить фото</div>
+                  </div>
+                </div>
+
+                <!-- Подсказка про главное фото -->
+                <div class="mt-3 pt-3 border-top border-opacity-25">
+                  <div class="alert alert-info bg-primary bg-opacity-10 border-primary border-opacity-25 small mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Главное фото отмечено золотой звездой ⭐
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- СЕКЦИЯ АУДИОГИДА -->
+          <div class="card border-0 bg-light mb-4">
+            <div class="card-body">
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <div>
+                  <h6 class="fw-bold text-dark mb-1">
+                    <i class="fas fa-headphones text-primary me-2"></i>
+                    Аудиогид точки
+                  </h6>
+                  <p class="small text-muted mb-0">Запишите, загрузите или сгенерируйте AI-аудио</p>
+                </div>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="enable-audio-guide" checked>
+                  <label class="form-check-label small fw-medium" for="enable-audio-guide">
+                    Включить аудио
+                  </label>
+                </div>
+              </div>
+
+              <!-- Аудиоплеер (показывается когда аудио есть) -->
+              <div class="audio-player mb-3" id="point-audio-player" style="display: none;">
+                <div class="card bg-white border-0 shadow-sm">
+                  <div class="card-body">
+                    <div class="d-flex align-items-center gap-3">
+                      <button class="btn btn-outline-primary btn-sm rounded-circle audio-play-btn" 
+                              style="width: 40px; height: 40px;" type="button">
+                        <i class="fas fa-play"></i>
+                      </button>
+                      <div class="flex-grow-1">
+                        <div class="d-flex align-items-center mb-1">
+                          <div class="progress flex-grow-1" style="height: 6px;">
+                            <div class="audio-progress progress-bar" role="progressbar" style="width: 0%"></div>
+                          </div>
+                          <div class="ms-2 audio-duration small text-muted">0:00</div>
+                        </div>
+                        <div class="small text-muted" id="audio-filename">Запись аудиогида</div>
+                      </div>
+                      <div class="d-flex gap-2">
+                        <button class="btn btn-outline-secondary btn-sm" id="re-record-audio" title="Перезаписать" type="button">
+                          <i class="fas fa-redo"></i>
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" id="remove-audio" title="Удалить аудио" type="button">
+                          <i class="fas fa-trash"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Аудиорекордер (показывается когда аудио нет) -->
+              <div class="audio-recorder" id="point-audio-recorder">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <button class="btn btn-primary w-100" id="start-audio-record" type="button">
+                      <i class="fas fa-microphone me-2"></i>Записать аудио
+                    </button>
+                    <div class="recording-indicator mt-2" id="recording-indicator" style="display: none;">
+                      <div class="d-flex align-items-center justify-content-center gap-2">
+                        <div class="recording-pulse rounded-circle bg-danger" style="width: 12px; height: 12px;"></div>
+                        <span class="small fw-medium" id="recording-timer">00:00</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <button class="btn btn-outline-secondary w-100" id="upload-audio-file" type="button">
+                      <i class="fas fa-upload me-2"></i>Загрузить аудио
+                    </button>
+                    <input type="file" id="audio-file-input" accept="audio/*" style="display: none;">
+                  </div>
+                </div>
+
+                <!-- Визуализатор записи -->
+                <div class="recording-visualizer mt-3" id="recording-visualizer" style="display: none;">
+                  <div class="card bg-white border-0">
+                    <div class="card-body">
+                      <div class="audio-visualizer d-flex align-items-end justify-content-center gap-1" 
+                           id="live-visualizer" style="height: 60px;"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- СЕКЦИЯ AI-ГЕНЕРАЦИИ АУДИО И ЭКСКУРСИЙ -->
+              <div class="ai-audio-generator mt-4" id="ai-audio-generator">
+                <div class="border-top pt-4 mt-4">
+                  <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div>
+                      <h6 class="fw-bold text-dark mb-1">
+                        <i class="fas fa-robot text-primary me-2"></i>
+                        AI-генерация аудиогидов
+                      </h6>
+                      <p class="small text-muted mb-0">Создайте текст экскурсии и аудиогид в один клик</p>
+                    </div>
+                    <span class="badge bg-success bg-opacity-10 text-success">Yandex GPT + SpeechKit</span>
+                  </div>
+
+                  <!-- Блок 1: Настройки синтеза -->
+                  <div class="ai-config-section mb-4">
+                    <div class="row g-3">
+                      <!-- Язык -->
+                      <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Язык</label>
+                        <select class="form-select form-select-sm" id="ai-language-select">
+                          <option value="ru-RU" selected>🇷🇺 Русский</option>
+                          <option value="kk-KK">🇰🇿 Казахский</option>
+                          <option value="uz-UZ">🇺🇿 Узбекский</option>
+                          <option value="en-US">🇺🇸 Английский</option>
+                          <option value="de-DE">🇩🇪 Немецкий</option>
+                          <option value="he-IL">🇮🇱 Иврит</option>
+                      </select>
+                      </div>
+                      
+                      <!-- Голос -->
+                      <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Голос</label>
+                        <select class="form-select form-select-sm" id="ai-voice-select">
+                          <!-- Голоса будут заполнены динамически в зависимости от языка -->
+                        </select>
+                      </div>
+                      
+                      <!-- Амплуа -->
+                      <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Амплуа</label>
+                        <select class="form-select form-select-sm" id="ai-role-select">
+                          <option value="Нейтральный" selected>Нейтральный</option>
+                          <option value="Радостный">Радостный</option>
+                          <option value="Раздраженный">Раздраженный</option>
+                        </select>
+                      </div>
+                    </div>
+                    
+                    <!-- Скорость и высота голоса -->
+                    <div class="row g-3 mt-2">
+                      <div class="col-md-6">
+                        <label class="form-label small fw-semibold d-flex justify-content-between">
+                          <span>Скорость речи</span>
+                          <span id="speed-value" class="text-primary">1x</span>
                         </label>
-                        
-                        <!-- Основное фото точки -->
-                        <div class="main-photo-section mb-3">
-                            <label class="form-label small fw-bold mb-2">Главное фото</label>
-                            <div class="main-photo-upload position-relative border rounded bg-light" 
-                                 style="height: 120px; cursor: pointer;"
-                                 onclick="routeEditor?.openPointMainPhotoUpload()">
-                                <div class="h-100 d-flex flex-column align-items-center justify-content-center text-muted">
-                                    <i class="fas fa-camera fa-lg mb-2"></i>
-                                    <div class="small">Добавить главное фото</div>
-                                    <small class="x-small">Кликните для загрузки</small>
-                                </div>
-                                <div class="main-photo-preview position-absolute top-0 start-0 w-100 h-100" style="display: none;">
-                                    <img src="" class="w-100 h-100 object-fit-cover rounded">
-                                    <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 photo-remove-btn shadow-sm" 
-                                            style="width: 24px; height: 24px; padding: 0; display: flex; align-items: center; justify-content: center;"
-                                            onclick="event.stopPropagation(); routeEditor?.removePointMainPhoto()">
-                                        <i class="fas fa-times" style="font-size: 12px;"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <input type="file" id="main-photo-upload" accept="image/*" style="display: none;">
+                        <div class="d-flex align-items-center gap-2">
+                          <span class="small text-muted">0.1x</span>
+                          <input type="range" class="form-range flex-grow-1" id="speed-slider" 
+                                 min="0.1" max="3" step="0.1" value="1">
+                          <span class="small text-muted">3x</span>
                         </div>
+                      </div>
+                      
+                      <div class="col-md-6">
+                        <label class="form-label small fw-semibold d-flex justify-content-between">
+                          <span>Высота голоса</span>
+                          <span id="pitch-value" class="text-primary">0</span>
+                        </label>
+                        <div class="d-flex align-items-center gap-2">
+                          <span class="small text-muted">-1000</span>
+                          <input type="range" class="form-range flex-grow-1" id="pitch-slider" 
+                                 min="-1000" max="1000" step="10" value="0">
+                          <span class="small text-muted">1000</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Формат аудио -->
+                    <div class="row g-3 mt-3">
+                      <div class="col-md-12">
+                        <label class="form-label small fw-semibold">Формат аудио</label>
+                        <div class="d-flex gap-3">
+                          <div class="form-check">
+                            <input class="form-check-input" type="radio" name="audio-format" id="format-mp3" value="mp3" checked>
+                            <label class="form-check-label small" for="format-mp3">
+                              MP3
+                            </label>
+                          </div>
+                          <div class="form-check">
+                            <input class="form-check-input" type="radio" name="audio-format" id="format-ogg" value="ogg">
+                            <label class="form-check-label small" for="format-ogg">
+                              OggOpus
+                            </label>
+                          </div>
+                          <div class="form-check">
+                            <input class="form-check-input" type="radio" name="audio-format" id="format-wav" value="wav">
+                            <label class="form-check-label small" for="format-wav">
+                              WAV
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
-                        <!-- Дополнительные фото точки -->
-                        <div class="additional-photos-section">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <label class="form-label small fw-bold mb-0">Дополнительные фото</label>
-                                <span class="badge bg-secondary" id="additional-photos-count">0/4</span>
-                            </div>
-                            <div class="additional-photos-grid d-grid gap-2" style="grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));">
-                                <!-- Загруженные фото будут добавляться сюда -->
-                                <!-- Кнопка загрузки всегда последняя -->
-                                <div class="additional-photo-upload border rounded bg-light d-flex align-items-center justify-content-center" 
-                                     style="height: 80px; cursor: pointer;"
-                                     onclick="routeEditor?.openPointAdditionalPhotosUpload()">
-                                    <i class="fas fa-plus text-muted"></i>
-                                </div>
-                            </div>
-                            <input type="file" id="additional-photos-upload" multiple accept="image/*" style="display: none;">
+                  <!-- Блок 2: Выбор типа генерации -->
+                  <div class="generation-type-section mb-4">
+                    <div class="row g-3">
+                      <div class="col-md-12">
+                        <label class="form-label small fw-semibold">Тип генерации</label>
+                        <div class="btn-group w-100" role="group">
+                          <input type="radio" class="btn-check" name="generation-type" id="generate-audio" 
+                                 value="audio" autocomplete="off" checked>
+                          <label class="btn btn-outline-primary" for="generate-audio">
+                            <i class="fas fa-volume-up me-2"></i>Сгенерировать аудио по описанию
+                          </label>
+                          
+                          <input type="radio" class="btn-check" name="generation-type" id="generate-both" 
+                                 value="both" autocomplete="off">
+                          <label class="btn btn-outline-success" for="generate-both">
+                            <i class="fas fa-magic me-2"></i>Сгенерировать описание и аудио
+                          </label>
                         </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Блок 3: Текст для генерации -->
+                  <div class="mb-4" id="audio-from-description-section">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <label class="form-label small fw-semibold mb-0">Текст для аудиогида</label>
+                      <div>
+                        <button class="btn btn-sm btn-outline-secondary" id="use-description-btn" type="button">
+                          <i class="fas fa-sync me-1"></i>Использовать описание точки
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary" id="edit-text-btn" type="button">
+                          <i class="fas fa-edit me-1"></i>Редактировать
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div class="card bg-white border">
+                      <div class="card-body">
+                        <div id="ai-text-preview" 
+                             style="min-height: 150px; max-height: 250px; overflow-y: auto; font-size: 0.9em; line-height: 1.5;"
+                             class="ai-generated-text"
+                             contenteditable="false">
+                          <div class="text-center text-muted py-4">
+                            <i class="fas fa-comment-alt fa-2x mb-2"></i>
+                            <div>Загрузите текст для генерации аудио</div>
+                            <div class="small mt-1">Нажмите "Использовать описание точки" или введите текст вручную</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Блок 4: Настройки генерации описания -->
+                  <div class="mb-4" id="generate-description-section" style="display: none;">
+                    <div class="row g-3">
+                      <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Стиль описания</label>
+                        <select class="form-select form-select-sm" id="description-style">
+                          <option value="storytelling" selected>📖 Рассказ от гида</option>
+                          <option value="historical">🏛️ Исторический</option>
+                          <option value="touristic">👨‍👩‍👧‍👦 Туристический</option>
+                          <option value="poetic">🎭 Поэтический</option>
+                          <option value="scientific">🔬 Научный</option>
+                        </select>
+                      </div>
+                      
+                      <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Длина текста</label>
+                        <select class="form-select form-select-sm" id="description-length">
+                          <option value="short">Краткий (1-2 абзаца)</option>
+                          <option value="medium" selected>Средний (3-4 абзаца)</option>
+                          <option value="long">Подробный (5+ абзацев)</option>
+                        </select>
+                      </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                      <div class="coordinates-info text-muted small">
+                        <i class="fas fa-map-marker-alt me-1"></i>
+                        <span id="current-coordinates-display">Координаты: не указаны</span>
+                      </div>
+                      <div class="form-text small mt-1">
+                        Описание будет сгенерировано на основе координат и адреса точки
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Блок 5: Кнопки управления -->
+                  <div class="ai-controls-section">
+                    <div class="d-grid gap-2">
+                      <button class="btn btn-primary btn-lg" id="ai-generate-main-btn" type="button">
+                        <i class="fas fa-magic me-2"></i>
+                        <span id="generate-btn-text">Сгенерировать аудио</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Блок 6: Прогресс и статус -->
+                  <div class="ai-status-section mt-4">
+                    <div class="ai-generation-progress" id="ai-generation-progress" style="display: none;">
+                      <div class="alert alert-info border-0">
+                        <div class="d-flex align-items-center">
+                          <div class="spinner-border spinner-border-sm me-3" role="status"></div>
+                          <div class="flex-grow-1">
+                            <div class="fw-medium small" id="progress-status">Подготовка...</div>
+                            <div class="progress mt-2" style="height: 4px;">
+                              <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
-                    <!-- СЕКЦИЯ АУДИОГИДА -->
-                    <div class="mb-4">
-                        <div class="audio-guide-section p-4 border rounded">
-                            <div class="d-flex align-items-center justify-content-between mb-3">
-                                <div>
-                                    <h6 class="mb-1">
-                                        <i class="fas fa-headphones me-2"></i>Аудиогид точки
-                                    </h6>
-                                    <p class="small text-muted mb-0">Запишите рассказ об этом месте</p>
-                                </div>
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="enable-audio-guide">
-                                    <label class="form-check-label small" for="enable-audio-guide">
-                                        Включить
-                                    </label>
-                                </div>
-                            </div>
-
-                            <!-- Аудиоплеер -->
-                            <div class="audio-player mb-3" id="audio-player" style="display: none;">
-                                <div class="d-flex align-items-center gap-3">
-                                    <button class="btn btn-outline-primary btn-sm rounded-circle audio-play-btn" style="width: 40px; height: 40px;">
-                                        <i class="fas fa-play"></i>
-                                    </button>
-                                    <div class="flex-grow-1">
-                                        <div class="progress mb-1" style="height: 6px;">
-                                            <div class="audio-progress progress-bar" role="progressbar" style="width: 0%"></div>
-                                        </div>
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <span class="audio-time small" id="audio-current-time">0:00</span>
-                                            <span class="audio-time small" id="audio-duration">0:00</span>
-                                        </div>
-                                    </div>
-                                    <div class="d-flex gap-1">
-                                        <button class="btn btn-outline-secondary btn-sm" id="re-record-audio" title="Перезаписать">
-                                            <i class="fas fa-redo"></i>
-                                        </button>
-                                        <button class="btn btn-outline-danger btn-sm" id="remove-audio" title="Удалить аудио">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Запись аудио -->
-                            <div class="audio-recorder" id="audio-recorder">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <div class="d-flex align-items-center gap-3">
-                                        <button class="btn btn-primary btn-sm rounded-pill px-3" id="start-audio-record">
-                                            <i class="fas fa-microphone me-2"></i>Записать
-                                        </button>
-                                        <div class="recording-indicator" id="recording-indicator" style="display: none;">
-                                            <div class="d-flex align-items-center gap-2">
-                                                <div class="recording-pulse rounded-circle bg-danger" 
-                                                     style="width: 12px; height: 12px;"></div>
-                                                <span class="small" id="recording-timer">00:00</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <button class="btn btn-outline-secondary btn-sm" id="upload-audio-file">
-                                        <i class="fas fa-upload me-1"></i>Загрузить
-                                    </button>
-                                    <input type="file" id="audio-file-input" accept="audio/*" style="display: none;">
-                                </div>
-                                
-                                <!-- Визуализатор при записи -->
-                                <div class="recording-visualizer mt-3" id="recording-visualizer" style="display: none;">
-                                    <div class="audio-waveform">
-                                        <div class="audio-visualizer d-flex align-items-end justify-content-center gap-1" id="live-visualizer" style="height: 40px;"></div>
-                                    </div>
-                                </div>
-                            </div>
+                    <div class="ai-audio-success mt-3" id="ai-audio-success" style="display: none;">
+                      <div class="alert alert-success border-0">
+                        <div class="d-flex align-items-center">
+                          <i class="fas fa-volume-up me-3"></i>
+                          <div class="flex-grow-1">
+                            <div class="fw-medium small">Аудиогид создан!</div>
+                            <div class="small mt-1" id="success-message">Аудио автоматически применено к точке</div>
+                          </div>
+                          <button class="btn btn-success btn-sm" id="play-generated-audio-btn" type="button">
+                            <i class="fas fa-play me-1"></i>Воспроизвести
+                          </button>
                         </div>
+                      </div>
                     </div>
-                </form>
+
+                    <div class="ai-generation-error mt-3" id="ai-generation-error" style="display: none;">
+                      <div class="alert alert-danger border-0">
+                        <div class="d-flex align-items-center">
+                          <i class="fas fa-exclamation-triangle me-3"></i>
+                          <div class="flex-grow-1">
+                            <div class="fw-medium small" id="ai-error-title">Ошибка</div>
+                            <div class="small mt-1" id="ai-error-message"></div>
+                          </div>
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger mt-2" id="retry-ai-generation" type="button">
+                          <i class="fas fa-redo me-1"></i>Повторить
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Информация о аудио -->
+              <div class="mt-3 pt-3 border-top border-opacity-25">
+                <div class="alert alert-warning bg-warning bg-opacity-10 border-warning border-opacity-25 small mb-0">
+                  <i class="fas fa-info-circle me-2"></i>
+                  Поддерживаемые форматы: MP3, WAV, M4A. Максимальный размер - 50MB
+                </div>
+              </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                <button type="button" id="save-point-btn" class="btn btn-primary">Сохранить точку</button>
-            </div>
-        </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+          <i class="fas fa-times me-1"></i>Отмена
+        </button>
+        <button type="button" id="save-point-btn" class="btn btn-primary">
+          <i class="fas fa-save me-1"></i>Сохранить точку
+        </button>
+      </div>
     </div>
+  </div>
 </div>
 
 <style>
-.recording-pulse {
-    animation: pulse 1.5s infinite;
+/* Стили для фотографий - УЛУЧШЕННЫЕ */
+.additional-photos-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 0;
 }
 
-@keyframes pulse {
-    0% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.2); opacity: 0.7; }
-    100% { transform: scale(1); opacity: 1; }
-}
-
-.audio-visualizer {
-    display: flex;
-    align-items: end;
-    gap: 2px;
-}
-
-.audio-bar {
-    width: 3px;
-    background: #3b82f6;
-    border-radius: 1px;
-    transition: height 0.1s ease;
-}
-
-.audio-recording-section.recording-active {
-    background: #fef3cd;
-    border-color: #f59e0b;
-}
-
-/* Стили для компактных фото */
 .additional-photo-item {
-    position: relative;
-    border-radius: 8px;
-    overflow: hidden;
-    aspect-ratio: 1;
-    border: 2px solid #e9ecef;
-    transition: all 0.3s ease;
+  position: relative;
+  width: 120px;
+  height: 120px;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .additional-photo-item:hover {
-    border-color: #3b82f6;
-    transform: scale(1.05);
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.15);
 }
 
-.additional-photo-item img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.photo-remove-btn {
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    border: none;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.additional-photo-item:hover .photo-remove-btn,
-.main-photo-preview:hover .photo-remove-btn {
-    opacity: 1;
-}
-
-.x-small {
-    font-size: 0.75rem;
+.additional-photo-item.main-photo-selected {
+  border: 3px solid #ffc107;
+  box-shadow: 0 0 15px rgba(255, 193, 7, 0.4);
 }
 
 .additional-photo-upload {
-    border: 2px dashed #dee2e6;
-    transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 120px;
+  height: 120px;
+  border: 2px dashed #dee2e6;
+  border-radius: 8px;
+  background-color: #f8f9fa;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  order: 999; /* Всегда в конце */
 }
 
 .additional-photo-upload:hover {
-    border-color: #3b82f6;
-    background-color: #f8f9fa;
+  border-color: #0d6efd;
+  background-color: #e7f1ff;
+  transform: scale(1.05);
 }
 
-.main-photo-upload {
-    border: 2px dashed #dee2e6;
-    transition: all 0.3s ease;
+.additional-photo-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
-.main-photo-upload:hover {
-    border-color: #3b82f6;
-    background-color: #f8f9fa;
+/* Убираем наложение - ВАЖНОЕ ИСПРАВЛЕНИЕ */
+.photo-controls-top {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: flex;
+  gap: 5px;
+  z-index: 10; /* Увеличиваем z-index */
+}
+
+.photo-controls-top button {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.75);
+  border: none;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  z-index: 11; /* Кнопки выше всего */
+}
+
+.photo-controls-top button:hover {
+  background: rgba(0,0,0,0.9);
+  transform: scale(1.1);
+}
+
+.photo-controls-bottom {
+  position: absolute;
+  bottom: 5px;
+  left: 5px;
+  display: flex;
+  gap: 5px;
+  z-index: 10;
+}
+
+.photo-controls-bottom button {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.95);
+  border: 1px solid #dee2e6;
+  color: #495057;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+  z-index: 11;
+}
+
+.photo-controls-bottom button:hover {
+  background: white;
+  border-color: #0d6efd;
+  color: #0d6efd;
+  transform: scale(1.1);
+}
+
+.photo-order-badge {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  background: rgba(13, 110, 253, 0.95);
+  color: white;
+  font-size: 10px;
+  padding: 3px 7px;
+  border-radius: 4px;
+  font-weight: bold;
+  z-index: 10;
+  min-width: 24px;
+  text-align: center;
+}
+
+.recording-pulse {
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+/* Гарантируем, что элементы не накладываются */
+.additional-photo-item * {
+  box-sizing: border-box;
+}
+
+/* Фиксируем z-index для модальных окон */
+#point-editor-modal {
+  z-index: 1060;
+}
+
+#point-editor-modal .modal-dialog {
+  z-index: 1061;
+}
+
+/* Анимация появления фото */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.additional-photo-item {
+  animation: fadeInUp 0.3s ease forwards;
 }
 </style>
+
+<script>
+// ====== POINT EDITOR ======
+window.pointEditor = {
+    currentPointIndex: null,
+    currentPointId: null,
+    pointPhotos: [],
+    pointAudio: null,
+    audioElement: null,
+    recordingTimer: null,
+    visualizerInterval: null,
+    isGeneratingAudio: false,
+    generatedText: null,
+    currentGenerationType: 'audio',
+    
+    // Карта голосов по языкам
+    voiceMapByLanguage: {
+        'ru-RU': [
+            {name: 'Филипп', code: 'filipp'},
+            {name: 'Ермил', code: 'ermil'},
+            {name: 'Захар', code: 'zahar'},
+            {name: 'Даша', code: 'dasha'},
+            {name: 'Юлия', code: 'julia'},
+            {name: 'Лера', code: 'lera'},
+            {name: 'Марина', code: 'marina'},
+            {name: 'Александр', code: 'alexander'},
+            {name: 'Кирилл', code: 'kirill'},
+            {name: 'Антон', code: 'anton'},
+            {name: 'Маша', code: 'masha'}
+        ],
+        'kk-KK': [
+            {name: 'Мади', code: 'madi'},
+            {name: 'Амира', code: 'amira'},
+            {name: 'Жанар', code: 'zhanar'},
+            {name: 'Сауле', code: 'saule'}
+        ],
+        'uz-UZ': [
+            {name: 'Юлдуз', code: 'yuldus'},
+            {name: 'Нигора', code: 'nigora'},
+            {name: 'Замира', code: 'zamira'}
+        ],
+        'en-US': [
+            {name: 'Джон', code: 'john'}
+        ],
+        'de-DE': [
+            {name: 'Леа', code: 'lea'}
+        ],
+        'he-IL': [
+            {name: 'Наоми', code: 'naomi'}
+        ]
+    },
+    
+    // Инициализация модального окна
+    init: function() {
+        console.log('🔧 Инициализация редактора точек...');
+        
+        // Настройка обработчиков фото точки
+        this.setupPointPhotoHandlers();
+        
+        // Настройка обработчиков аудио
+        this.setupAudioHandlers();
+        
+        // Настройка обработчиков AI-генерации
+        this.setupAIGenerationHandlers();
+        
+        // Настройка обработчика сохранения
+        document.getElementById('save-point-btn').addEventListener('click', () => this.savePoint());
+        
+        // Создаем аудио элемент
+        this.setupAudioElement();
+        
+        // Настройка слайдеров
+        this.setupSliders();
+        
+        // Настройка выбора типа генерации
+        this.setupGenerationTypeHandlers();
+        
+        // Настройка динамического выбора голосов
+        this.setupVoiceSelection();
+        
+        // Инициализация совместимости с route_editor.js
+        this.initCompatibility();
+        
+        console.log('✅ Редактор точек инициализирован');
+    },
+    
+    // Инициализация совместимости
+    initCompatibility: function() {
+        // Создаем audioGenerationManager для совместимости с route_editor.js
+        window.audioGenerationManager = {
+            showAudioForPoint: (pointId, pointData) => {
+                console.log('🎵 audioGenerationManager.showAudioForPoint:', pointId);
+                this.handleAudioForPoint(pointId, pointData);
+            },
+            
+            showNoAudio: () => {
+                console.log('🎵 audioGenerationManager.showNoAudio');
+                this.showAudioRecorder();
+            },
+            
+            // Дополнительные методы для совместимости
+            currentAudioUrl: null,
+            
+            generateAudio: () => {
+                console.log('🎵 audioGenerationManager.generateAudio');
+                return this.processAIGeneration();
+            },
+            
+            deleteAudio: () => {
+                console.log('🎵 audioGenerationManager.deleteAudio');
+                this.removeAudio();
+                return Promise.resolve();
+            },
+            
+            openAudioSettings: () => {
+                console.log('🎵 audioGenerationManager.openAudioSettings');
+                // Фокусируемся на секции AI-генерации
+                const aiSection = document.getElementById('ai-audio-generator');
+                if (aiSection) {
+                    aiSection.scrollIntoView({ behavior: 'smooth' });
+                }
+            }
+        };
+    },
+    
+    // Настройка динамического выбора голосов
+    setupVoiceSelection: function() {
+        const languageSelect = document.getElementById('ai-language-select');
+        const voiceSelect = document.getElementById('ai-voice-select');
+        
+        if (languageSelect && voiceSelect) {
+            const updateVoices = () => {
+                const selectedLanguage = languageSelect.value;
+                const voices = this.voiceMapByLanguage[selectedLanguage] || this.voiceMapByLanguage['ru-RU'];
+                const currentVoice = voiceSelect.value;
+                
+                voiceSelect.innerHTML = '';
+                
+                voices.forEach(voice => {
+                    const option = document.createElement('option');
+                    option.value = voice.name;
+                    option.textContent = voice.name;
+                    voiceSelect.appendChild(option);
+                });
+                
+                const availableVoices = voices.map(v => v.name);
+                if (availableVoices.includes(currentVoice)) {
+                    voiceSelect.value = currentVoice;
+                } else if (voices.length > 0) {
+                    voiceSelect.value = voices[0].name;
+                }
+            };
+            
+            languageSelect.addEventListener('change', updateVoices);
+            updateVoices();
+        }
+    },
+    
+    // Настройка слайдеров скорости и высоты
+    setupSliders: function() {
+        const speedSlider = document.getElementById('speed-slider');
+        const speedValue = document.getElementById('speed-value');
+        if (speedSlider && speedValue) {
+            speedSlider.addEventListener('input', (e) => {
+                speedValue.textContent = `${parseFloat(e.target.value).toFixed(1)}x`;
+            });
+            speedValue.textContent = `${parseFloat(speedSlider.value).toFixed(1)}x`;
+        }
+        
+        const pitchSlider = document.getElementById('pitch-slider');
+        const pitchValue = document.getElementById('pitch-value');
+        if (pitchSlider && pitchValue) {
+            pitchSlider.addEventListener('input', (e) => {
+                pitchValue.textContent = e.target.value;
+            });
+            pitchValue.textContent = pitchSlider.value;
+        }
+    },
+    
+    // Настройка выбора типа генерации
+    setupGenerationTypeHandlers: function() {
+        const generateAudioRadio = document.getElementById('generate-audio');
+        const generateBothRadio = document.getElementById('generate-both');
+        const audioFromDescriptionSection = document.getElementById('audio-from-description-section');
+        const generateDescriptionSection = document.getElementById('generate-description-section');
+        const generateBtn = document.getElementById('ai-generate-main-btn');
+        const generateBtnText = document.getElementById('generate-btn-text');
+        
+        if (generateAudioRadio && generateBothRadio) {
+            generateAudioRadio.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    this.currentGenerationType = 'audio';
+                    audioFromDescriptionSection.style.display = 'block';
+                    generateDescriptionSection.style.display = 'none';
+                    generateBtnText.textContent = 'Сгенерировать аудио';
+                    this.updateCoordinatesDisplay();
+                }
+            });
+            
+            generateBothRadio.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    this.currentGenerationType = 'both';
+                    audioFromDescriptionSection.style.display = 'none';
+                    generateDescriptionSection.style.display = 'block';
+                    generateBtnText.textContent = 'Сгенерировать описание и аудио';
+                    this.updateCoordinatesDisplay();
+                }
+            });
+            
+            if (generateAudioRadio.checked) {
+                this.currentGenerationType = 'audio';
+                audioFromDescriptionSection.style.display = 'block';
+                generateDescriptionSection.style.display = 'none';
+                generateBtnText.textContent = 'Сгенерировать аудио';
+            } else if (generateBothRadio.checked) {
+                this.currentGenerationType = 'both';
+                audioFromDescriptionSection.style.display = 'none';
+                generateDescriptionSection.style.display = 'block';
+                generateBtnText.textContent = 'Сгенерировать описание и аудио';
+            }
+        }
+    },
+    
+    // Обновление отображения координат
+    updateCoordinatesDisplay: function() {
+        const lat = document.getElementById('point-lat').value;
+        const lng = document.getElementById('point-lng').value;
+        const address = document.getElementById('point-address').value || 'не указан';
+        
+        const displayText = `Координаты: ${lat || '—'}, ${lng || '—'} | Адрес: ${address}`;
+        
+        const coordinatesDisplay = document.getElementById('current-coordinates-display');
+        if (coordinatesDisplay) {
+            coordinatesDisplay.textContent = displayText;
+        }
+    },
+    
+    // Обновление счетчика фото
+    updatePhotoCount: function() {
+        const grid = document.querySelector('#point-photos-grid');
+        if (!grid) return;
+        
+        const photoItems = grid.querySelectorAll('.additional-photo-item:not(.additional-photo-upload)');
+        const count = photoItems.length;
+        const badge = document.getElementById('photo-count-badge');
+        
+        if (badge) {
+            badge.textContent = `${count}/5 фото`;
+            
+            if (count >= 5) {
+                badge.classList.remove('bg-primary');
+                badge.classList.add('bg-danger');
+            } else {
+                badge.classList.remove('bg-danger');
+                badge.classList.add('bg-primary');
+            }
+        }
+        
+        return count;
+    },
+    
+    // Обработка аудио для точки
+    handleAudioForPoint: function(pointId, pointData) {
+        this.currentPointId = pointId;
+        
+        if (pointData?.audio_url) {
+            this.pointAudio = {
+                url: pointData.audio_url,
+                filename: pointData.audio_filename || 'Аудиогид точки',
+                is_ai_generated: pointData.ai_audio_generated || false
+            };
+            this.showAudioPlayer();
+            
+            if (pointData.ai_audio_generated) {
+                this.showAIGenerationSuccess();
+            }
+        } else {
+            this.showAudioRecorder();
+        }
+        
+        if (pointData?.description) {
+            this.generatedText = pointData.description;
+            const preview = document.getElementById('ai-text-preview');
+            if (preview) {
+                preview.innerHTML = `<div class="ai-generated-text">${this.escapeHtml(pointData.description)}</div>`;
+            }
+        }
+        
+        setTimeout(() => {
+            this.updateCoordinatesDisplay();
+        }, 100);
+        
+        const generateBtn = document.getElementById('ai-generate-main-btn');
+        if (generateBtn) {
+            generateBtn.disabled = !pointId || pointId <= 0;
+        }
+    },
+    
+    // Настройка обработчиков AI-генерации
+    setupAIGenerationHandlers: function() {
+        const generateBtn = document.getElementById('ai-generate-main-btn');
+        if (generateBtn) {
+            generateBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.processAIGeneration();
+            });
+        }
+        
+        const useDescBtn = document.getElementById('use-description-btn');
+        if (useDescBtn) {
+            useDescBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.loadExistingDescription();
+            });
+        }
+        
+        const editTextBtn = document.getElementById('edit-text-btn');
+        if (editTextBtn) {
+            editTextBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.toggleEditText();
+            });
+        }
+        
+        const retryBtn = document.getElementById('retry-ai-generation');
+        if (retryBtn) {
+            retryBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.processAIGeneration();
+            });
+        }
+        
+        const playAudioBtn = document.getElementById('play-generated-audio-btn');
+        if (playAudioBtn) {
+            playAudioBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.toggleAudioPlayback();
+            });
+        }
+    },
+    
+    // Основной процесс AI-генерации
+    processAIGeneration: async function() {
+        console.log('🔄 Начало генерации AI:');
+        
+        if (!this.currentPointId || this.currentPointId <= 0) {
+            this.showToast('Сначала сохраните точку', 'warning');
+            return;
+        }
+        
+        if (this.currentGenerationType === 'audio') {
+            if (!this.generatedText || this.generatedText.trim() === '') {
+                this.showToast('Сначала загрузите текст для генерации аудио', 'warning');
+                return;
+            }
+            
+            if (this.generatedText.length > 5000) {
+                this.showToast('Текст слишком длинный (максимум 5000 символов)', 'warning');
+                return;
+            }
+        }
+        
+        if (this.isGeneratingAudio) {
+            return;
+        }
+        
+        this.showGenerationProgress('Подготовка...');
+        
+        try {
+            let textToGenerate = this.generatedText;
+            
+            if (this.currentGenerationType === 'both') {
+                console.log('📝 Режим: генерация описания и аудио');
+                this.showGenerationProgress('Yandex GPT создаёт описание...');
+                textToGenerate = await this.generateDescription();
+                
+                this.generatedText = textToGenerate;
+                document.getElementById('point-description').value = textToGenerate;
+                this.showToast('✅ Описание успешно сгенерировано и сохранено', 'success');
+            }
+            
+            if (textToGenerate) {
+                console.log('🔊 Начало генерации аудио, длина текста:', textToGenerate.length);
+                const audioUrl = await this.generateAudioFromText(textToGenerate);
+                
+                // Обновляем currentAudioUrl для совместимости
+                if (window.audioGenerationManager) {
+                    window.audioGenerationManager.currentAudioUrl = audioUrl;
+                }
+                
+            } else {
+                throw new Error('Нет текста для генерации аудио');
+            }
+            
+        } catch (error) {
+            console.error('❌ Ошибка AI-генерации:', error);
+            this.showGenerationError(error.message || 'Неизвестная ошибка');
+            this.showToast(`Ошибка: ${error.message}`, 'danger');
+        } finally {
+            this.hideGenerationProgress();
+        }
+    },
+    
+    // Генерация описания с помощью Yandex GPT
+    generateDescription: async function() {
+        const latInput = document.getElementById('point-lat');
+        const lngInput = document.getElementById('point-lng');
+        
+        if (!latInput || !lngInput) {
+            throw new Error('Поля координат не найдены в форме');
+        }
+        
+        const lat = parseFloat(latInput.value);
+        const lng = parseFloat(lngInput.value);
+        
+        if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+            throw new Error('Сначала укажите координаты точки в форме');
+        }
+        
+        this.isGeneratingText = true;
+        this.showGenerationProgress('Yandex GPT создаёт текст экскурсии...');
+        
+        try {
+            const csrftoken = this.getCookie('csrftoken');
+            const style = document.getElementById('description-style').value;
+            const length = document.getElementById('description-length').value;
+            const address = document.getElementById('point-address').value || '';
+            
+            const response = await fetch(`/api/ai-audio/generate-location-description/${this.currentPointId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({
+                    style: style,
+                    save_to_point: false,
+                    address: address,
+                    length: length,
+                    lat: lat,
+                    lng: lng
+                })
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Ошибка сервера:', errorText);
+                
+                try {
+                    const errorData = JSON.parse(errorText);
+                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                } catch (e) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+            }
+            
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                this.generatedText = data.description;
+                this.lastGeneratedTextSource = 'coordinates';
+                this.updateTextPreview(data.description);
+                this.showToast('✅ Текст экскурсии создан!', 'success');
+                return data.description;
+            } else {
+                throw new Error(data.error || 'Ошибка сервера');
+            }
+            
+        } catch (error) {
+            console.error('❌ Ошибка генерации описания:', error);
+            throw error;
+        } finally {
+            this.isGeneratingText = false;
+        }
+    },
+    
+    // Генерация аудио из текста
+    generateAudioFromText: async function(text) {
+        this.isGeneratingAudio = true;
+        this.showGenerationProgress('SpeechKit генерирует аудио...');
+        
+        try {
+            const csrftoken = this.getCookie('csrftoken');
+            
+            const voice = document.getElementById('ai-voice-select').value;
+            const language = document.getElementById('ai-language-select').value;
+            const role = document.getElementById('ai-role-select').value;
+            const speed = parseFloat(document.getElementById('speed-slider').value);
+            const pitch = parseInt(document.getElementById('pitch-slider').value);
+            
+            const formatInputs = document.getElementsByName('audio-format');
+            let format = 'mp3';
+            for (let input of formatInputs) {
+                if (input.checked) {
+                    format = input.value;
+                    break;
+                }
+            }
+            
+            const ttsLanguage = language.split('-')[0];
+            
+            let ttsVoice = 'ermil';
+            const voicesForLanguage = this.voiceMapByLanguage[language] || this.voiceMapByLanguage['ru-RU'];
+            const voiceInfo = voicesForLanguage.find(v => v.name === voice);
+            if (voiceInfo) {
+                ttsVoice = voiceInfo.code;
+            }
+            
+            const emotionMapping = {
+                'Нейтральный': 'neutral',
+                'Радостный': 'good',
+                'Раздраженный': 'evil'
+            };
+            
+            const emotion = emotionMapping[role] || 'neutral';
+            
+            let expressiveness = 50;
+            if (role === 'Радостный') expressiveness = 80;
+            if (role === 'Раздраженный') expressiveness = 70;
+            
+            let voiceType = 'male_guide_ru';
+            if (voice === 'Даша' || voice === 'Юлия' || voice === 'Лера' || voice === 'Марина' || 
+                voice === 'Маша' || voice === 'Амира' || voice === 'Жанар' || voice === 'Сауле' || 
+                voice === 'Юлдуз' || voice === 'Замира' || voice === 'Нигора' || voice === 'Леа' || 
+                voice === 'Наоми') {
+                voiceType = 'female_guide_ru';
+            }
+            
+            const response = await fetch(`/api/ai-audio/generate/${this.currentPointId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({
+                    text: text,
+                    voice_type: voiceType,
+                    language: ttsLanguage,
+                    expressiveness: expressiveness,
+                    generation_type: this.currentGenerationType,
+                    voice: ttsVoice,
+                    emotion: emotion,
+                    speed: speed,
+                    pitch: pitch,
+                    format: format
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok && data.status === 'success') {
+                this.pointAudio = {
+                    url: data.audio_url,
+                    filename: `Аудиогид_${voice}_${new Date().toLocaleDateString('ru-RU')}.${format}`,
+                    is_ai_generated: true
+                };
+                
+                this.showAudioPlayer();
+                this.showAudioResult();
+                
+                // Обновляем аудио в редакторе маршрута если он существует
+                if (window.routeEditor && typeof window.routeEditor.updatePointAudio === 'function') {
+                    window.routeEditor.updatePointAudio(this.currentPointId, data.audio_url);
+                }
+                
+                this.showToast(`✅ Аудиогид создан голосом ${voice}!`, 'success');
+                
+                return data.audio_url;
+            } else {
+                throw new Error(data.error || 'Ошибка сервера при генерации аудио');
+            }
+        } catch (error) {
+            throw error;
+        } finally {
+            this.isGeneratingAudio = false;
+        }
+    },
+    
+    // Показать успех генерации AI
+    showAIGenerationSuccess: function() {
+        const audioResult = document.getElementById('ai-audio-success');
+        if (audioResult) {
+            audioResult.style.display = 'block';
+        }
+    },
+    
+    // Переключение режима редактирования текста
+    toggleEditText: function() {
+        const preview = document.getElementById('ai-text-preview');
+        const editBtn = document.getElementById('edit-text-btn');
+        
+        if (!preview || !this.generatedText) {
+            this.showToast('Сначала загрузите текст', 'warning');
+            return;
+        }
+        
+        if (preview.getAttribute('contenteditable') === 'true') {
+            preview.setAttribute('contenteditable', 'false');
+            preview.classList.remove('border', 'border-primary');
+            
+            const textDiv = preview.querySelector('.ai-generated-text');
+            if (textDiv) {
+                this.generatedText = textDiv.textContent.trim();
+            }
+            
+            editBtn.innerHTML = '<i class="fas fa-edit me-1"></i>Редактировать';
+            editBtn.classList.remove('btn-success');
+            editBtn.classList.add('btn-outline-primary');
+            this.showToast('Текст сохранён', 'info');
+        } else {
+            preview.setAttribute('contenteditable', 'true');
+            preview.classList.add('border', 'border-primary');
+            
+            const textDiv = preview.querySelector('.ai-generated-text');
+            if (textDiv) {
+                const range = document.createRange();
+                const sel = window.getSelection();
+                range.selectNodeContents(textDiv);
+                range.collapse(false);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+            
+            editBtn.innerHTML = '<i class="fas fa-save me-1"></i>Сохранить';
+            editBtn.classList.remove('btn-outline-primary');
+            editBtn.classList.add('btn-success');
+        }
+    },
+    
+    // Загрузка существующего описания
+    loadExistingDescription: function() {
+        const description = document.getElementById('point-description').value.trim();
+        const preview = document.getElementById('ai-text-preview');
+        
+        if (description) {
+            this.generatedText = description;
+            preview.innerHTML = `<div class="ai-generated-text">${this.escapeHtml(description)}</div>`;
+            preview.setAttribute('contenteditable', 'false');
+            this.showToast('Описание точки загружено', 'success');
+        } else {
+            this.showEmptyTextPreview('Описание точки пустое. Добавьте описание или выберите другой тип генерации.');
+            this.showToast('Описание точки пустое', 'warning');
+        }
+    },
+    
+    // Показать пустое превью текста
+    showEmptyTextPreview: function(message) {
+        const preview = document.getElementById('ai-text-preview');
+        
+        preview.innerHTML = `
+            <div class="text-center text-muted py-4">
+                <i class="fas fa-comment-alt fa-2x mb-2"></i>
+                <div>${message}</div>
+            </div>
+        `;
+        preview.setAttribute('contenteditable', 'false');
+        this.generatedText = null;
+    },
+    
+    // Настройка аудио элемента
+    setupAudioElement: function() {
+        this.audioElement = document.createElement('audio');
+        this.audioElement.id = 'point-audio-element';
+        this.audioElement.style.display = 'none';
+        document.body.appendChild(this.audioElement);
+    },
+    
+    // Настройка обработчиков загрузки фото точки
+    setupPointPhotoHandlers: function() {
+        const photosInput = document.getElementById('point-photos-input');
+        if (photosInput) {
+            photosInput.addEventListener('change', (e) => {
+                this.handlePointPhotosUpload(e);
+            });
+        }
+    },
+    
+    // Настройка обработчиков аудио
+    setupAudioHandlers: function() {
+        const audioToggle = document.getElementById('enable-audio-guide');
+        if (audioToggle) {
+            audioToggle.addEventListener('change', (e) => {
+                if (e.target.checked && !this.pointAudio) {
+                    this.showAudioRecorder();
+                } else if (!e.target.checked && this.pointAudio) {
+                    if (confirm('Отключение аудио скроет плеер. Продолжить?')) {
+                        this.hideAudioPlayer();
+                        this.pointAudio = null;
+                    } else {
+                        e.target.checked = true;
+                    }
+                }
+            });
+        }
+        
+        const recordBtn = document.getElementById('start-audio-record');
+        if (recordBtn) {
+            recordBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.startAudioRecording();
+            });
+        }
+        
+        const uploadBtn = document.getElementById('upload-audio-file');
+        if (uploadBtn) {
+            uploadBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.getElementById('audio-file-input').click();
+            });
+        }
+        
+        const audioFileInput = document.getElementById('audio-file-input');
+        if (audioFileInput) {
+            audioFileInput.addEventListener('change', (e) => {
+                this.handleAudioUpload(e);
+            });
+        }
+        
+        const reRecordBtn = document.getElementById('re-record-audio');
+        if (reRecordBtn) {
+            reRecordBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.resetAudio();
+            });
+        }
+        
+        const removeBtn = document.getElementById('remove-audio');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.removeAudio();
+            });
+        }
+        
+        const playBtn = document.querySelector('.audio-play-btn');
+        if (playBtn) {
+            playBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.toggleAudioPlayback();
+            });
+        }
+    },
+    
+    // Показать модальное окно для редактирования точки
+    show: function(pointIndex, pointData = null) {
+        console.log('📝 Открытие редактора точки, точка:', pointData);
+        
+        this.currentPointIndex = pointIndex;
+        this.resetForm();
+        
+        if (pointData) {
+            this.currentPointId = pointData.id || null;
+            this.fillForm(pointData);
+        } else {
+            this.currentPointId = null;
+        }
+        
+        setTimeout(() => {
+            this.updateCoordinatesDisplay();
+        }, 100);
+        
+        const modal = new bootstrap.Modal(document.getElementById('point-editor-modal'));
+        modal.show();
+        
+        console.log('✅ Модальное окно открыто');
+    },
+    
+    // Заполнение формы данными точки
+    fillForm: function(pointData) {
+        console.log('📝 Заполнение формы данными точки');
+        console.log('Полные данные точки:', pointData);
+        
+        // Основные поля
+        document.getElementById('edit-point-id').value = pointData.id || '';
+        document.getElementById('point-name').value = pointData.name || '';
+        document.getElementById('point-category').value = pointData.category || '';
+        document.getElementById('point-address').value = pointData.address || '';
+        
+        // Координаты
+        document.getElementById('point-lat').value = pointData.lat || pointData.latitude || '';
+        document.getElementById('point-lng').value = pointData.lng || pointData.longitude || '';
+        
+        document.getElementById('point-hint-author').value = pointData.hint_author || '';
+        document.getElementById('point-description').value = pointData.description || '';
+        document.getElementById('point-tags').value = pointData.tags ? pointData.tags.join(', ') : '';
+        
+        // Очищаем старые фото
+        this.clearPointPhotos();
+        
+        // Фото точки
+        let photos = [];
+        
+        // Обрабатываем разные форматы данных о фото
+        if (pointData.photos) {
+            console.log('📸 Получены фото из pointData.photos:', pointData.photos);
+            
+            if (Array.isArray(pointData.photos)) {
+                photos = pointData.photos;
+            } else if (pointData.photos.all && Array.isArray(pointData.photos.all)) {
+                photos = pointData.photos.all;
+            } else if (typeof pointData.photos === 'object') {
+                // Если это объект с ключами, преобразуем в массив
+                photos = Object.values(pointData.photos);
+            }
+        }
+        
+        // Если фото есть в pointData, загружаем их
+        if (photos.length > 0) {
+            console.log('Загружаем существующие фото:', photos.length);
+            
+            // Форматируем фото для загрузки
+            const formattedPhotos = photos.map((photo, index) => {
+                // Ищем главное фото
+                let isMain = false;
+                if (photo.is_main === true || photo.is_main === 'true') {
+                    isMain = true;
+                } else if (index === 0) {
+                    // Если нет явно указанного главного фото, делаем первое главным
+                    isMain = true;
+                }
+                
+                // Определяем URL фото
+                let photoUrl = '';
+                if (photo.url) {
+                    photoUrl = photo.url;
+                } else if (photo.image) {
+                    photoUrl = photo.image;
+                } else if (photo.image_url) {
+                    photoUrl = photo.image_url;
+                } else if (typeof photo === 'string') {
+                    photoUrl = photo;
+                }
+                
+                // Если URL начинается с /media/, добавляем домен
+                if (photoUrl && photoUrl.startsWith('/media/')) {
+                    photoUrl = window.location.origin + photoUrl;
+                }
+                
+                console.log('Фото', index, ':', {
+                    url: photoUrl,
+                    is_main: isMain,
+                    caption: photo.caption || '',
+                    id: photo.id || `temp-${index}`
+                });
+                
+                return {
+                    id: photo.id || `temp-${index}`,
+                    url: photoUrl,
+                    caption: photo.caption || '',
+                    is_main: isMain
+                };
+            });
+            
+            this.loadPointPhotos(formattedPhotos);
+        } else {
+            console.log('⚠️ Фото не найдены в данных точки или массив пустой');
+        }
+        
+        // Аудио точки
+        if (pointData.audio_url) {
+            this.pointAudio = {
+                url: pointData.audio_url,
+                filename: pointData.audio_filename || 'Аудиогид точки',
+                is_ai_generated: pointData.ai_audio_generated || false
+            };
+            this.showAudioPlayer();
+            
+            // Показываем успех генерации если это AI аудио
+            if (pointData.ai_audio_generated) {
+                this.showAIGenerationSuccess();
+            }
+        } else {
+            this.showAudioRecorder();
+        }
+        
+        // Текст для генерации
+        if (pointData.description) {
+            this.generatedText = pointData.description;
+            this.updateTextPreview(pointData.description);
+        } else {
+            this.showEmptyTextPreview('Нажмите "Использовать описание точки" или выберите "Сгенерировать описание и аудио"');
+        }
+        
+        const generateBtn = document.getElementById('ai-generate-main-btn');
+        if (generateBtn) {
+            generateBtn.disabled = !this.currentPointId || this.currentPointId <= 0;
+        }
+        
+        // Обновляем счетчик фото
+        setTimeout(() => this.updatePhotoCount(), 100);
+        
+        console.log('✅ Форма заполнена');
+    },
+    
+    // Обновление превью текста
+    updateTextPreview: function(text) {
+        const preview = document.getElementById('ai-text-preview');
+        if (preview) {
+            preview.innerHTML = `<div class="ai-generated-text">${this.escapeHtml(text)}</div>`;
+            preview.setAttribute('contenteditable', 'false');
+        }
+    },
+    
+    // Обработчик загрузки фото точки
+    handlePointPhotosUpload: function(e) {
+        const files = e.target.files;
+        if (!files || files.length === 0) {
+            return;
+        }
+        
+        const grid = document.querySelector('#point-photos-grid');
+        if (!grid) {
+            console.error('Сетка для фото не найдена');
+            return;
+        }
+        
+        const existingCount = this.updatePhotoCount();
+        
+        if (existingCount >= 5) {
+            this.showToast('Максимум можно загрузить 5 фото для точки', 'warning');
+            e.target.value = '';
+            return;
+        }
+        
+        if (existingCount + files.length > 5) {
+            const canAdd = 5 - existingCount;
+            this.showToast(`Можно добавить только ${canAdd} фото`, 'warning');
+            e.target.value = '';
+            return;
+        }
+        
+        const uploadButton = grid.querySelector('.additional-photo-upload');
+        const filesToProcess = Array.from(files).slice(0, 5 - existingCount);
+        
+        filesToProcess.forEach((file, index) => {
+            if (!this.validateImageFile(file)) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const photoId = 'new-point-' + Date.now() + '-' + index + '-' + Math.random().toString(36).substr(2, 9);
+                
+                const photoItem = document.createElement('div');
+                photoItem.className = 'additional-photo-item new-photo';
+                photoItem.dataset.photoId = photoId;
+                photoItem.dataset.order = existingCount + index;
+                photoItem.innerHTML = `
+                    <img src="${e.target.result}" class="w-100 h-100 object-fit-cover" alt="Новое фото">
+                    <div class="photo-controls-top">
+                        <button type="button" 
+                                onclick="pointEditor.makeMainPointPhoto(this)"
+                                title="Сделать главным">
+                            <i class="fas fa-star text-light"></i>
+                        </button>
+                        <button type="button" class="photo-remove-btn" 
+                                onclick="pointEditor.removePointPhoto(this, '${photoId}')"
+                                title="Удалить">
+                            <i class="fas fa-times text-danger"></i>
+                        </button>
+                    </div>
+                    <div class="photo-controls-bottom">
+                        <button type="button" 
+                                onclick="pointEditor.movePointPhotoUp(this)"
+                                title="Переместить вверх">
+                            <i class="fas fa-arrow-up"></i>
+                        </button>
+                        <button type="button" 
+                                onclick="pointEditor.movePointPhotoDown(this)"
+                            title="Переместить вниз">
+                            <i class="fas fa-arrow-down"></i>
+                        </button>
+                    </div>
+                    <div class="photo-order-badge">${existingCount + index + 1}</div>
+                `;
+                
+                if (!window.newPointPhotoFiles) window.newPointPhotoFiles = [];
+                file.previewId = photoId;
+                window.newPointPhotoFiles.push(file);
+                
+                if (uploadButton) {
+                    grid.insertBefore(photoItem, uploadButton);
+                } else {
+                    grid.appendChild(photoItem);
+                }
+                
+                this.updatePointPhotoOrderNumbers();
+                this.updatePhotoCount();
+            };
+            reader.readAsDataURL(file);
+        });
+        
+        e.target.value = '';
+    },
+    
+    // Загрузка фото точки в галерею
+    loadPointPhotos: function(photos) {
+        console.log('🖼️ Загрузка фото точки в редактор:', photos);
+        
+        const grid = document.querySelector('#point-photos-grid');
+        if (!grid) {
+            console.error('Сетка для фото не найдена');
+            return;
+        }
+        
+        const uploadButton = grid.querySelector('.additional-photo-upload');
+        const photosToShow = photos.slice(0, 5);
+        
+        console.log(`Показываем ${photosToShow.length} фото`);
+        
+        photosToShow.forEach((photo, index) => {
+            // Проверяем, является ли фото главным
+            const isMain = photo.is_main || (index === 0);
+            
+            const photoItem = document.createElement('div');
+            photoItem.className = `additional-photo-item ${isMain ? 'main-photo-selected' : ''}`;
+            photoItem.dataset.photoId = photo.id || `temp-${index}`;
+            photoItem.dataset.order = index;
+            
+            // Используем fallback изображение если URL пустой
+            const photoUrl = photo.url || '/static/images/default-photo.jpg';
+            
+            photoItem.innerHTML = `
+                <img src="${photoUrl}" 
+                     class="w-100 h-100 object-fit-cover"
+                     alt="Фото точки"
+                     data-caption="${photo.caption || ''}"
+                     data-is-main="${isMain}"
+                     onerror="this.src='/static/images/default-photo.jpg'">
+                <div class="photo-controls-top">
+                    <button type="button" 
+                            onclick="pointEditor.makeMainPointPhoto(this)"
+                            title="Сделать главным">
+                        <i class="fas fa-star ${isMain ? 'text-warning' : 'text-light'}"></i>
+                    </button>
+                    <button type="button" class="photo-remove-btn" 
+                            onclick="pointEditor.removePointPhoto(this, '${photo.id || `temp-${index}`}')"
+                            title="Удалить">
+                        <i class="fas fa-times text-danger"></i>
+                    </button>
+                </div>
+                <div class="photo-controls-bottom">
+                    <button type="button" 
+                            onclick="pointEditor.movePointPhotoUp(this)"
+                            title="Переместить вверх">
+                            <i class="fas fa-arrow-up"></i>
+                    </button>
+                    <button type="button" 
+                            onclick="pointEditor.movePointPhotoDown(this)"
+                            title="Переместить вниз">
+                            <i class="fas fa-arrow-down"></i>
+                    </button>
+                </div>
+                <div class="photo-order-badge">${index + 1}</div>
+            `;
+            
+            // Вставляем перед кнопкой загрузки
+            if (uploadButton) {
+                grid.insertBefore(photoItem, uploadButton);
+            } else {
+                grid.appendChild(photoItem);
+            }
+            
+            console.log(`✅ Фото ${index + 1} загружено:`, {
+                url: photoUrl,
+                isMain: isMain,
+                id: photo.id
+            });
+        });
+        
+        this.updatePhotoCount();
+        console.log('✅ Все фото точки загружены в галерею');
+    },
+    
+    // Переключение воспроизведения аудио
+    toggleAudioPlayback: function() {
+        if (!this.audioElement || !this.pointAudio?.url) return;
+        
+        const playBtn = document.querySelector('.audio-play-btn');
+        const generatedPlayBtn = document.getElementById('play-generated-audio-btn');
+        
+        if (this.audioElement.paused) {
+            this.audioElement.src = this.pointAudio.url;
+            this.audioElement.play().then(() => {
+                if (playBtn) playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                if (generatedPlayBtn) generatedPlayBtn.innerHTML = '<i class="fas fa-pause me-1"></i>Пауза';
+                this.setupAudioProgress();
+            }).catch(error => {
+                console.error('Ошибка воспроизведения:', error);
+                this.showToast('Ошибка воспроизведения аудио', 'danger');
+            });
+        } else {
+            this.audioElement.pause();
+            if (playBtn) playBtn.innerHTML = '<i class="fas fa-play"></i>';
+            if (generatedPlayBtn) generatedPlayBtn.innerHTML = '<i class="fas fa-play me-1"></i>Воспроизвести';
+        }
+    },
+    
+    // Настройка прогресса аудио
+    setupAudioProgress: function() {
+        if (!this.audioElement) return;
+        
+        const progressBar = document.querySelector('.audio-progress');
+        const durationSpan = document.querySelector('.audio-duration');
+        
+        this.audioElement.addEventListener('timeupdate', () => {
+            if (this.audioElement.duration && progressBar) {
+                const progress = (this.audioElement.currentTime / this.audioElement.duration) * 100;
+                progressBar.style.width = `${progress}%`;
+            }
+            if (durationSpan) {
+                const formatTime = (seconds) => {
+                    if (isNaN(seconds)) return '0:00';
+                    const mins = Math.floor(seconds / 60);
+                    const secs = Math.floor(seconds % 60);
+                    return `${mins}:${secs.toString().padStart(2, '0')}`;
+                };
+                durationSpan.textContent = formatTime(this.audioElement.currentTime);
+            }
+        });
+        
+        this.audioElement.addEventListener('ended', () => {
+            const playBtn = document.querySelector('.audio-play-btn');
+            const generatedPlayBtn = document.getElementById('play-generated-audio-btn');
+            if (playBtn) playBtn.innerHTML = '<i class="fas fa-play"></i>';
+            if (generatedPlayBtn) generatedPlayBtn.innerHTML = '<i class="fas fa-play me-1"></i>Воспроизвести';
+            if (progressBar) progressBar.style.width = '0%';
+        });
+    },
+    
+    // Сброс аудио
+    resetAudio: function() {
+        if (confirm('Вы уверены, что хотите перезаписать аудио?')) {
+            this.pointAudio = null;
+            if (this.audioElement) {
+                this.audioElement.pause();
+                this.audioElement.src = '';
+            }
+            this.showAudioRecorder();
+            this.showToast('Аудио сброшено. Можете записать новое.', 'info');
+        }
+    },
+    
+    // Удаление аудио
+    removeAudio: function() {
+        if (confirm('Вы уверены, что хотите удалить аудио?')) {
+            this.pointAudio = null;
+            if (this.audioElement) {
+                this.audioElement.pause();
+                this.audioElement.src = '';
+            }
+            this.showAudioRecorder();
+            
+            if (window.routeEditor?.updatePointAudio) {
+                window.routeEditor.updatePointAudio(this.currentPointId, null);
+            }
+            
+            this.showToast('Аудио удалено', 'info');
+        }
+    },
+    
+    // Показать аудиоплеер
+    showAudioPlayer: function() {
+        document.getElementById('point-audio-player').style.display = 'block';
+        document.getElementById('point-audio-recorder').style.display = 'none';
+        
+        if (this.pointAudio?.filename) {
+            document.getElementById('audio-filename').textContent = this.pointAudio.filename;
+        }
+        
+        document.getElementById('enable-audio-guide').checked = true;
+        
+        const generatedPlayBtn = document.getElementById('play-generated-audio-btn');
+        if (generatedPlayBtn) {
+            generatedPlayBtn.innerHTML = '<i class="fas fa-play me-1"></i>Воспроизвести';
+        }
+    },
+    
+    // Скрыть аудиоплеер
+    hideAudioPlayer: function() {
+        document.getElementById('point-audio-player').style.display = 'none';
+    },
+    
+    // Показать аудиорекордер
+    showAudioRecorder: function() {
+        document.getElementById('point-audio-player').style.display = 'none';
+        document.getElementById('point-audio-recorder').style.display = 'block';
+        document.getElementById('enable-audio-guide').checked = false;
+        
+        this.hideGenerationProgress();
+        this.hideAudioResult();
+        this.hideGenerationError();
+    },
+    
+    // Начать запись аудио
+    startAudioRecording: function() {
+        console.log('🎤 Начало записи аудио');
+        
+        document.getElementById('recording-indicator').style.display = 'block';
+        document.getElementById('recording-visualizer').style.display = 'block';
+        
+        let seconds = 0;
+        this.recordingTimer = setInterval(() => {
+            seconds++;
+            const minutes = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            document.getElementById('recording-timer').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            
+            if (seconds >= 30) {
+                this.stopAudioRecording();
+            }
+        }, 1000);
+        
+        this.updateAudioVisualizer();
+    },
+    
+    // Остановить запись аудио
+    stopAudioRecording: function() {
+        if (this.recordingTimer) {
+            clearInterval(this.recordingTimer);
+            this.recordingTimer = null;
+        }
+        
+        document.getElementById('recording-indicator').style.display = 'none';
+        document.getElementById('recording-visualizer').style.display = 'none';
+        
+        this.pointAudio = {
+            url: '#demo-audio',
+            filename: `Запись_${new Date().toLocaleTimeString('ru-RU')}.mp3`
+        };
+        
+        this.showAudioPlayer();
+        this.showToast('Запись завершена (демо)', 'success');
+    },
+    
+    // Обновить визуализатор аудио
+    updateAudioVisualizer: function() {
+        const visualizer = document.getElementById('live-visualizer');
+        if (!visualizer) return;
+        
+        visualizer.innerHTML = '';
+        
+        for (let i = 0; i < 40; i++) {
+            const bar = document.createElement('div');
+            bar.className = 'audio-bar';
+            bar.style.height = `${Math.random() * 40 + 10}px`;
+            visualizer.appendChild(bar);
+        }
+        
+        if (this.visualizerInterval) {
+            clearInterval(this.visualizerInterval);
+        }
+        
+        this.visualizerInterval = setInterval(() => {
+            const bars = visualizer.querySelectorAll('.audio-bar');
+            bars.forEach(bar => {
+                bar.style.height = `${Math.random() * 40 + 10}px`;
+            });
+        }, 100);
+    },
+    
+    // Обработчик загрузки аудио файла
+    handleAudioUpload: function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        if (!this.validateAudioFile(file)) {
+            e.target.value = '';
+            return;
+        }
+        
+        this.pointAudio = {
+            file: file,
+            filename: file.name,
+            url: URL.createObjectURL(file),
+            is_ai_generated: false
+        };
+        
+        this.showAudioPlayer();
+        this.showToast('Аудиофайл загружен', 'success');
+        e.target.value = '';
+    },
+    
+    // Показать прогресс генерации
+    showGenerationProgress: function(message = 'Генерация...') {
+        const progressStatus = document.getElementById('progress-status');
+        if (progressStatus) {
+            progressStatus.textContent = message;
+        }
+        
+        const progressEl = document.getElementById('ai-generation-progress');
+        if (progressEl) {
+            progressEl.style.display = 'block';
+        }
+        
+        const generateBtn = document.getElementById('ai-generate-main-btn');
+        if (generateBtn) {
+            generateBtn.disabled = true;
+        }
+        
+        this.hideAudioResult();
+        this.hideGenerationError();
+    },
+    
+    // Скрыть прогресс генерации
+    hideGenerationProgress: function() {
+        const progressEl = document.getElementById('ai-generation-progress');
+        if (progressEl) {
+            progressEl.style.display = 'none';
+        }
+        
+        const generateBtn = document.getElementById('ai-generate-main-btn');
+        if (generateBtn) {
+            generateBtn.disabled = false;
+        }
+    },
+    
+    // Показать результат генерации аудио
+    showAudioResult: function() {
+        const audioResult = document.getElementById('ai-audio-success');
+        if (audioResult) {
+            audioResult.style.display = 'block';
+        }
+    },
+    
+    // Скрыть результат генерации аудио
+    hideAudioResult: function() {
+        const audioResult = document.getElementById('ai-audio-success');
+        if (audioResult) {
+            audioResult.style.display = 'none';
+        }
+    },
+    
+    // Показать ошибку генерации
+    showGenerationError: function(errorMessage) {
+        const errorMsgEl = document.getElementById('ai-error-message');
+        if (errorMsgEl) {
+            errorMsgEl.textContent = errorMessage;
+        }
+        
+        const errorEl = document.getElementById('ai-generation-error');
+        if (errorEl) {
+            errorEl.style.display = 'block';
+        }
+    },
+    
+    // Скрыть ошибку генерации
+    hideGenerationError: function() {
+        const errorEl = document.getElementById('ai-generation-error');
+        if (errorEl) {
+            errorEl.style.display = 'none';
+        }
+    },
+    
+    // Валидация аудио файла
+    validateAudioFile: function(file) {
+        const validTypes = ['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/x-m4a'];
+        if (!validTypes.includes(file.type)) {
+            this.showToast('Неподдерживаемый формат аудио', 'warning');
+            return false;
+        }
+        
+        if (file.size > 50 * 1024 * 1024) {
+            this.showToast('Размер файла не должен превышать 50MB', 'warning');
+            return false;
+        }
+        
+        return true;
+    },
+    
+    // Валидация изображения
+    validateImageFile: function(file) {
+        if (!file.type.startsWith('image/')) {
+            this.showToast('Пожалуйста, выбирайте только изображения', 'warning');
+            return false;
+        }
+        
+        if (file.size > 5 * 1024 * 1024) {
+            this.showToast('Размер файла не должен превышать 5MB', 'warning');
+            return false;
+        }
+        
+        return true;
+    },
+    
+    // Установка фото точки как главного
+    makeMainPointPhoto: function(button) {
+        const photoItem = button.closest('.additional-photo-item');
+        if (!photoItem) return;
+        
+        const photoId = photoItem.dataset.photoId;
+        if (!photoId) return;
+        
+        console.log(`⭐ Назначаем фото точки ${photoId} как главное`);
+        
+        window.pointMainPhotoToSet = photoId.startsWith('new-point-') ? 'new' : parseInt(photoId);
+        
+        // Снимаем выделение со всех фото
+        document.querySelectorAll('.additional-photo-item').forEach(item => {
+            item.classList.remove('main-photo-selected');
+            const starIcon = item.querySelector('.photo-controls-top button i.fa-star');
+            if (starIcon) {
+                starIcon.className = 'fas fa-star text-light';
+            }
+        });
+        
+        // Устанавливаем выделение на выбранное фото
+        photoItem.classList.add('main-photo-selected');
+        const starIcon = photoItem.querySelector('.photo-controls-top button i.fa-star');
+        if (starIcon) {
+            starIcon.className = 'fas fa-star text-warning';
+        }
+        
+        this.showToast('Фото выбрано как главное для точки', 'info');
+    },
+    
+    // Удаление фото точки
+    removePointPhoto: function(button, photoId = null) {
+        const photoItem = button.closest('.additional-photo-item');
+        if (!photoItem) return;
+        
+        if (photoId && !photoId.startsWith('new-point-')) {
+            const idInt = parseInt(photoId);
+            if (!isNaN(idInt)) {
+                if (!window.removedPointPhotoIds) {
+                    window.removedPointPhotoIds = new Set();
+                }
+                window.removedPointPhotoIds.add(idInt);
+                console.log('🗑️ Фото точки добавлено в список удаленных, ID:', idInt);
+            }
+        }
+        
+        if (photoId && photoId.startsWith('new-point-')) {
+            const index = window.newPointPhotoFiles.findIndex(file => 
+                file.previewId === photoId
+            );
+            if (index !== -1) {
+                window.newPointPhotoFiles.splice(index, 1);
+                console.log('🗑️ Новое фото точки удалено из массива, ID:', photoId);
+            }
+        }
+        
+        // Если удаляем главное фото
+        if (photoItem.classList.contains('main-photo-selected')) {
+            window.pointMainPhotoToSet = null;
+        }
+        
+        photoItem.remove();
+        console.log('🗑️ Фото точки удалено из DOM');
+        
+        this.updatePointPhotoOrderNumbers();
+        this.updatePhotoCount();
+    },
+    
+    // Обновление порядковых номеров фото точки
+    updatePointPhotoOrderNumbers: function() {
+        const photoItems = document.querySelectorAll('.additional-photo-item:not(.additional-photo-upload)');
+        console.log('Обновление порядковых номеров для', photoItems.length, 'фото');
+        
+        photoItems.forEach((item, index) => {
+            const orderBadge = item.querySelector('.photo-order-badge');
+            if (orderBadge) {
+                orderBadge.textContent = index + 1;
+            } else {
+                const badge = document.createElement('div');
+                badge.className = 'photo-order-badge';
+                badge.textContent = index + 1;
+                item.appendChild(badge);
+            }
+            item.dataset.order = index;
+        });
+    },
+    
+    // Перемещение фото точки вверх
+    movePointPhotoUp: function(button) {
+        const photoItem = button.closest('.additional-photo-item');
+        if (!photoItem) return;
+        
+        const prevItem = photoItem.previousElementSibling;
+        if (prevItem && !prevItem.classList.contains('additional-photo-upload')) {
+            photoItem.parentNode.insertBefore(photoItem, prevItem);
+            this.updatePointPhotoOrderNumbers();
+        }
+    },
+    
+    // Перемещение фото точки вниз
+    movePointPhotoDown: function(button) {
+        const photoItem = button.closest('.additional-photo-item');
+        if (!photoItem) return;
+        
+        const nextItem = photoItem.nextElementSibling;
+        if (nextItem && !nextItem.classList.contains('additional-photo-upload')) {
+            photoItem.parentNode.insertBefore(nextItem, photoItem);
+            this.updatePointPhotoOrderNumbers();
+        }
+    },
+    
+    // Сброс формы
+    resetForm: function() {
+        console.log('🔄 Сброс формы');
+        
+        const form = document.getElementById('point-form');
+        if (form) {
+            form.reset();
+        }
+        
+        // Сброс фото
+        this.clearPointPhotos();
+        
+        // Сброс аудио
+        this.pointAudio = null;
+        this.generatedText = null;
+        if (this.audioElement) {
+            this.audioElement.pause();
+            this.audioElement.src = '';
+        }
+        this.showAudioRecorder();
+        
+        // Сброс AI генерации
+        this.showEmptyTextPreview('Нажмите "Использовать описание точки" или выберите "Сгенерировать описание и аудио"');
+        this.hideGenerationProgress();
+        this.hideAudioResult();
+        this.hideGenerationError();
+        
+        // Сброс слайдеров
+        const speedSlider = document.getElementById('speed-slider');
+        const speedValue = document.getElementById('speed-value');
+        if (speedSlider && speedValue) {
+            speedSlider.value = 1;
+            speedValue.textContent = '1.0x';
+        }
+        
+        const pitchSlider = document.getElementById('pitch-slider');
+        const pitchValue = document.getElementById('pitch-value');
+        if (pitchSlider && pitchValue) {
+            pitchSlider.value = 0;
+            pitchValue.textContent = '0';
+        }
+        
+        // Сброс выбора типа генерации
+        const generateAudioRadio = document.getElementById('generate-audio');
+        if (generateAudioRadio) {
+            generateAudioRadio.checked = true;
+        }
+        
+        const audioFromDescriptionSection = document.getElementById('audio-from-description-section');
+        if (audioFromDescriptionSection) {
+            audioFromDescriptionSection.style.display = 'block';
+        }
+        
+        const generateDescriptionSection = document.getElementById('generate-description-section');
+        if (generateDescriptionSection) {
+            generateDescriptionSection.style.display = 'none';
+        }
+        
+        const generateBtnText = document.getElementById('generate-btn-text');
+        if (generateBtnText) {
+            generateBtnText.textContent = 'Сгенерировать аудио';
+        }
+        
+        // Сброс категории
+        const categorySelect = document.getElementById('point-category');
+        if (categorySelect) {
+            categorySelect.value = '';
+        }
+        
+        // Сброс голоса и языка
+        const voiceSelect = document.getElementById('ai-voice-select');
+        if (voiceSelect) {
+            voiceSelect.value = 'Ермил';
+        }
+        
+        const languageSelect = document.getElementById('ai-language-select');
+        if (languageSelect) {
+            languageSelect.value = 'ru-RU';
+        }
+        
+        // Сброс амплуа
+        const roleSelect = document.getElementById('ai-role-select');
+        if (roleSelect) {
+            roleSelect.value = 'Нейтральный';
+        }
+        
+        // Сброс формата аудио
+        const formatMp3 = document.getElementById('format-mp3');
+        if (formatMp3) {
+            formatMp3.checked = true;
+        }
+        
+        // Включить аудио по умолчанию
+        const audioToggle = document.getElementById('enable-audio-guide');
+        if (audioToggle) {
+            audioToggle.checked = true;
+        }
+        
+        // Остановить таймеры
+        if (this.recordingTimer) {
+            clearInterval(this.recordingTimer);
+            this.recordingTimer = null;
+        }
+        
+        if (this.visualizerInterval) {
+            clearInterval(this.visualizerInterval);
+            this.visualizerInterval = null;
+        }
+    },
+    
+    // Очистка всех фото точки
+    clearPointPhotos: function() {
+        const grid = document.querySelector('#point-photos-grid');
+        if (!grid) {
+            console.warn('Сетка для фото не найдена при очистке');
+            return;
+        }
+        
+        const photos = grid.querySelectorAll('.additional-photo-item:not(.additional-photo-upload)');
+        console.log('Очистка фото, количество:', photos.length);
+        
+        photos.forEach(photo => {
+            console.log('Удаление фото:', photo.dataset.photoId);
+            photo.remove();
+        });
+        
+        window.newPointPhotoFiles = [];
+        window.pointMainPhotoToSet = null;
+        window.removedPointPhotoIds = new Set();
+        
+        console.log('✅ Все фото точки очищены');
+        
+        this.updatePhotoCount();
+    },
+    
+    // Сбор данных о фото точки
+    collectPointPhotosData: function() {
+        const photosData = {
+            main_photo_id: null,
+            existing_photos: [],
+            new_photos: [],
+            removed_photo_ids: []
+        };
+        
+        console.log('🔍 Сбор данных о фото точки...');
+        
+        // ВСЕ ФОТО ТОЧКИ
+        const allPhotoItems = document.querySelectorAll('.additional-photo-item:not(.additional-photo-upload)');
+        
+        allPhotoItems.forEach((item, index) => {
+            const photoId = item.dataset.photoId;
+            if (!photoId) return;
+            
+            // Проверяем, является ли это фото главным
+            const isMain = item.classList.contains('main-photo-selected');
+            const img = item.querySelector('img');
+            const caption = img?.dataset.caption || '';
+            
+            if (isMain) {
+                if (!photoId.startsWith('new-point-')) {
+                    photosData.main_photo_id = parseInt(photoId);
+                }
+            }
+            
+            // Добавляем фото в соответствующий массив
+            if (!photoId.startsWith('new-point-')) {
+                // Существующее фото
+                photosData.existing_photos.push({
+                    id: parseInt(photoId),
+                    order: index + 1,
+                    is_main: isMain,
+                    caption: caption
+                });
+            } else {
+                // Новое фото
+                const file = window.newPointPhotoFiles?.find(f => f.previewId === photoId);
+                if (file) {
+                    photosData.new_photos.push({
+                        file: file,
+                        order: index + 1,
+                        is_main: isMain,
+                        caption: caption,
+                        preview_id: photoId
+                    });
+                }
+            }
+        });
+        
+        // Добавляем удаленные фото
+        if (window.removedPointPhotoIds && window.removedPointPhotoIds.size > 0) {
+            photosData.removed_photo_ids = Array.from(window.removedPointPhotoIds);
+        }
+        
+        console.log('✅ Данные о фото точки собраны:', photosData);
+        return photosData;
+    },
+    
+    // Сбор данных формы точки
+    collectPointFormData: function() {
+        const formData = new FormData();
+        
+        // Основные данные
+        formData.append('name', document.getElementById('point-name').value || 'Без названия');
+        formData.append('category', document.getElementById('point-category').value || '');
+        formData.append('address', document.getElementById('point-address').value || '');
+        formData.append('lat', document.getElementById('point-lat').value || 0);
+        formData.append('lng', document.getElementById('point-lng').value || 0);
+        formData.append('hint_author', document.getElementById('point-hint-author').value || '');
+        formData.append('description', document.getElementById('point-description').value || '');
+        
+        // Теги
+        const tags = document.getElementById('point-tags').value
+            .split(',')
+            .map(tag => tag.trim())
+            .filter(tag => tag.length > 0);
+        if (tags.length > 0) {
+            formData.append('tags', JSON.stringify(tags));
+        }
+        
+        // Данные о фото
+        const photosData = this.collectPointPhotosData();
+        
+        // Добавляем данные о существующих фото
+        if (photosData.existing_photos.length > 0) {
+            formData.append('existing_photos', JSON.stringify(photosData.existing_photos));
+        }
+        
+        // Добавляем главное фото
+        if (photosData.main_photo_id) {
+            formData.append('main_photo_id', photosData.main_photo_id);
+        }
+        
+        // Добавляем новые фото
+        photosData.new_photos.forEach((photo, index) => {
+            formData.append(`new_photo_${index}`, photo.file);
+            // Также добавляем метаданные для каждого фото
+            formData.append(`new_photo_${index}_metadata`, JSON.stringify({
+                order: photo.order,
+                is_main: photo.is_main,
+                caption: photo.caption
+            }));
+        });
+        
+        // Добавляем удаленные фото
+        if (photosData.removed_photo_ids.length > 0) {
+            formData.append('removed_photo_ids', JSON.stringify(photosData.removed_photo_ids));
+        }
+        
+        // Аудио
+        if (this.pointAudio && this.pointAudio.file) {
+            formData.append('audio', this.pointAudio.file);
+        } else if (this.pointAudio && this.pointAudio.url && !this.pointAudio.file) {
+            // Существующее аудио
+            formData.append('audio_url', this.pointAudio.url);
+        }
+        
+        console.log('📝 Данные формы собраны');
+        
+        // Для отладки: выводим все ключи в formData
+        for (let [key, value] of formData.entries()) {
+            console.log(`${key}:`, value instanceof File ? `File: ${value.name}` : value);
+        }
+        
+        return formData;
+    },
+    
+    // Получить превью фото точки
+    getPointPhotosPreview: function() {
+        const photos = [];
+        const photoItems = document.querySelectorAll('.additional-photo-item:not(.additional-photo-upload)');
+        
+        photoItems.forEach((item, index) => {
+            const photoId = item.dataset.photoId;
+            const img = item.querySelector('img');
+            
+            if (img) {
+                photos.push({
+                    id: photoId.startsWith('new-point-') ? null : parseInt(photoId),
+                    url: img.src,
+                    is_main: item.classList.contains('main-photo-selected'),
+                    order: index + 1
+                });
+            }
+        });
+        
+        return photos;
+    },
+    
+    // Валидация формы точки
+    validatePointForm: function() {
+        const name = document.getElementById('point-name').value.trim();
+        const lat = document.getElementById('point-lat').value;
+        const lng = document.getElementById('point-lng').value;
+        
+        if (!name) {
+            this.showToast('Введите название точки', 'warning');
+            return false;
+        }
+        
+        if (!lat || !lng || isNaN(parseFloat(lat)) || isNaN(parseFloat(lng))) {
+            this.showToast('Некорректные координаты точки', 'warning');
+            return false;
+        }
+        
+        return true;
+    },
+    
+    // Сохранение точки
+    savePoint: async function() {
+        console.log('💾 Сохранение точки...');
+        
+        // Валидация
+        if (!this.validatePointForm()) {
+            return;
+        }
+        
+        // Показать загрузку
+        this.showToast('Сохранение точки...', 'info');
+        
+        try {
+            // Собрать данные
+            const formData = this.collectPointFormData();
+            
+            // Получить CSRF токен
+            const csrfToken = this.getCookie('csrftoken');
+            
+            // Определить URL для сохранения
+            let url;
+            let method;
+            
+            // Если есть ID точки и это число - редактирование
+            if (this.currentPointId && !isNaN(parseInt(this.currentPointId))) {
+                url = `/api/points/${this.currentPointId}/`;
+                method = 'PUT';
+            } else {
+                // Создание новой точки
+                url = '/api/points/';
+                method = 'POST';
+            }
+            
+            console.log(`📤 Отправка запроса: ${method} ${url}`);
+            
+            // Отправить данные
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'X-CSRFToken': csrfToken
+                },
+                body: formData
+            });
+            
+            console.log('📥 Статус ответа:', response.status, response.statusText);
+            
+            let result;
+            try {
+                result = await response.json();
+                console.log('📥 Данные ответа:', result);
+            } catch (e) {
+                console.error('❌ Не удалось распарсить JSON:', e);
+                throw new Error('Сервер вернул некорректный ответ');
+            }
+            
+            if (response.ok) {
+                // Успешное сохранение
+                const savedPoint = {
+                    id: result.id || this.currentPointId || Date.now(),
+                    name: document.getElementById('point-name').value,
+                    category: document.getElementById('point-category').value,
+                    address: document.getElementById('point-address').value,
+                    lat: parseFloat(document.getElementById('point-lat').value),
+                    lng: parseFloat(document.getElementById('point-lng').value),
+                    hint_author: document.getElementById('point-hint-author').value,
+                    description: document.getElementById('point-description').value,
+                    tags: document.getElementById('point-tags').value
+                        .split(',')
+                        .map(tag => tag.trim())
+                        .filter(tag => tag.length > 0)
+                };
+                
+                // Обработка фото
+                if (result.photos && Array.isArray(result.photos)) {
+                    // Используем фото из ответа сервера
+                    savedPoint.photos = result.photos;
+                } else {
+                    // Или создаем превью из текущих фото
+                    savedPoint.photos = this.getPointPhotosPreview();
+                }
+                
+                // Обработка аудио
+                if (this.pointAudio) {
+                    savedPoint.audio_url = this.pointAudio.url;
+                    savedPoint.audio_filename = this.pointAudio.filename;
+                }
+                
+                // Передать точку в редактор маршрута
+                if (window.routeEditor && typeof window.routeEditor.updatePoint === 'function') {
+                    window.routeEditor.updatePoint(this.currentPointIndex, savedPoint);
+                }
+                
+                // Сбросить временные данные
+                window.newPointPhotoFiles = [];
+                window.removedPointPhotoIds = new Set();
+                window.pointMainPhotoToSet = null;
+                
+                // Закрыть модальное окно
+                const modal = bootstrap.Modal.getInstance(document.getElementById('point-editor-modal'));
+                if (modal) {
+                    modal.hide();
+                }
+                
+                this.showToast('✅ Точка сохранена успешно', 'success');
+                
+                console.log('✅ Точка сохранена:', savedPoint);
+                
+            } else {
+                // Ошибка сервера
+                throw new Error(result.error || result.message || `Ошибка ${response.status}`);
+            }
+            
+        } catch (error) {
+            console.error('❌ Ошибка сохранения точки:', error);
+            
+            // Более информативное сообщение об ошибке
+            let errorMessage = 'Ошибка сохранения';
+            if (error.message.includes('Network Error')) {
+                errorMessage = 'Ошибка сети. Проверьте подключение к интернету';
+            } else if (error.message.includes('Failed to fetch')) {
+                errorMessage = 'Не удалось соединиться с сервером';
+            } else {
+                errorMessage = error.message;
+            }
+            
+            this.showToast(errorMessage, 'danger');
+        }
+    },
+    
+    // Экранирование HTML
+    escapeHtml: function(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    },
+    
+    // Получить CSRF токен из cookies
+    getCookie: function(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    },
+    
+    // Показать уведомление
+    showToast: function(message, type = 'info') {
+        if (window.routeEditor && typeof window.routeEditor.showToast === 'function') {
+            window.routeEditor.showToast(message, type);
+        } else {
+            console.log(`[${type.toUpperCase()}] ${message}`);
+            
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white bg-${type} border-0 position-fixed bottom-0 end-0 m-3`;
+            toast.setAttribute('role', 'alert');
+            toast.style.zIndex = '9999';
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">${message}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+    }
+};
+
+// Инициализация при загрузке DOM
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.pointEditor && typeof window.pointEditor.init === 'function') {
+        window.pointEditor.init();
+    }
+    
+    // Экспорт функций для глобального доступа
+    window.makeMainPointPhoto = window.pointEditor.makeMainPointPhoto.bind(window.pointEditor);
+    window.removePointPhoto = window.pointEditor.removePointPhoto.bind(window.pointEditor);
+    window.movePointPhotoUp = window.pointEditor.movePointPhotoUp.bind(window.pointEditor);
+    window.movePointPhotoDown = window.pointEditor.movePointPhotoDown.bind(window.pointEditor);
+    
+    console.log('✅ Модальное окно редактирования точки инициализировано');
+});
+</script>

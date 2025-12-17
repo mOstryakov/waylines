@@ -1,124 +1,61 @@
 from django.db import models
 from django.contrib.auth.models import User
-from routes.models import RoutePoint, Route
-from django.dispatch import receiver
+from django.utils.translation import gettext_lazy as _
+from routes.models import RoutePoint
 
 
 class AudioGeneration(models.Model):
-    STATUS_CHOICES = [
-        ("pending", "В ожидании"),
-        ("processing", "Обрабатывается"),
-        ("completed", "Завершено"),
-        ("failed", "Ошибка"),
-    ]
-
     VOICE_CHOICES = [
-        ("alloy", "Alloy (нейтральный)"),
-        ("echo", "Echo (мужской)"),
-        ("fable", "Fable (сказочный)"),
-        ("onyx", "Onyx (глубокий)"),
-        ("nova", "Nova (женский)"),
-        ("shimmer", "Shimmer (легкий)"),
+        ('alloy', _('Alloy (neutral)')),
+        ('echo', _('Echo (male)')),
+        ('nova', _('Nova (female)')),
+        ('onyx', _('Onyx (deep)')),
+        ('fable', _('Fable (storyteller)')),
+        ('shimmer', _('Shimmer (soft)')),
     ]
 
     LANGUAGE_CHOICES = [
-        ("auto", "Автоопределение"),
-        ("ru-RU", "Русский"),
-        ("en-US", "Английский"),
-        ("es-ES", "Испанский"),
-        ("fr-FR", "Французский"),
-        ("de-DE", "Немецкий"),
+        ('auto', _('Auto-detect')),
+        ('ru-RU', _('Russian')),
+        ('en-US', _('English')),
+        ('es-ES', _('Spanish')),
+        ('fr-FR', _('French')),
     ]
 
     point = models.ForeignKey(
-        RoutePoint, on_delete=models.CASCADE, related_name="audio_generations"
+        RoutePoint,
+        on_delete=models.CASCADE,
+        related_name='audio_generations',
+        verbose_name=_("Point"),
     )
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    status = models.CharField(
-        max_length=20, choices=STATUS_CHOICES, default="pending"
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        verbose_name=_("User"),
     )
+    text_content = models.TextField(_("Text content"))
     voice_type = models.CharField(
-        max_length=20, choices=VOICE_CHOICES, default="alloy"
+        _("Voice type"), max_length=20, choices=VOICE_CHOICES, default='alloy'
     )
     language = models.CharField(
-        max_length=10, choices=LANGUAGE_CHOICES, default="auto"
+        _("Language"), max_length=10, choices=LANGUAGE_CHOICES, default='ru-RU'
     )
     audio_file = models.FileField(
-        upload_to="audio_guides/%Y/%m/%d/", null=True, blank=True
+        _("Audio file"), upload_to='audio_guides/', null=True, blank=True
     )
-    text_content = models.TextField()
-    error_message = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    completed_at = models.DateTimeField(null=True, blank=True)
-    processing_time = models.FloatField(null=True, blank=True)
-    is_route_audio = models.BooleanField(
-        default=False, verbose_name="Аудио всего маршрута"
+    status = models.CharField(
+        _("Status"), max_length=20, default='queued'
     )
-    route = models.ForeignKey(
-        Route,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name="audio_generations",
-    )
+    error_message = models.TextField(_("Error message"), blank=True, null=True)
+    processing_time = models.FloatField(_("Processing time (sec)"), null=True, blank=True)
+    created_at = models.DateTimeField(_("Created"), auto_now_add=True)
+    completed_at = models.DateTimeField(_("Completed"), null=True, blank=True)
+    is_route_audio = models.BooleanField(_("Route-level audio"), default=False)
 
     class Meta:
-        db_table = "ai_audio_generations"
-        verbose_name = "Генерация аудио"
-        verbose_name_plural = "Генерации аудио"
+        verbose_name = _("Audio generation")
+        verbose_name_plural = _("Audio generations")
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"Аудио для {self.point.name} ({self.get_status_display()})"
-
-
-class RouteAudioGuide(models.Model):
-    route = models.OneToOneField(
-        Route, on_delete=models.CASCADE, related_name="full_audio_guide"
-    )
-    audio_file = models.FileField(
-        upload_to="route_audio_guides/%Y/%m/%d/", null=True, blank=True
-    )
-    total_points = models.IntegerField(default=0)
-    total_duration = models.FloatField(default=0)
-    status = models.CharField(
-        max_length=20,
-        choices=[
-            ("processing", "Формируется"),
-            ("completed", "Завершено"),
-            ("failed", "Ошибка"),
-        ],
-        default="processing",
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        verbose_name = "Аудиогид маршрута"
-        verbose_name_plural = "Аудиогиды маршрутов"
-
-    def __str__(self):
-        return f"Аудиогид для {self.route.name}"
-
-
-class VoiceProfile(models.Model):
-    user = models.OneToOneField(
-        User, on_delete=models.CASCADE, related_name="voice_profile"
-    )
-    preferred_voice = models.CharField(
-        max_length=20, choices=AudioGeneration.VOICE_CHOICES, default="alloy"
-    )
-    preferred_language = models.CharField(
-        max_length=10, choices=AudioGeneration.LANGUAGE_CHOICES, default="auto"
-    )
-    auto_generate = models.BooleanField(
-        default=False,
-        help_text="Автоматически генерировать аудио для новых точек",
-    )
-
-    class Meta:
-        verbose_name = "Голосовой профиль"
-        verbose_name_plural = "Голосовые профили"
-
-    def __str__(self):
-        return f"Голосовой профиль {self.user.username}"
+        return f"Audio for point {self.point.id} ({self.status})"

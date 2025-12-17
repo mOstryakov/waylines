@@ -1,660 +1,526 @@
 {% extends 'base.html' %}
+{% load i18n %}
 
-{% block title %}Результаты поиска - Waylines{% endblock %}
+{% block title %}{% trans "Search Results - Waylines" %}{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <!-- Заголовок и управление -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex align-items-center justify-content-between">
-                <div>
-                    <h1 class="h3 fw-bold text-dark mb-2">Результаты поиска</h1>
-                    <p class="text-muted">
-                        {% if query %}
-                            По запросу "{{ query }}"
-                        {% else %}
-                            Все маршруты
-                        {% endif %}
-                    </p>
-                </div>
-                <div class="d-flex align-items-center gap-3">
-                    <!-- Сортировка -->
-                    <div class="sort-container">
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text bg-light border-0 text-muted">
-                                <i class="fas fa-sort"></i>
-                            </span>
-                            <select class="form-select form-select-sm border-0 bg-light" id="sort-select" style="width: 160px;">
-                                <option value="newest">Сначала новые</option>
-                                <option value="oldest">Сначала старые</option>
-                                <option value="distance_asc">Дистанция ↑</option>
-                                <option value="distance_desc">Дистанция ↓</option>
-                                <option value="name_asc">Название А-Я</option>
-                                <option value="name_desc">Название Я-А</option>
-                                <option value="rating_desc">По рейтингу</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Счетчик -->
-                    <div class="routes-counter">
-                        <span class="counter-badge" id="routes-count">
-                            {{ routes|length }} маршрут{{ routes|length|pluralize:"ов" }}
-                        </span>
-                    </div>
-                </div>
-            </div>
+<div class="container-fluid px-4 py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
+        <div>
+          <h1 class="h3 fw-bold mb-1">
+            {% if query %}
+              {% trans "Search results" %}
+            {% else %}
+              {% trans "All routes" %}
+            {% endif %}
+          </h1>
+          <p class="text-muted mb-0">
+            {% if query %}
+              {% blocktrans %}For query "{{ query }}"{% endblocktrans %}
+            {% else %}
+              {% blocktrans count count=routes|length %}
+                Found {{ count }} route
+              {% plural %}
+                Found {{ count }} routes
+              {% endblocktrans %}
+            {% endif %}
+          </p>
         </div>
+
+        <div class="d-flex align-items-center gap-3 mt-3 mt-md-0">
+          <div class="routes-counter">
+            <span class="counter-badge" id="routes-count">
+              {% blocktrans count count=routes|length %}
+                {{ count }} route
+              {% plural %}
+                {{ count }} routes
+              {% endblocktrans %}
+            </span>
+          </div>
+
+          <div class="sort-container">
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-white border border-end-0 text-muted">
+                <i class="fas fa-sort"></i>
+              </span>
+              <select class="form-select form-select-sm border-start-0 bg-white" id="sort-select">
+                <option value="newest">{% trans "Newest first" %}</option>
+                <option value="oldest">{% trans "Oldest first" %}</option>
+                <option value="distance_asc">{% trans "Distance ↑" %}</option>
+                <option value="distance_desc">{% trans "Distance ↓" %}</option>
+                <option value="name_asc">{% trans "Name A-Z" %}</option>
+                <option value="name_desc">{% trans "Name Z-A" %}</option>
+                <option value="rating_desc">{% trans "By rating" %}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-xl-3 col-lg-3">
+      <div class="card border-0 shadow-sm h-100" style="position: sticky; top: 20px;">
+        <div class="card-header bg-white border-bottom">
+          <div class="d-flex align-items-center justify-content-between">
+            <h5 class="card-title mb-0">
+              <i class="fas fa-filter me-2 text-muted"></i>
+              {% trans "Filters" %}
+            </h5>
+            <button class="btn btn-sm btn-outline-secondary" onclick="clearFilters()">
+              <i class="fas fa-redo"></i>
+            </button>
+          </div>
+        </div>
+        <div class="card-body p-3">
+          <div class="filter-section mb-4">
+            <h6 class="filter-title">{% trans "Route type" %}</h6>
+            <div class="filter-options">
+              <div class="form-check mb-2">
+                <input class="form-check-input filter-radio" type="radio"
+                       name="route_type" id="type-all" value="" checked>
+                <label class="form-check-label filter-label" for="type-all">
+                  <i class="fas fa-layer-group me-2"></i>
+                  {% trans "All types" %}
+                </label>
+              </div>
+              <div class="form-check mb-2">
+                <input class="form-check-input filter-radio" type="radio"
+                       name="route_type" id="type-walking" value="walking">
+                <label class="form-check-label filter-label" for="type-walking">
+                  <i class="fas fa-walking me-2"></i>
+                  {% trans "Walking" %}
+                </label>
+              </div>
+              <div class="form-check mb-2">
+                <input class="form-check-input filter-radio" type="radio"
+                       name="route_type" id="type-driving" value="driving">
+                <label class="form-check-label filter-label" for="type-driving">
+                  <i class="fas fa-car me-2"></i>
+                  {% trans "Driving" %}
+                </label>
+              </div>
+              <div class="form-check mb-2">
+                <input class="form-check-input filter-radio" type="radio"
+                       name="route_type" id="type-cycling" value="cycling">
+                <label class="form-check-label filter-label" for="type-cycling">
+                  <i class="fas fa-bicycle me-2"></i>
+                  {% trans "Cycling" %}
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="filter-section mb-4">
+            <h6 class="filter-title">{% trans "Distance, km" %}</h6>
+            <div class="filter-options">
+              <div class="form-check mb-2">
+                <input class="form-check-input filter-radio" type="radio"
+                       name="distance" id="distance-all" value="" checked>
+                <label class="form-check-label filter-label" for="distance-all">
+                  <i class="fas fa-infinity me-2"></i>
+                  {% trans "Any distance" %}
+                </label>
+              </div>
+              <div class="form-check mb-2">
+                <input class="form-check-input filter-radio" type="radio"
+                       name="distance" id="distance-short" value="short">
+                <label class="form-check-label filter-label" for="distance-short">
+                  <i class="fas fa-route me-2"></i>
+                  {% trans "up to 5 km" %}
+                </label>
+              </div>
+              <div class="form-check mb-2">
+                <input class="form-check-input filter-radio" type="radio"
+                       name="distance" id="distance-medium" value="medium">
+                <label class="form-check-label filter-label" for="distance-medium">
+                  <i class="fas fa-road me-2"></i>
+                  {% trans "5–15 km" %}
+                </label>
+              </div>
+              <div class="form-check mb-2">
+                <input class="form-check-input filter-radio" type="radio"
+                       name="distance" id="distance-long" value="long">
+                <label class="form-check-label filter-label" for="distance-long">
+                  <i class="fas fa-mountain me-2"></i>
+                  {% trans "15+ km" %}
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Фильтры -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="filters-container">
-                <div class="filters-header">
-                    <div class="d-flex align-items-center gap-3 w-100">
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-filter text-muted me-2"></i>
-                            <span class="text-muted small fw-semibold">Фильтры:</span>
-                        </div>
-
-                        <!-- Кнопка сброса внутри заголовка -->
-                        <button class="btn-clear-filters ms-auto" onclick="clearFilters()">
-                            <i class="fas fa-undo-alt me-1"></i>
-                            <span>Сбросить</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="filters-group">
-                    <!-- Тип маршрута -->
-                    <div class="filter-section">
-                        <div class="filter-label">Тип маршрута</div>
-                        <div class="filter-options">
-                            <input type="radio" class="btn-check" name="route_type" id="type-all" value="" checked>
-                            <label class="filter-option" for="type-all">
-                                <span>Все</span>
-                            </label>
-
-                            <input type="radio" class="btn-check" name="route_type" id="type-walking" value="walking">
-                            <label class="filter-option type-walking" for="type-walking">
-                                <i class="fas fa-walking me-1"></i>
-                                <span>Пешие</span>
-                            </label>
-
-                            <input type="radio" class="btn-check" name="route_type" id="type-driving" value="driving">
-                            <label class="filter-option type-driving" for="type-driving">
-                                <i class="fas fa-car me-1"></i>
-                                <span>Авто</span>
-                            </label>
-
-                            <input type="radio" class="btn-check" name="route_type" id="type-cycling" value="cycling">
-                            <label class="filter-option type-cycling" for="type-cycling">
-                                <i class="fas fa-bicycle me-1"></i>
-                                <span>Вело</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- Сложность -->
-                    <div class="filter-section">
-                        <div class="filter-label">Сложность</div>
-                        <div class="filter-options">
-                            <input type="radio" class="btn-check" name="difficulty" id="difficulty-all" value="" checked>
-                            <label class="filter-option" for="difficulty-all">
-                                <span>Все</span>
-                            </label>
-
-                            <input type="radio" class="btn-check" name="difficulty" id="difficulty-easy" value="easy">
-                            <label class="filter-option difficulty-easy" for="difficulty-easy">
-                                <i class="fas fa-walking me-1"></i>
-                                <span>Лёгкие</span>
-                            </label>
-
-                            <input type="radio" class="btn-check" name="difficulty" id="difficulty-medium" value="medium">
-                            <label class="filter-option difficulty-medium" for="difficulty-medium">
-                                <i class="fas fa-hiking me-1"></i>
-                                <span>Средние</span>
-                            </label>
-
-                            <input type="radio" class="btn-check" name="difficulty" id="difficulty-hard" value="hard">
-                            <label class="filter-option difficulty-hard" for="difficulty-hard">
-                                <i class="fas fa-mountain me-1"></i>
-                                <span>Сложные</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- Дистанция -->
-                    <div class="filter-section">
-                        <div class="filter-label">Дистанция</div>
-                        <div class="filter-options">
-                            <input type="radio" class="btn-check" name="distance" id="distance-all" value="" checked>
-                            <label class="filter-option" for="distance-all">
-                                <span>Любая</span>
-                            </label>
-
-                            <input type="radio" class="btn-check" name="distance" id="distance-short" value="short">
-                            <label class="filter-option distance-short" for="distance-short">
-                                <span>до 5км</span>
-                            </label>
-
-                            <input type="radio" class="btn-check" name="distance" id="distance-medium" value="medium">
-                            <label class="filter-option distance-medium" for="distance-medium">
-                                <span>5-15км</span>
-                            </label>
-
-                            <input type="radio" class="btn-check" name="distance" id="distance-long" value="long">
-                            <label class="filter-option distance-long" for="distance-long">
-                                <span>15+ км</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- Настроение -->
-                    <div class="filter-section">
-                        <div class="filter-label">Настроение</div>
-                        <div class="filter-options">
-                            <input type="radio" class="btn-check" name="mood" id="mood-all" value="" checked>
-                            <label class="filter-option" for="mood-all">
-                                <span>Все</span>
-                            </label>
-
-                            <input type="radio" class="btn-check" name="mood" id="mood-adventure" value="adventure">
-                            <label class="filter-option mood-adventure" for="mood-adventure">
-                                <i class="fas fa-compass me-1"></i>
-                                <span>Приключение</span>
-                            </label>
-
-                            <input type="radio" class="btn-check" name="mood" id="mood-relax" value="relax">
-                            <label class="filter-option mood-relax" for="mood-relax">
-                                <i class="fas fa-spa me-1"></i>
-                                <span>Отдых</span>
-                            </label>
-
-                            <input type="radio" class="btn-check" name="mood" id="mood-romantic" value="romantic">
-                            <label class="filter-option mood-romantic" for="mood-romantic">
-                                <i class="fas fa-heart me-1"></i>
-                                <span>Романтика</span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <div class="col-xl-9 col-lg-9">
+      {% if routes %}
+        <div class="row g-4" id="routes-container">
+          {% for route in routes %}
+          <div class="col-12 col-sm-6 col-xl-4 route-item"
+               data-difficulty="{{ route.difficulty_level|default:'easy'|lower }}"
+               data-distance="{{ route.total_distance|default:0 }}"
+               data-route_type="{{ route.route_type|lower }}"
+               data-rating="{{ route.get_average_rating|default:0 }}"
+               data-created="{{ route.created_at|date:'U' }}"
+               data-name="{{ route.name|lower }}">
+            {% include 'routes/partials/route_card.html' with route=route %}
+          </div>
+          {% endfor %}
         </div>
-    </div>
-
-    {% if routes %}
-    <!-- Сетка маршрутов -->
-    <div class="row g-3" id="routes-container">
-        {% for route in routes %}
-        <div class="col-12 col-md-6 col-lg-4 route-item"
-             data-difficulty="{{ route.difficulty_level|default:'easy'|lower }}"
-             data-distance="{{ route.total_distance|default:0 }}"
-             data-route_type="{{ route.route_type|lower }}"
-             data-mood="{{ route.mood|default:''|lower }}"
-             data-rating="{{ route.get_average_rating|default:0 }}"
-             data-created="{{ route.created_at|date:'U' }}"
-             data-name="{{ route.name|lower }}">
-            <div class="card route-card h-100 border-0 shadow-sm">
-                <!-- Бейдж типа маршрута -->
-                <div class="position-absolute top-0 start-0 m-2">
-                    <span class="badge {% if route.route_type == 'walking' %}bg-primary{% elif route.route_type == 'driving' %}bg-success{% elif route.route_type == 'cycling' %}bg-warning{% else %}bg-secondary{% endif %} bg-opacity-10 text-{% if route.route_type == 'walking' %}primary{% elif route.route_type == 'driving' %}success{% elif route.route_type == 'cycling' %}warning{% else %}secondary{% endif %} border-0 small">
-                        {{ route.get_route_type_display }}
-                    </span>
-                </div>
-
-                <!-- Рейтинг -->
-                <div class="position-absolute top-0 end-0 m-2">
-                    {% if route.get_average_rating %}
-                    <span class="badge bg-warning bg-opacity-10 text-warning border-0 small">
-                        <i class="fas fa-star me-1"></i>{{ route.get_average_rating|floatformat:1 }}
-                    </span>
-                    {% endif %}
-                </div>
-
-                <!-- Картинка маршрута -->
-                <div class="card-img-top-container position-relative">
-                    {% if route.image %}
-                    <img src="{{ route.image.url }}" class="card-img-top route-image" alt="{{ route.name }}" style="height: 200px; object-fit: cover;">
-                    {% else %}
-                    <div class="card-img-top route-image-placeholder d-flex align-items-center justify-content-center bg-light" style="height: 200px;">
-                        <i class="fas fa-route fa-2x text-muted"></i>
-                    </div>
-                    {% endif %}
-                </div>
-
-                <!-- Контент карточки -->
-                <div class="card-body">
-                    <h6 class="card-title fw-bold mb-2">{{ route.name }}</h6>
-
-                    <p class="card-text text-muted small mb-3">
-                        {{ route.short_description|default:route.description|truncatewords:15 }}
-                    </p>
-
-                    <!-- Статистика маршрута -->
-                    <div class="route-stats mb-3">
-                        <div class="row g-2 text-center small">
-                            {% if route.total_distance %}
-                            <div class="col-4">
-                                <div class="text-dark fw-semibold">{{ route.total_distance }} км</div>
-                                <div class="text-muted">Дистанция</div>
-                            </div>
-                            {% endif %}
-
-                            {% if route.duration_minutes %}
-                            <div class="col-4">
-                                <div class="text-dark fw-semibold">{{ route.duration_minutes|divisibleby:60|yesno:route.duration_minutes|add:"0 мин" }}</div>
-                                <div class="text-muted">Время</div>
-                            </div>
-                            {% endif %}
-
-                            <div class="col-4">
-                                <div class="text-dark fw-semibold">{{ route.difficulty_level|default:"Лёгкий" }}</div>
-                                <div class="text-muted">Сложность</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Автор и дата -->
-                    <div class="d-flex align-items-center justify-content-between text-muted small">
-                        <span>@{{ route.author.username }}</span>
-                        <span>{{ route.created_at|date:"d.m.Y" }}</span>
-                    </div>
-
-                    <!-- Действия -->
-                    <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
-                        <a href="{% url 'route_detail' route.id %}" class="btn btn-outline-primary btn-sm">
-                            Открыть
-                        </a>
-                        <div class="d-flex align-items-center gap-1">
-                            {% if user.is_authenticated %}
-                                {% with route=route %}
-                                    {% include 'interactions/favorite_button.html' %}
-                                {% endwith %}
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-            </div>
+      {% else %}
+        <div class="text-center py-5">
+          <i class="fas fa-search fa-2x text-muted mb-3"></i>
+          <h4 class="mb-2">{% trans "No routes found" %}</h4>
+          <p class="text-muted mb-3">
+            {% if query %}
+              {% blocktrans %}No routes match your query "{{ query }}".{% endblocktrans %}
+            {% else %}
+              {% trans "No routes match the selected filters." %}
+            {% endif %}
+          </p>
+          <div class="d-flex gap-2 justify-content-center">
+            <a href="{% url 'all_routes' %}" class="btn btn-outline-primary btn-sm">{% trans "Reset filters" %}</a>
+            <a href="{% url 'create_route' %}" class="btn btn-outline-secondary btn-sm">{% trans "Create route" %}</a>
+          </div>
         </div>
-        {% endfor %}
-    </div>
+      {% endif %}
 
-    {% else %}
-    <!-- Состояние пустого списка -->
-    <div class="row justify-content-center">
-        <div class="col-12 col-md-6 text-center py-5">
-            <div class="text-muted mb-4">
-                <i class="fas fa-search fa-3x mb-3"></i>
-            </div>
-            <h5 class="fw-bold text-dark mb-3">Маршруты не найдены</h5>
-            <p class="text-muted mb-4">
-                {% if query %}
-                    По вашему запросу "{{ query }}" ничего не найдено. Попробуйте изменить критерии поиска.
-                {% else %}
-                    Не найдено маршрутов, соответствующих выбранным фильтрам.
-                {% endif %}
-            </p>
-            <div class="d-flex gap-2 justify-content-center">
-                <a href="{% url 'all_routes' %}" class="btn btn-primary btn-sm">
-                    Все маршруты
-                </a>
-                <a href="{% url 'create_route' %}" class="btn btn-outline-secondary btn-sm">
-                    Создать маршрут
-                </a>
-            </div>
+      <div id="no-results-message" class="d-none">
+        <div class="text-center py-5">
+          <i class="fas fa-filter fa-2x text-muted mb-3"></i>
+          <h4 class="mb-2">{% trans "No matching routes" %}</h4>
+          <p class="text-muted mb-3">{% trans "Try adjusting your filter criteria." %}</p>
+          <button class="btn btn-outline-primary btn-sm" onclick="clearFilters()">
+            {% trans "Reset filters" %}
+          </button>
         </div>
+      </div>
     </div>
-    {% endif %}
+  </div>
 </div>
 {% endblock %}
 
 {% block extra_css %}
 <style>
-/* Основные стили карточек */
-.route-card {
-    transition: all 0.2s ease;
-    border-radius: 12px;
+.container-fluid {
+  max-width: 1800px;
+  margin: 0 auto;
 }
 
-.route-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+.row.g-4 {
+  margin-right: -0.75rem;
+  margin-left: -0.75rem;
 }
 
-.card-img-top-container {
-    border-radius: 12px 12px 0 0;
-    overflow: hidden;
+.row.g-4 > .col-12.col-sm-6.col-xl-4 {
+  min-width: 280px;
+  padding-right: 0.75rem;
+  padding-left: 0.75rem;
+  margin-bottom: 1.5rem;
 }
 
-.route-image {
-    transition: transform 0.3s ease;
+.route-card-full {
+  min-width: 280px !important;
+  height: 100%;
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  background: #fff;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
-.route-card:hover .route-image {
-    transform: scale(1.05);
+.route-card-full:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.08);
 }
 
-.route-stats {
-    border-top: 1px solid #f8f9fa;
-    border-bottom: 1px solid #f8f9fa;
-    padding: 12px 0;
+.route-image-container {
+  height: 180px;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 12px 12px 0 0;
+  flex-shrink: 0;
 }
 
-.route-item {
-    transition: all 0.3s ease;
+.route-image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  transition: transform 0.3s ease;
 }
 
-.route-item.hidden {
-    display: none;
+.route-card-full:hover .route-image-container img {
+  transform: scale(1.05);
 }
 
-/* Стили для сортировки */
+.route-card-full .card-body {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  min-height: 0;
+}
+
+.route-card-full .card-text {
+  flex-grow: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  margin-bottom: 0.75rem;
+}
+
+.route-card-full .card-footer {
+  margin-top: auto;
+  padding-top: 0.75rem;
+  border-top: 1px solid #f0f0f0;
+}
+
+.route-card-full .card-title {
+  font-size: 1rem;
+  line-height: 1.3;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.route-card-full .badge {
+  font-size: 0.75rem;
+  padding: 0.25em 0.5em;
+}
+
+.route-card-full small {
+  font-size: 0.8rem;
+}
+
+.route-card-full .btn {
+  font-size: 0.85rem;
+  padding: 0.4rem 0.75rem;
+}
+
+.card[style*="sticky"] {
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  border: 1px solid #e9ecef;
+}
+
+.card[style*="sticky"] .card-header {
+  padding: 1rem;
+  background: #f8f9fa;
+}
+
+.card[style*="sticky"] .card-body {
+  padding: 1rem;
+}
+
 .sort-container {
-    position: relative;
+  min-width: 200px;
 }
 
 .sort-container .input-group {
-    border-radius: 10px;
-    background: #f8f9fa;
-    border: 1px solid transparent;
-    transition: all 0.2s ease;
-}
-
-.sort-container .input-group:focus-within {
-    border-color: #007bff;
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .sort-container .input-group-text {
-    border-radius: 10px 0 0 10px;
-    background: transparent;
+  border-radius: 8px 0 0 8px;
+  border: 1px solid #dee2e6;
+  border-right: none;
+  background: white;
 }
 
 .sort-container .form-select {
-    border-radius: 0 10px 10px 0;
-    background: transparent;
-    border: none;
-    box-shadow: none !important;
+  border-radius: 0 8px 8px 0;
+  border: 1px solid #dee2e6;
+  border-left: none;
+  background: white;
+  box-shadow: none;
 }
 
-/* Счетчик */
+.sort-container .form-select:focus {
+  border-color: #86b7fe;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
 .routes-counter {
-    display: flex;
-    align-items: center;
+  display: flex;
+  align-items: center;
 }
 
 .counter-badge {
-    background: #f8f9fa;
-    color: #6c757d;
-    padding: 6px 12px;
-    border-radius: 8px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    border: 1px solid #dee2e6;
-}
-
-/* Контейнер фильтров */
-.filters-container {
-    background: #f8f9fa;
-    border-radius: 12px;
-    padding: 16px 20px;
-    border: 1px solid #e9ecef;
-}
-
-.filters-header {
-    display: flex;
-    align-items: center;
-    margin-bottom: 16px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #dee2e6;
-}
-
-.filters-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 24px;
+  background: #f8f9fa;
+  color: #6c757d;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid #dee2e6;
 }
 
 .filter-section {
-    flex: 1;
-    min-width: 200px;
+  padding: 0.75rem 0;
 }
 
-.filter-label {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: #6c757d;
-    margin-bottom: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+.filter-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e9ecef;
 }
 
 .filter-options {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
+  padding-left: 0.25rem;
 }
 
-.filter-option {
-    display: inline-flex;
-    align-items: center;
-    padding: 8px 12px;
-    background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    font-size: 0.8rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    color: #6c757d;
+.filter-label {
+  font-size: 0.9rem;
+  color: #495057;
+  cursor: pointer;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  margin-left: -0.75rem;
 }
 
-.filter-option:hover {
-    border-color: #007bff;
-    color: #007bff;
-    transform: translateY(-1px);
+.filter-label:hover {
+  background-color: #f8f9fa;
+  color: #007bff;
 }
 
-.btn-check:checked + .filter-option {
-    background: #007bff;
-    border-color: #007bff;
-    color: white;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+.filter-radio:checked + .filter-label {
+  background-color: #e7f1ff;
+  color: #0056b3;
+  font-weight: 500;
 }
 
-/* Специфичные стили для фильтров типа маршрута */
-.type-walking:hover,
-.btn-check:checked + .type-walking {
-    background: #007bff;
-    border-color: #007bff;
-    color: white;
+.filter-radio {
+  cursor: pointer;
+  margin-top: 0.3rem;
 }
 
-.type-driving:hover,
-.btn-check:checked + .type-driving {
-    background: #28a745;
-    border-color: #28a745;
-    color: white;
+.form-check {
+  margin-bottom: 0.25rem;
 }
 
-.type-cycling:hover,
-.btn-check:checked + .type-cycling {
-    background: #ffc107;
-    border-color: #ffc107;
-    color: #212529;
-}
-
-/* Специфичные стили для фильтров сложности */
-.difficulty-easy:hover,
-.btn-check:checked + .difficulty-easy {
-    background: #28a745;
-    border-color: #28a745;
-    color: white;
-}
-
-.difficulty-medium:hover,
-.btn-check:checked + .difficulty-medium {
-    background: #fd7e14;
-    border-color: #fd7e14;
-    color: white;
-}
-
-.difficulty-hard:hover,
-.btn-check:checked + .difficulty-hard {
-    background: #dc3545;
-    border-color: #dc3545;
-    color: white;
-}
-
-/* Стили для фильтров дистанции */
-.distance-short:hover,
-.btn-check:checked + .distance-short {
-    background: #6f42c1;
-    border-color: #6f42c1;
-    color: white;
-}
-
-.distance-medium:hover,
-.btn-check:checked + .distance-medium {
-    background: #e83e8c;
-    border-color: #e83e8c;
-    color: white;
-}
-
-.distance-long:hover,
-.btn-check:checked + .distance-long {
-    background: #20c997;
-    border-color: #20c997;
-    color: white;
-}
-
-/* Стили для фильтров настроения */
-.mood-adventure:hover,
-.btn-check:checked + .mood-adventure {
-    background: #dc3545;
-    border-color: #dc3545;
-    color: white;
-}
-
-.mood-relax:hover,
-.btn-check:checked + .mood-relax {
-    background: #17a2b8;
-    border-color: #17a2b8;
-    color: white;
-}
-
-.mood-romantic:hover,
-.btn-check:checked + .mood-romantic {
-    background: #e83e8c;
-    border-color: #e83e8c;
-    color: white;
-}
-
-/* Кнопка сброса */
-.btn-clear-filters {
-    display: inline-flex;
-    align-items: center;
-    padding: 6px 12px;
-    background: transparent;
-    border: 1px solid #6c757d;
-    border-radius: 6px;
-    color: #6c757d;
-    font-size: 0.8rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-decoration: none;
-}
-
-.btn-clear-filters:hover {
-    background: #6c757d;
-    color: white;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(108, 117, 125, 0.3);
-}
-
-/* Анимации */
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .route-item {
-    animation: fadeIn 0.3s ease-out;
+  animation: fadeIn 0.3s ease-out;
 }
 
-/* Адаптивность */
-@media (max-width: 768px) {
-    .container-fluid {
-        padding-left: 12px;
-        padding-right: 12px;
-    }
-
-    .route-card {
-        margin-bottom: 1rem;
-    }
-
-    .filters-group {
-        flex-direction: column;
-        gap: 16px;
-    }
-
-    .filter-section {
-        min-width: 100%;
-    }
-
-    .filter-options {
-        justify-content: flex-start;
-    }
-
-    .filters-container {
-        padding: 12px 16px;
-    }
-
-    .sort-container {
-        width: 100%;
-        margin-bottom: 1rem;
-    }
-
-    .sort-container .input-group {
-        width: 100%;
-    }
-
-    .routes-counter {
-        justify-content: center;
-    }
-
-    .filters-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 12px;
-    }
-
-    .btn-clear-filters {
-        align-self: flex-end;
-        margin-top: -8px;
-    }
+.route-item.hidden {
+  display: none;
 }
 
-@media (max-width: 576px) {
-    .filter-option {
-        flex: 1;
-        min-width: 80px;
-        justify-content: center;
-    }
+#no-results-message {
+  animation: fadeIn 0.3s ease-out;
+}
 
-    .filters-header {
-        flex-direction: row;
-        align-items: center;
-    }
+#routes-container {
+  margin-right: 0;
+  margin-left: 0;
+}
 
-    .btn-clear-filters {
-        margin-top: 0;
-    }
+@media (max-width: 1399px) {
+  .col-xl-4 {
+    flex: 0 0 33.333333%;
+    max-width: 33.333333%;
+  }
+}
+
+@media (max-width: 1199px) {
+  .route-card-full {
+    min-height: 400px;
+  }
+  .route-image-container {
+    height: 170px;
+  }
+}
+
+@media (max-width: 991px) {
+  .col-lg-3 {
+    flex: 0 0 25%;
+    max-width: 25%;
+  }
+  .col-lg-9 {
+    flex: 0 0 75%;
+    max-width: 75%;
+  }
+  .col-sm-6 {
+    flex: 0 0 50%;
+    max-width: 50%;
+  }
+  .route-card-full {
+    min-height: 380px;
+  }
+  .route-image-container {
+    height: 160px;
+  }
+}
+
+@media (max-width: 767px) {
+  .col-lg-3, .col-lg-9 {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+  .col-sm-6 {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+  .route-card-full {
+    min-height: auto;
+    height: auto;
+  }
+  .route-image-container {
+    height: 180px;
+  }
+
+  .sort-container {
+    min-width: 100%;
+    margin-top: 1rem;
+  }
+
+  .d-flex.flex-column.flex-md-row {
+    flex-direction: column !important;
+  }
+
+  .routes-counter {
+    order: -1;
+    margin-bottom: 1rem;
+  }
+}
+
+@media (max-width: 575px) {
+  .container-fluid {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  .route-image-container {
+    height: 160px;
+  }
+
+  .card[style*="sticky"] {
+    position: static !important;
+    max-height: none;
+    margin-bottom: 1.5rem;
+  }
 }
 </style>
 {% endblock %}
@@ -665,9 +531,7 @@ class RouteFilter {
     constructor() {
         this.filters = {
             route_type: '',
-            difficulty: '',
-            distance: '',
-            mood: ''
+            distance: ''
         };
         this.sortBy = 'newest';
         this.init();
@@ -681,13 +545,6 @@ class RouteFilter {
             });
         });
 
-        document.querySelectorAll('input[name="difficulty"]').forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                this.filters.difficulty = e.target.value;
-                this.applyFilters();
-            });
-        });
-
         document.querySelectorAll('input[name="distance"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
                 this.filters.distance = e.target.value;
@@ -695,17 +552,15 @@ class RouteFilter {
             });
         });
 
-        document.querySelectorAll('input[name="mood"]').forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                this.filters.mood = e.target.value;
+        const sortSelect = document.getElementById('sort-select');
+        if (sortSelect) {
+            sortSelect.addEventListener('change', (e) => {
+                this.sortBy = e.target.value;
                 this.applyFilters();
             });
-        });
+        }
 
-        document.getElementById('sort-select').addEventListener('change', (e) => {
-            this.sortBy = e.target.value;
-            this.applyFilters();
-        });
+        this.applyFilters();
     }
 
     applyFilters() {
@@ -714,23 +569,15 @@ class RouteFilter {
 
         routes.forEach(route => {
             const route_type = route.dataset.route_type;
-            const difficulty = route.dataset.difficulty;
             const distance = parseFloat(route.dataset.distance) || 0;
-            const mood = route.dataset.mood;
 
             const routeTypeMatch = !this.filters.route_type ||
                 route_type === this.filters.route_type;
 
-            const difficultyMatch = !this.filters.difficulty ||
-                this.getDifficultyLevel(difficulty) === this.filters.difficulty;
-
             const distanceMatch = !this.filters.distance ||
                 this.checkDistanceFilter(distance, this.filters.distance);
 
-            const moodMatch = !this.filters.mood ||
-                mood === this.filters.mood;
-
-            if (routeTypeMatch && difficultyMatch && distanceMatch && moodMatch) {
+            if (routeTypeMatch && distanceMatch) {
                 route.classList.remove('hidden');
                 visibleCount++;
             } else {
@@ -740,18 +587,7 @@ class RouteFilter {
 
         this.sortRoutes();
         this.updateRoutesCount(visibleCount);
-    }
-
-    getDifficultyLevel(difficulty) {
-        const levels = {
-            'легкий': 'easy',
-            'средний': 'medium',
-            'сложный': 'hard',
-            'easy': 'easy',
-            'medium': 'medium',
-            'hard': 'hard'
-        };
-        return levels[difficulty] || 'easy';
+        this.showNoResultsMessage(visibleCount);
     }
 
     checkDistanceFilter(distance, filter) {
@@ -765,6 +601,8 @@ class RouteFilter {
 
     sortRoutes() {
         const container = document.getElementById('routes-container');
+        if (!container) return;
+        
         const routes = Array.from(container.querySelectorAll('.route-item:not(.hidden)'));
 
         routes.sort((a, b) => {
@@ -788,38 +626,77 @@ class RouteFilter {
             }
         });
 
-        routes.forEach(route => container.appendChild(route));
+        routes.forEach((route, index) => {
+            route.style.animationDelay = `${index * 0.05}s`;
+            container.appendChild(route);
+        });
     }
 
     updateRoutesCount(count) {
         const counter = document.getElementById('routes-count');
-        const plural = count === 1 ? '' : 'ов';
-        counter.textContent = `${count} маршрут${plural}`;
+        if (!counter) return;
+        
+        const plural = 
+            count === 1 ? '' :
+            (count > 1 && count < 5 ? 's' : 's'); // English plural rule
+        counter.textContent = `${count} route${plural}`;
+    }
+
+    showNoResultsMessage(count) {
+        const routesContainer = document.getElementById('routes-container');
+        const noResultsMessage = document.getElementById('no-results-message');
+        
+        if (!routesContainer || !noResultsMessage) return;
+        
+        if (count === 0 && routesContainer.querySelectorAll('.route-item').length > 0) {
+            noResultsMessage.classList.remove('d-none');
+            routesContainer.classList.add('d-none');
+        } else {
+            noResultsMessage.classList.add('d-none');
+            routesContainer.classList.remove('d-none');
+        }
     }
 }
 
 function clearFilters() {
-    document.querySelectorAll('input[type="radio"]').forEach(radio => {
-        if (radio.id.includes('all')) {
-            radio.checked = true;
-        }
+    document.querySelectorAll('input[name="route_type"]').forEach(radio => {
+        if (radio.id === 'type-all') radio.checked = true;
+    });
+    
+    document.querySelectorAll('input[name="distance"]').forEach(radio => {
+        if (radio.id === 'distance-all') radio.checked = true;
     });
 
-    document.getElementById('sort-select').value = 'newest';
+    const sortSelect = document.getElementById('sort-select');
+    if (sortSelect) sortSelect.value = 'newest';
 
-    routeFilter.filters = {
-        route_type: '',
-        difficulty: '',
-        distance: '',
-        mood: ''
-    };
-    routeFilter.sortBy = 'newest';
-    routeFilter.applyFilters();
+    if (routeFilter) {
+        routeFilter.filters = { route_type: '', distance: '' };
+        routeFilter.sortBy = 'newest';
+        routeFilter.applyFilters();
+    }
 }
 
 let routeFilter;
 document.addEventListener('DOMContentLoaded', function() {
     routeFilter = new RouteFilter();
+    const routes = document.querySelectorAll('.route-item');
+    routes.forEach((route, index) => {
+        route.style.animationDelay = `${index * 0.05}s`;
+        route.style.animation = 'fadeIn 0.3s ease-out';
+    });
+});
+
+window.addEventListener('resize', function() {
+    const stickyCard = document.querySelector('.card[style*="sticky"]');
+    if (window.innerWidth < 576 && stickyCard) {
+        stickyCard.style.position = 'static';
+        stickyCard.style.maxHeight = 'none';
+    } else if (stickyCard) {
+        stickyCard.style.position = 'sticky';
+        stickyCard.style.top = '20px';
+        stickyCard.style.maxHeight = 'calc(100vh - 100px)';
+    }
 });
 </script>
 {% endblock %}

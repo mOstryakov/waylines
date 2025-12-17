@@ -1,451 +1,363 @@
-{% load static %}
+{% load static i18n %}
 
-<!-- Подключаем moment.js -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.43/moment-timezone-with-data.min.js"></script>
+<script src="{% static 'js/moment.min.js' %}"></script>
+<script src="{% static 'js/moment-timezone-with-data.min.js' %}"></script>
 
 <div class="card border-0 shadow-sm mb-4" id="comments-section">
-    <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
-        <h5 class="card-title mb-0 text-dark">
-            <i class="fas fa-comments me-2 text-muted"></i>Комментарии
-            <span class="badge bg-primary ms-2" id="comments-count">{{ route.interaction_comments.count }}</span>
-        </h5>
+  <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+    <h5 class="card-title mb-0 text-dark">
+      <i class="fas fa-comments me-2 text-muted"></i>{% trans "Comments" %}
+      <span class="badge bg-primary ms-2" id="comments-count">{{ route.interaction_comments.count }}</span>
+    </h5>
+  </div>
+
+  <div class="card-body p-3">
+    {% if user.is_authenticated %}
+    <div class="mb-3">
+      <form method="post" id="comment-form" class="comment-form">
+        {% csrf_token %}
+        <div class="mb-2">
+          <textarea name="text" id="comment-text" class="form-control" rows="2" placeholder="{% trans 'Write your comment...' %}" required></textarea>
+        </div>
+        <div class="d-flex justify-content-end">
+          <button type="submit" class="btn btn-primary btn-sm" id="submit-comment">
+            <i class="fas fa-paper-plane me-1"></i>{% trans "Post" %}
+          </button>
+        </div>
+      </form>
     </div>
+    {% else %}
+    <div class="alert alert-light text-center mb-3 border" role="alert">
+      <small class="text-muted">
+        <a href="{% url 'login' %}?next={{ request.path }}" class="fw-bold text-decoration-none">{% trans "Sign in" %}</a> {% trans "to leave a comment." %}
+      </small>
+    </div>
+    {% endif %}
 
-    <div class="card-body p-3">
-        <!-- Форма добавления комментария -->
-        {% if user.is_authenticated %}
-        <div class="mb-3">
-            <form method="post" id="comment-form" class="comment-form">
-                {% csrf_token %}
-                <div class="mb-2">
-                    <textarea name="text" id="comment-text" class="form-control" rows="2" placeholder="Напишите ваш комментарий..." required></textarea>
-                </div>
-                <div class="d-flex justify-content-end">
-                    <button type="submit" class="btn btn-primary btn-sm" id="submit-comment">
-                        <i class="fas fa-paper-plane me-1"></i>Отправить
-                    </button>
-                </div>
-            </form>
-        </div>
-        {% else %}
-        <div class="alert alert-light text-center mb-3 border" role="alert">
-            <small class="text-muted">
-                <a href="{% url 'login' %}?next={{ request.path }}" class="fw-bold text-decoration-none">Войдите</a>, чтобы оставить комментарий.
-            </small>
-        </div>
-        {% endif %}
-
-        <!-- Список комментариев -->
-        <div class="comments-container" id="comments-container" style="max-height: 400px; overflow-y: auto; padding-right: 5px;">
-            <div class="comments-list" id="comments-list">
-                {% for comment in route.interaction_comments.all %}
-                <div class="comment-item d-flex mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}" 
-                     data-comment-id="{{ comment.id }}"
-                     data-user-id="{{ comment.user.id }}"
-                     data-timestamp="{{ comment.created_at|date:'c' }}">
-                    <div class="flex-shrink-0">
-                        <div class="avatar-placeholder rounded-circle bg-light d-flex align-items-center justify-content-center border" style="width: 40px; height: 40px;">
-                            <i class="fas fa-user text-secondary"></i>
-                        </div>
-                    </div>
-
-                    <div class="flex-grow-1 ms-3">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <div class="d-flex align-items-center gap-2 mb-1">
-                                    <h6 class="mb-0 text-dark fw-bold">{{ comment.user.username }}</h6>
-                                    {% if comment.user == route.author %}
-                                    <span class="badge bg-light text-muted border px-2 py-1" style="font-size: 0.65rem; font-weight: 500;">
-                                        <i class="fas fa-feather-alt me-1"></i>Автор
-                                    </span>
-                                    {% endif %}
-                                </div>
-                                <small class="text-muted comment-time" data-timestamp="{{ comment.created_at|date:'c' }}">
-                                    {{ comment.created_at|date:"d.m.Y H:i" }}
-                                </small>
-                            </div>
-
-                            {% if comment.user == request.user %}
-                            <button type="button" class="btn btn-link text-danger p-0 btn-sm opacity-75 hover-opacity-100 delete-comment-btn" 
-                                    data-comment-id="{{ comment.id }}" title="Удалить">
-                                <i class="far fa-trash-alt"></i>
-                            </button>
-                            {% endif %}
-                        </div>
-
-                        <p class="comment-text text-secondary mt-2 mb-0" style="white-space: pre-line;">{{ comment.text }}</p>
-                    </div>
-                </div>
-                {% empty %}
-                <div class="text-center py-4 text-muted">
-                    <i class="far fa-comment-dots fa-3x mb-3 opacity-25"></i>
-                    <p class="mb-0">Комментариев пока нет. Будьте первым!</p>
-                </div>
-                {% endfor %}
+    <div class="comments-container" id="comments-container" style="max-height: 400px; overflow-y: auto; padding-right: 5px;">
+      <div class="comments-list" id="comments-list">
+        {% for comment in route.interaction_comments.all %}
+        <div class="comment-item d-flex mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}" 
+             data-comment-id="{{ comment.id }}"
+             data-user-id="{{ comment.user.id }}"
+             data-timestamp="{{ comment.created_at|date:'c' }}">
+          <div class="flex-shrink-0">
+            <div class="avatar-placeholder rounded-circle bg-light d-flex align-items-center justify-content-center border" style="width: 40px; height: 40px;">
+              <i class="fas fa-user text-secondary"></i>
             </div>
+          </div>
+
+          <div class="flex-grow-1 ms-3">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <div class="d-flex align-items-center gap-2 mb-1">
+                  <h6 class="mb-0 text-dark fw-bold">{{ comment.user.username }}</h6>
+                  {% if comment.user == route.author %}
+                  <span class="badge bg-light text-muted border px-2 py-1" style="font-size: 0.65rem; font-weight: 500;">
+                    <i class="fas fa-feather-alt me-1"></i>{% trans "Author" %}
+                  </span>
+                  {% endif %}
+                </div>
+                <small class="text-muted comment-time" data-timestamp="{{ comment.created_at|date:'c' }}">
+                  {{ comment.created_at|date:"d.m.Y H:i" }}
+                </small>
+              </div>
+
+              {% if comment.user == request.user %}
+              <button type="button" class="btn btn-link text-danger p-0 btn-sm opacity-75 hover-opacity-100 delete-comment-btn" 
+                      data-comment-id="{{ comment.id }}" title="{% trans 'Delete' %}">
+                <i class="far fa-trash-alt"></i>
+              </button>
+              {% endif %}
+            </div>
+
+            <p class="comment-text text-secondary mt-2 mb-0" style="white-space: pre-line;">{{ comment.text }}</p>
+          </div>
         </div>
+        {% empty %}
+        <div class="text-center py-4 text-muted">
+          <i class="far fa-comment-dots fa-3x mb-3 opacity-25"></i>
+          <p class="mb-0">{% trans "No comments yet. Be the first!" %}</p>
+        </div>
+        {% endfor %}
+      </div>
     </div>
+  </div>
 </div>
 
 <script>
-// ==================== НАСТРОЙКИ MOMENT.JS ====================
+  // Локаль moment.js остаётся 'en' или определяется динамически по LANGUAGE_CODE
+  // Для полной i18n-поддержки moment.js, её локаль можно брать из Django-контекста,
+  // но здесь оставляем английскую как fallback
 
-// Устанавливаем русскую локаль для moment.js
-moment.locale('ru', {
-    months: 'января_февраля_марта_апреля_мая_июня_июля_августа_сентября_октября_ноября_декабря'.split('_'),
-    monthsShort: 'янв_фев_мар_апр_мая_июня_июля_авг_сен_окт_ноя_дек'.split('_'),
-    weekdays: 'воскресенье_понедельник_вторник_среда_четверг_пятница_суббота'.split('_'),
-    weekdaysShort: 'вс_пн_вт_ср_чт_пт_сб'.split('_'),
-    weekdaysMin: 'вс_пн_вт_ср_чт_пт_сб'.split('_'),
+  moment.locale('en', {
+    months: 'January_February_March_April_May_June_July_August_September_October_November_December'.split('_'),
+    monthsShort: 'Jan_Feb_Mar_Apr_May_Jun_Jul_Aug_Sep_Oct_Nov_Dec'.split('_'),
+    weekdays: 'Sunday_Monday_Tuesday_Wednesday_Thursday_Friday_Saturday'.split('_'),
+    weekdaysShort: 'Sun_Mon_Tue_Wed_Thu_Fri_Sat'.split('_'),
+    weekdaysMin: 'Su_Mo_Tu_We_Th_Fr_Sa'.split('_'),
     longDateFormat: {
-        LT: 'HH:mm',
-        LTS: 'HH:mm:ss',
-        L: 'DD.MM.YYYY',
-        LL: 'D MMMM YYYY г.',
-        LLL: 'D MMMM YYYY г., HH:mm',
-        LLLL: 'dddd, D MMMM YYYY г., HH:mm'
+      LT: 'h:mm A',
+      LTS: 'h:mm:ss A',
+      L: 'MM/DD/YYYY',
+      LL: 'MMMM D, YYYY',
+      LLL: 'MMMM D, YYYY h:mm A',
+      LLLL: 'dddd, MMMM D, YYYY h:mm A'
     },
     calendar: {
-        sameDay: '[Сегодня в] LT',
-        nextDay: '[Завтра в] LT',
-        lastDay: '[Вчера в] LT',
-        nextWeek: 'dddd [в] LT',
-        lastWeek: 'dddd [в] LT',
-        sameElse: 'L'
+      sameDay: '[Today at] LT',
+      nextDay: '[Tomorrow at] LT',
+      lastDay: '[Yesterday at] LT',
+      nextWeek: 'dddd [at] LT',
+      lastWeek: '[Last] dddd [at] LT',
+      sameElse: 'L'
     },
     relativeTime: {
-        future: 'через %s',
-        past: '%s назад',
-        s: 'несколько секунд',
-        m: 'минуту',
-        mm: '%d минут',
-        h: 'час',
-        hh: '%d часов',
-        d: 'день',
-        dd: '%d дней',
-        M: 'месяц',
-        MM: '%d месяцев',
-        y: 'год',
-        yy: '%d лет'
+      future: 'in %s',
+      past: '%s ago',
+      s: 'a few seconds',
+      m: 'a minute',
+      mm: '%d minutes',
+      h: 'an hour',
+      hh: '%d hours',
+      d: 'a day',
+      dd: '%d days',
+      M: 'a month',
+      MM: '%d months',
+      y: 'a year',
+      yy: '%d years'
     }
-});
+  });
 
-// ==================== ФУНКЦИИ ДЛЯ РАБОТЫ С ВРЕМЕНЕМ ====================
-
-// Определяет часовой пояс пользователя
-function detectUserTimezone() {
+  function detectUserTimezone() {
     try {
-        const timezone = moment.tz.guess();
-        console.log('Часовой пояс пользователя:', timezone);
-        
-        // Сохраняем в cookie на случай, если понадобится на сервере
-        document.cookie = `user_timezone=${encodeURIComponent(timezone)}; path=/; max-age=${365*24*60*60}; SameSite=Lax`;
-        
-        return timezone;
+      const timezone = moment.tz.guess();
+      document.cookie = `user_timezone=${encodeURIComponent(timezone)}; path=/; max-age=${365*24*60*60}; SameSite=Lax`;
+      return timezone;
     } catch (error) {
-        console.error('Не удалось определить часовой пояс:', error);
-        return 'UTC';
+      return 'UTC';
     }
-}
+  }
 
-// Форматирует время в локальном формате пользователя
-function formatLocalTimeWithMoment(isoString) {
+  function formatLocalTimeWithMoment(isoString) {
     try {
-        if (!isoString) return '';
-        
-        // Создаем moment объект из ISO строки
-        const time = moment.utc(isoString).local();
-        
-        // Проверяем, сегодня ли это
-        const now = moment();
-        const isToday = time.isSame(now, 'day');
-        const isYesterday = time.isSame(now.clone().subtract(1, 'day'), 'day');
-        const isThisYear = time.isSame(now, 'year');
-        
-        // Разные форматы в зависимости от давности
-        if (isToday) {
-            // Сегодня: показываем время и "сегодня"
-            return `Сегодня в ${time.format('HH:mm')}`;
-        } else if (isYesterday) {
-            // Вчера: показываем время и "вчера"
-            return `Вчера в ${time.format('HH:mm')}`;
-        } else if (isThisYear) {
-            // В этом году: показываем дату без года
-            return time.format('D MMMM в HH:mm');
-        } else {
-            // Прошлые года: показываем полную дату
-            return time.format('D MMMM YYYY в HH:mm');
-        }
+      if (!isoString) return '';
+      const time = moment.utc(isoString).local();
+      const now = moment();
+      const isToday = time.isSame(now, 'day');
+      const isYesterday = time.isSame(now.clone().subtract(1, 'day'), 'day');
+      const isThisYear = time.isSame(now, 'year');
+      if (isToday) {
+        return `Today at ${time.format('h:mm A')}`;
+      } else if (isYesterday) {
+        return `Yesterday at ${time.format('h:mm A')}`;
+      } else if (isThisYear) {
+        return time.format('MMMM D [at] h:mm A');
+      } else {
+        return time.format('MMMM D, YYYY [at] h:mm A');
+      }
     } catch (error) {
-        console.error('Ошибка форматирования времени:', error, isoString);
-        return isoString;
+      return isoString;
     }
-}
+  }
 
-// Функция для обновления времени во всех комментариях
-function updateAllCommentTimes() {
+  function updateAllCommentTimes() {
     const timeElements = document.querySelectorAll('.comment-time[data-timestamp]');
-    
     timeElements.forEach(element => {
-        const timestamp = element.dataset.timestamp;
-        if (timestamp) {
-            const formattedTime = formatLocalTimeWithMoment(timestamp);
-            if (formattedTime) {
-                element.textContent = formattedTime;
-                
-                // Добавляем title с полной датой для наведения
-                const fullDate = moment.utc(timestamp).local().format('dddd, D MMMM YYYY, HH:mm:ss');
-                element.title = fullDate;
-            }
+      const timestamp = element.dataset.timestamp;
+      if (timestamp) {
+        const formattedTime = formatLocalTimeWithMoment(timestamp);
+        if (formattedTime) {
+          element.textContent = formattedTime;
+          const fullDate = moment.utc(timestamp).local().format('dddd, MMMM D, YYYY, h:mm:ss A');
+          element.title = fullDate;
         }
+      }
     });
-}
+  }
 
-// ==================== ОСНОВНАЯ ЛОГИКА КОММЕНТАРИЕВ ====================
-
-document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('DOMContentLoaded', function() {
     const commentForm = document.getElementById('comment-form');
     const commentsContainer = document.getElementById('comments-container');
     const commentsList = document.getElementById('comments-list');
     const commentsCount = document.getElementById('comments-count');
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
     const routeId = '{{ route.id }}';
-    
-    console.log('Комментарии инициализированы, маршрут ID:', routeId);
-    
-    // ШАГ 1: Определяем часовой пояс пользователя
+
     detectUserTimezone();
-    
-    // ШАГ 2: Обновляем время в комментариях
     updateAllCommentTimes();
-    
-    // ШАГ 3: Обновляем время каждые 30 секунд
     setInterval(updateAllCommentTimes, 30000);
-    
-    // Функция для прокрутки вниз контейнера
+
     function scrollCommentsToBottom() {
-        if (commentsContainer) {
-            commentsContainer.scrollTop = commentsContainer.scrollHeight;
-        }
+      if (commentsContainer) {
+        commentsContainer.scrollTop = commentsContainer.scrollHeight;
+      }
     }
-    
-    // Изначально прокручиваем вниз
     setTimeout(scrollCommentsToBottom, 100);
-    
-    // Функция для отправки комментария
+
     if (commentForm) {
-        commentForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const submitBtn = document.getElementById('submit-comment');
-            const originalText = submitBtn.innerHTML;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Отправка...';
-            submitBtn.disabled = true;
-            
-            const commentText = document.getElementById('comment-text').value.trim();
-            
-            if (!commentText) {
-                alert('Введите текст комментария');
-                submitBtn.innerHTML = originalText;
-                submitBtn.disabled = false;
-                return;
+      commentForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const submitBtn = document.getElementById('submit-comment');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>' + '{% trans "Sending..." %}';
+        submitBtn.disabled = true;
+        const commentText = document.getElementById('comment-text').value.trim();
+        if (!commentText) {
+          alert('{% trans "Please enter a comment" %}');
+          submitBtn.innerHTML = originalText;
+          submitBtn.disabled = false;
+          return;
+        }
+        try {
+          const formData = new FormData(this);
+          const response = await fetch(`/interactions/comment/${routeId}/`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-CSRFToken': csrfToken
             }
-            
-            try {
-                const formData = new FormData(this);
-                
-                const response = await fetch(`/interactions/comment/${routeId}/`, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRFToken': csrfToken
-                    }
-                });
-                
-                const responseText = await response.text();
-                
-                if (!response.ok) {
-                    throw new Error(`Ошибка сервера: ${response.status}`);
-                }
-                
-                let data;
-                try {
-                    data = JSON.parse(responseText);
-                } catch (jsonError) {
-                    console.error('Невалидный JSON:', responseText.substring(0, 200));
-                    throw new Error('Ошибка обработки ответа сервера');
-                }
-                
-                if (data.success) {
-                    // Обновляем HTML комментариев
-                    if (data.html) {
-                        commentsList.innerHTML = data.html;
-                        // После обновления HTML обновляем время
-                        setTimeout(updateAllCommentTimes, 100);
-                        // Прокручиваем вниз
-                        setTimeout(scrollCommentsToBottom, 150);
-                    }
-                    
-                    // Обновляем счетчик
-                    if (data.comments_count !== undefined) {
-                        commentsCount.textContent = data.comments_count;
-                    }
-                    
-                    // Очищаем форму
-                    document.getElementById('comment-text').value = '';
-                    
-                    console.log('Комментарий успешно добавлен');
-                } else {
-                    alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
-                }
-            } catch (error) {
-                console.error('Ошибка отправки:', error);
-                alert('Произошла ошибка: ' + error.message);
-            } finally {
-                submitBtn.innerHTML = originalText;
-                submitBtn.disabled = false;
+          });
+          const responseText = await response.text();
+          if (!response.ok) {
+            throw new Error(`Server error: ${response.status}`);
+          }
+          let data;
+          try {
+            data = JSON.parse(responseText);
+          } catch (jsonError) {
+            throw new Error('{% trans "Invalid server response" %}');
+          }
+          if (data.success) {
+            if (data.html) {
+              commentsList.innerHTML = data.html;
+              setTimeout(updateAllCommentTimes, 100);
+              setTimeout(scrollCommentsToBottom, 150);
             }
-        });
+            if (data.comments_count !== undefined) {
+              commentsCount.textContent = data.comments_count;
+            }
+            document.getElementById('comment-text').value = '';
+          } else {
+            alert('{% trans "Error:" %} ' + (data.error || '{% trans "Unknown error" %}'));
+          }
+        } catch (error) {
+          alert('{% trans "Error:" %} ' + error.message);
+        } finally {
+          submitBtn.innerHTML = originalText;
+          submitBtn.disabled = false;
+        }
+      });
     }
-    
-    // Функция для удаления комментария
+
     if (commentsList) {
-        commentsList.addEventListener('click', async function(e) {
-            const deleteBtn = e.target.closest('.delete-comment-btn');
-            if (!deleteBtn) return;
-            
-            e.preventDefault();
-            const commentId = deleteBtn.dataset.commentId;
-            
-            if (!confirm('Вы уверены, что хотите удалить этот комментарий?')) {
-                return;
+      commentsList.addEventListener('click', async function(e) {
+        const deleteBtn = e.target.closest('.delete-comment-btn');
+        if (!deleteBtn) return;
+        e.preventDefault();
+        const commentId = deleteBtn.dataset.commentId;
+        if (!confirm('{% trans "Are you sure you want to delete this comment?" %}')) {
+          return;
+        }
+        deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        deleteBtn.disabled = true;
+        try {
+          const response = await fetch(`/interactions/comment/delete/${commentId}/`, {
+            method: 'POST',
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-CSRFToken': csrfToken,
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `csrfmiddlewaretoken=${encodeURIComponent(csrfToken)}`
+          });
+          const responseText = await response.text();
+          if (!response.ok) {
+            throw new Error(`Server error: ${response.status}`);
+          }
+          let data;
+          try {
+            data = JSON.parse(responseText);
+          } catch (jsonError) {
+            throw new Error('{% trans "Invalid server response" %}');
+          }
+          if (data.success) {
+            if (data.html) {
+              commentsList.innerHTML = data.html;
+              setTimeout(updateAllCommentTimes, 100);
             }
-            
-            // Блокируем кнопку
-            deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-            deleteBtn.disabled = true;
-            
-            try {
-                const response = await fetch(`/interactions/comment/delete/${commentId}/`, {
-                    method: 'POST',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRFToken': csrfToken,
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: `csrfmiddlewaretoken=${encodeURIComponent(csrfToken)}`
-                });
-                
-                const responseText = await response.text();
-                
-                if (!response.ok) {
-                    throw new Error(`Ошибка сервера: ${response.status}`);
-                }
-                
-                let data;
-                try {
-                    data = JSON.parse(responseText);
-                } catch (jsonError) {
-                    throw new Error('Ошибка обработки ответа сервера');
-                }
-                
-                if (data.success) {
-                    // Обновляем HTML комментариев
-                    if (data.html) {
-                        commentsList.innerHTML = data.html;
-                        // После обновления HTML обновляем время
-                        setTimeout(updateAllCommentTimes, 100);
-                    }
-                    
-                    // Обновляем счетчик
-                    if (data.comments_count !== undefined) {
-                        commentsCount.textContent = data.comments_count;
-                    }
-                    
-                    console.log('Комментарий успешно удален');
-                } else {
-                    alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
-                }
-            } catch (error) {
-                console.error('Ошибка удаления:', error);
-                alert('Произошла ошибка: ' + error.message);
+            if (data.comments_count !== undefined) {
+              commentsCount.textContent = data.comments_count;
             }
-        });
+          } else {
+            alert('{% trans "Error:" %} ' + (data.error || '{% trans "Unknown error" %}'));
+          }
+        } catch (error) {
+          alert('{% trans "Error:" %} ' + error.message);
+        }
+      });
     }
-    
-    // Функция для добавления меток автора, если они слетели
+
     function fixAuthorBadges() {
-        const routeAuthorId = '{{ route.author.id }}';
-        const commentItems = commentsList.querySelectorAll('.comment-item');
-        
-        commentItems.forEach(item => {
-            const userId = item.dataset.userId;
-            const usernameElement = item.querySelector('h6.mb-0');
-            
-            if (userId && usernameElement) {
-                // Проверяем, есть ли уже метка
-                const existingBadge = item.querySelector('.author-badge');
-                const hasBadgeInHTML = item.innerHTML.includes('Автор');
-                
-                // Если пользователь - автор и нет метки
-                if (userId == routeAuthorId && !existingBadge && !hasBadgeInHTML) {
-                    const authorBadge = document.createElement('span');
-                    authorBadge.className = 'badge bg-light text-muted border px-2 py-1 ms-2';
-                    authorBadge.style.cssText = 'font-size: 0.65rem; font-weight: 500;';
-                    authorBadge.innerHTML = '<i class="fas fa-feather-alt me-1"></i>Автор';
-                    
-                    // Вставляем после имени пользователя
-                    usernameElement.parentNode.insertBefore(authorBadge, usernameElement.nextSibling);
-                }
-            }
-        });
+      const routeAuthorId = '{{ route.author.id }}';
+      const commentItems = commentsList.querySelectorAll('.comment-item');
+      commentItems.forEach(item => {
+        const userId = item.dataset.userId;
+        const usernameElement = item.querySelector('h6.mb-0');
+        if (userId && usernameElement) {
+          const existingBadge = item.querySelector('.author-badge');
+          const hasBadgeInHTML = item.innerHTML.includes('{% trans "Author" %}');
+          if (userId == routeAuthorId && !existingBadge && !hasBadgeInHTML) {
+            const authorBadge = document.createElement('span');
+            authorBadge.className = 'badge bg-light text-muted border px-2 py-1 ms-2';
+            authorBadge.style.cssText = 'font-size: 0.65rem; font-weight: 500;';
+            authorBadge.innerHTML = '<i class="fas fa-feather-alt me-1"></i>{% trans "Author" %}';
+            usernameElement.parentNode.insertBefore(authorBadge, usernameElement.nextSibling);
+          }
+        }
+      });
     }
-    
-    // Проверяем метки каждые 2 секунды на случай, если они слетели
+
     setInterval(fixAuthorBadges, 2000);
-    
-    // Также проверяем после загрузки страницы
     setTimeout(fixAuthorBadges, 1000);
-});
+  });
 </script>
 
 <style>
-.comments-container::-webkit-scrollbar {
+  .comments-container::-webkit-scrollbar {
     width: 6px;
-}
+  }
 
-.comments-container::-webkit-scrollbar-track {
+  .comments-container::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 3px;
-}
+  }
 
-.comments-container::-webkit-scrollbar-thumb {
+  .comments-container::-webkit-scrollbar-thumb {
     background: #c1c1c1;
     border-radius: 3px;
-}
+  }
 
-.comments-container::-webkit-scrollbar-thumb:hover {
+  .comments-container::-webkit-scrollbar-thumb:hover {
     background: #a8a8a8;
-}
+  }
 
-.comment-time {
+  .comment-time {
     transition: all 0.3s ease;
     font-size: 0.85em;
     color: #6c757d !important;
-}
+  }
 
-.comment-time:hover {
+  .comment-time:hover {
     color: #495057 !important;
     text-decoration: underline;
     cursor: help;
-}
+  }
 
-/* Адаптивность для мобильных */
-@media (max-width: 768px) {
+  @media (max-width: 768px) {
     .comments-container {
-        max-height: 300px !important;
+      max-height: 300px !important;
     }
-}
+  }
 </style>
