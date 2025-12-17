@@ -39,7 +39,6 @@ class ChatService:
             .order_by("-updated_at")
         )
         
-        # Просто считаем непрочитанные для каждого диалога
         for conv in conversations:
             conv.unread_count = conv.messages.filter(is_read=False).exclude(sender=user).count()
         
@@ -80,15 +79,12 @@ class ChatService:
     
     @staticmethod
     def get_route_chats_with_unread(user):
-        """Получить маршрутные чаты с подсчетом непрочитанных сообщений"""
-        # Мои маршруты
         user_routes_chats = (
             RouteChat.objects.filter(route__author=user)
             .select_related("route")
             .order_by("-route__created_at")
         )
         
-        # Общие маршруты
         participant_chats = (
             RouteChat.objects.filter(route__shared_with=user)
             .exclude(route__author=user)
@@ -96,7 +92,6 @@ class ChatService:
             .order_by("-route__created_at")
         )
         
-        # Публичные маршруты
         public_chats = (
             RouteChat.objects.filter(route__privacy="public", route__is_active=True)
             .select_related("route", "route__author")
@@ -104,7 +99,6 @@ class ChatService:
             .order_by("-route__created_at")
         )
         
-        # Считаем непрочитанные для каждого чата
         for chat in user_routes_chats:
             chat.unread_count = chat.messages.filter(is_read=False).exclude(user=user).count()
         
@@ -168,10 +162,8 @@ def chat_dashboard(request):
                     "is_online": getattr(other_user, "is_online", False),
                 })
 
-        # Получаем маршрутные чаты с непрочитанными сообщениями
         user_routes_chats, participant_chats, public_chats = ChatService.get_route_chats_with_unread(request.user)
         
-        # Считаем общее количество непрочитанных в маршрутах
         route_unread_total = 0
         for chat in user_routes_chats:
             route_unread_total += getattr(chat, 'unread_count', 0)
@@ -180,7 +172,6 @@ def chat_dashboard(request):
         for chat in public_chats:
             route_unread_total += getattr(chat, 'unread_count', 0)
         
-        # Общее количество непрочитанных сообщений
         total_unread_count += route_unread_total
 
         friends = (
@@ -232,13 +223,11 @@ def private_chat(request, user_id):
     conversation = ChatService.get_or_create_conversation(request.user, other_user)
     messages_qs = conversation.messages.select_related("sender").order_by("created_at")
 
-    # Помечаем все непрочитанные сообщения от другого пользователя как прочитанные
     unread_messages = conversation.messages.filter(is_read=False).exclude(sender=request.user)
     if unread_messages.exists():
         with transaction.atomic():
             unread_messages.update(is_read=True)
         cache.delete(f"chat_dashboard_{request.user.id}")
-        # Также обновляем кеш для другого пользователя
         cache.delete(f"chat_dashboard_{other_user.id}")
 
     try:
@@ -259,7 +248,6 @@ def route_chat(request, route_id):
     try:
         route_chat, route = ChatService.get_route_chat_with_access_check(request.user, route_id)
         
-        # Помечаем непрочитанные сообщения как прочитанные
         unread_messages = route_chat.messages.filter(is_read=False).exclude(user=request.user)
         if unread_messages.exists():
             with transaction.atomic():
@@ -348,7 +336,6 @@ def send_route_message(request):
                 user=request.user,
                 message=validated_content,
             )
-            # Обновляем кеш для всех участников маршрута
             participants = [route.author] + list(route.shared_with.all())
             for participant in participants:
                 cache.delete(f"chat_dashboard_{participant.id}")
@@ -487,7 +474,6 @@ def mark_conversation_as_read(request, conversation_id):
 @require_http_methods(["GET"])
 def get_unread_counts(request):
     try:
-        # Подсчет непрочитанных в приватных чатах
         private_unread = (
             PrivateMessage.objects.filter(
                 conversation__participants=request.user,
@@ -497,7 +483,6 @@ def get_unread_counts(request):
             .count()
         )
         
-        # Подсчет непрочитанных в маршрутах
         my_routes_unread = (
             RouteChatMessage.objects.filter(
                 route_chat__route__author=request.user,
@@ -529,7 +514,6 @@ def get_unread_counts(request):
         
         total_unread = private_unread + my_routes_unread + shared_routes_unread + public_routes_unread
         
-        # Получаем непрочитанные по отдельным диалогам
         conversations_unread = []
         conversations = Conversation.objects.filter(participants=request.user)
         for conv in conversations:
@@ -575,7 +559,6 @@ def delete_conversation(request, conversation_id):
 @login_required
 @require_POST
 def mark_route_messages_as_read(request, route_id):
-    """Пометить все сообщения в маршрутном чате как прочитанные"""
     try:
         route_chat, route = ChatService.get_route_chat_with_access_check(request.user, route_id)
         

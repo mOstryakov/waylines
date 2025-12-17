@@ -11,7 +11,7 @@
         </div>
         <h5 class="fw-bold text-dark mb-2">{% trans "Delete point?" %}</h5>
         <p class="text-muted mb-3">
-          {% blocktrans %}Point "<span id="delete-point-name" class="fw-semibold text-dark">...</span>" will be removed from the route{% endblocktrans %}
+          {% trans "Point" %} "<span id='delete-point-name' class='fw-semibold text-dark'>...</span>" {% trans "will be removed from the route." %}
         </p>
         <div class="d-flex gap-2 justify-content-center">
           <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">{% trans "Cancel" %}</button>
