@@ -63,12 +63,6 @@ cd waylines
 python manage.py migrate
 ```
 
-#### Compile translations
-
-```bash
-python manage.py compilemessages
-```
-
 #### Create a superuser (for access to the admin panel)
 
 ```bash
@@ -98,78 +92,3 @@ python manage.py test
 ```bash
 python manage.py runserver
 ```
-## Localization
-
-The project supports multiple languages.
-
-### 1. Install gettext (required for working with translations):
-
-**Windows:**
-
-- Download gettext from https://mlocati.github.io/articles/gettext-iconv-windows.html
-- Unzip to 
-```bash
-C:\Program Files\gettext\
-```
-- Add  
-```bash
-C:\Program Files\gettext\bin
-``` 
-to your system PATH
-
-**Linux:**
-
-- Run in the terminal:  
-```bash
-sudo apt-get install gettext
-```
-
-**macOS:**
-
-- Run in the terminal:  
-```bash
-brew install gettext
-```
-
-**2. Working with Translations (example)**:
-
-### Creating message files
-For translation into English:  
-```bash
-django-admin makemessages -l en
-``` 
-or 
-```bash
-python manage.py makemessages -l en
-```  
-
-For translation into Russian:
-```bash
-django-admin makemessages -l ru
-``` 
-or 
-```bash
-python manage.py makemessages -l ru
-```
-
-### Edit translations in 
-
-```bash
-locale/en/LC_MESSAGES/django.po
-```
-
-### Compile translations
-
-```bash
-django-admin compilemessages
-``` 
-or
-```bash
-python manage.py compilemessages
-```  
-
-### For production deployment:
-
-- Ensure gettext is installed on the server
-- Run python manage.py compilemessages after deployment
-- Include django.middleware.locale.LocaleMiddleware in settings
