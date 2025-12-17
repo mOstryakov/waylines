@@ -1,12 +1,13 @@
+import logging
+
 from celery import shared_task
 from django.core.files.base import ContentFile
-from django.core.files.storage import default_storage
 
 from routes.models import RoutePoint, Route
-from .models import AudioGeneration, RouteAudioGuide, VoiceProfile
+
+from .models import AudioGeneration, RouteAudioGuide
 from .services.tts_service import TTSService
 from .services.audio_combiner import AudioCombiner
-import logging
 
 logger = logging.getLogger(__name__)
 

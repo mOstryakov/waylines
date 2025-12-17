@@ -1,6 +1,7 @@
 import json
 import logging
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.core.cache import cache
@@ -14,6 +15,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 
 from routes.models import Route
 from routes.views import can_view_route
+
 from .models import Conversation, PrivateMessage, RouteChat, RouteChatMessage
 
 # Настройка логгера
@@ -63,7 +65,8 @@ class ChatService:
                 conversation = Conversation.objects.create()
                 conversation.participants.add(user1, user2)
                 logger.info(
-                    f"Создан новый диалог между {user1.username} и {user2.username}"
+                    f"Создан новый диалог между {user1.username} и"
+                    f" {user2.username}"
                 )
 
         return conversation
@@ -142,7 +145,7 @@ def chat_dashboard(request):
 
         conversations_data = []
         total_unread_count = 0
-        
+
         for conversation in conversations:
             other_user = conversation.get_other_participant(request.user)
             if other_user:
@@ -160,7 +163,7 @@ def chat_dashboard(request):
                         "other_user": other_user,
                         "unread_count": unread_count,
                         "last_message": last_message,
-                        "is_online": True,  # Здесь нужно подключить логику онлайн статуса
+                        "is_online": True,
                     }
                 )
 
@@ -173,9 +176,7 @@ def chat_dashboard(request):
 
         # Чаты маршрутов, где пользователь участник
         participant_chats = (
-        RouteChat.objects.filter(
-                route__shared_with=request.user
-            )
+            RouteChat.objects.filter(route__shared_with=request.user)
             .exclude(route__author=request.user)
             .select_related("route")
             .order_by("-route__created_at")
@@ -210,7 +211,9 @@ def chat_dashboard(request):
         # Находим друзей без диалогов
         friends_without_chats = []
         if friends.exists() and conversations_data:
-            existing_user_ids = [data['other_user'].id for data in conversations_data]
+            existing_user_ids = [
+                data["other_user"].id for data in conversations_data
+            ]
             friends_without_chats = friends.exclude(id__in=existing_user_ids)
         elif friends.exists():
             friends_without_chats = friends
@@ -221,7 +224,9 @@ def chat_dashboard(request):
             "participant_chats": participant_chats,
             "public_chats": public_chats,
             "friends": friends,
-            "friends_without_chats": friends_without_chats[:5],  # Ограничиваем до 5
+            "friends_without_chats": friends_without_chats[
+                :5
+            ],  # Ограничиваем до 5
             "total_unread_count": total_unread_count,
         }
 
@@ -263,11 +268,6 @@ def private_chat(request, user_id):
         # Находим или создаем диалог
         conversation = ChatService.get_or_create_conversation(
             request.user, other_user
-        )
-
-        # Получаем сообщения с оптимизацией
-        messages_qs = conversation.messages.select_related("sender").order_by(
-            "created_at"
         )
 
         # Помечаем сообщения как прочитанные
@@ -352,7 +352,6 @@ def send_private_message(request):
 
         other_user = get_object_or_404(User, id=user_id)
 
-        # Проверяем, не пытается ли пользователь отправить сообщение самому себе
         if other_user == request.user:
             return JSONResponseMixin.error_response(
                 "Нельзя отправить сообщение самому себе"
@@ -651,7 +650,8 @@ def mark_conversation_as_read(request, conversation_id):
             cache.delete(f"chat_dashboard_{request.user.id}")
 
         logger.info(
-            f"User {request.user.id} marked conversation {conversation_id} as read"
+            f"User {request.user.id} marked conversation "
+            f"{conversation_id} as read"
         )
 
         return JSONResponseMixin.success_response(
@@ -660,7 +660,8 @@ def mark_conversation_as_read(request, conversation_id):
 
     except Exception as e:
         logger.error(
-            f"Error marking conversation as read for user {request.user.id}: {e}"
+            f"Error marking conversation as read "
+            f"for user {request.user.id}: {e}"
         )
         return JSONResponseMixin.error_response(
             "Ошибка обновления статуса сообщений", status=500

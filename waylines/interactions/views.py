@@ -1,12 +1,12 @@
+import logging
+import traceback
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
-from django.utils import timezone
 from django.urls import reverse
 from django.http import JsonResponse
-import logging
-import traceback
-from django.db import IntegrityError
+
 from routes.models import Route
 from interactions.models import Comment, Favorite, Rating
 
@@ -25,12 +25,14 @@ def toggle_favorite(request, route_id):
             favorite.delete()
             messages.success(request, "Удалено из избранного")
             logger.info(
-                f"Пользователь {request.user.username} удалил маршрут {route_id} из избранного"
+                f"Пользователь {request.user.username} удалил маршрут"
+                f" {route_id} из избранного"
             )
         else:
             messages.success(request, "Добавлено в избранное")
             logger.info(
-                f"Пользователь {request.user.username} добавил маршрут {route_id} в избранное"
+                f"Пользователь {request.user.username} добавил "
+                f"маршрут {route_id} в избранное"
             )
 
         return redirect(
@@ -64,7 +66,8 @@ def add_rating(request, route_id):
                 )
                 messages.success(request, f"Вы поставили оценку {score}")
                 logger.info(
-                    f"Пользователь {request.user.username} поставил оценку {score} маршруту {route_id}"
+                    f"Пользователь {request.user.username} поставил "
+                    f"оценку {score} маршруту {route_id}"
                 )
             else:
                 messages.error(request, "Оценка должна быть от 1 до 5")
@@ -98,7 +101,7 @@ def my_favorites(request):
 @login_required
 def add_comment(request, route_id):
     try:
-        print(f"\n=== DEBUG: Начало add_comment ===")
+        print("\n=== DEBUG: Начало add_comment ===")
         print(f"route_id: {route_id}")
         print(f"Пользователь: {request.user.username}")
 
@@ -115,7 +118,10 @@ def add_comment(request, route_id):
         try:
             route = Route.objects.get(id=route_id)
             print(f"DEBUG: Маршрут найден: {route.name}")
-            print(f"DEBUG: Автор маршрута: {route.author.username}, ID: {route.author.id}")
+            print(
+                f"DEBUG: Автор маршрута: {route.author.username}, "
+                f"ID: {route.author.id}"
+            )
         except Route.DoesNotExist:
             print("DEBUG: Маршрут не найден")
             if request.headers.get("X-Requested-With") == "XMLHttpRequest":
@@ -166,20 +172,23 @@ def add_comment(request, route_id):
                     can_delete = cmt.user == request.user
                     is_author = cmt.user == route.author
                     delete_button = ""
-                    
+
                     if can_delete:
-                        delete_button = f"""
-                        <button type="button" class="btn btn-link text-danger p-0 btn-sm opacity-75 hover-opacity-100 delete-comment-btn" 
+                        delete_button = f"""<button type="button"
+                        class="btn btn-link text-danger p-0 btn-sm opacity-75
+                        hover-opacity-100 delete-comment-btn"
                                 data-comment-id="{cmt.id}" title="Удалить">
                             <i class="far fa-trash-alt"></i>
                         </button>
                         """
-                    
+
                     # МЕТКА АВТОРА МАРШРУТА
                     author_badge = ""
                     if is_author:
-                        author_badge = f"""
-                        <span class="badge bg-light text-muted border px-2 py-1 ms-2" style="font-size: 0.65rem; font-weight: 500;">
+                        author_badge = """
+                        <span class="badge bg-light text-muted border px-2
+                         py-1 ms-2" style="font-size: 0.65rem;
+                          font-weight: 500;">
                             <i class="fas fa-feather-alt me-1"></i>Автор
                         </span>
                         """
@@ -190,33 +199,40 @@ def add_comment(request, route_id):
 
                     # ISO формат времени для JavaScript
                     iso_time = cmt.created_at.isoformat()
-                    
-                    # ВРЕМЕННО показываем серверное время (JavaScript потом заменит)
+
                     server_time = cmt.created_at.strftime("%d.%m.%Y %H:%M")
 
                     html_parts.append(
-                        f"""
-                    <div class="comment-item d-flex mb-3 pb-3 {border_class}" 
-                         data-comment-id="{cmt.id}"
+                        f"""<div class="comment-item d-
+                        flex mb-3 pb-3 {border_class}"
+                    data-comment-id="{cmt.id}"
                          data-user-id="{cmt.user.id}"
                          data-timestamp="{iso_time}">
                         <div class="flex-shrink-0">
-                            <div class="avatar-placeholder rounded-circle bg-light d-flex align-items-center justify-content-center border" style="width: 40px; height: 40px;">
+                            <div class="avatar-placeholder rounded-circle
+                             bg-light d-flex align-items-center justify-
+                             content-center border" style="width: 40px;
+                              height: 40px;">
                                 <i class="fas fa-user text-secondary"></i>
                             </div>
                         </div>
                         <div class="flex-grow-1 ms-3">
-                            <div class="d-flex justify-content-between align-items-start">
+                            <div class="d-flex justify-content-between
+                             align-items-start">
                                 <div>
-                                    <div class="d-flex align-items-center gap-2 mb-1">
-                                        <h6 class="mb-0 text-dark fw-bold">{cmt.user.username}</h6>
+                                    <div class="d-flex align-items-center
+                                     gap-2 mb-1"><h6 class="mb-0 text-dark
+                                        fw-bold">{cmt.user.username}</h6>
                                         {author_badge}
                                     </div>
-                                    <small class="text-muted comment-time" data-timestamp="{iso_time}">{server_time}</small>
+                                    <small class="text-muted comment-time"
+                                     data-timestamp=
+                                     "{iso_time}">{server_time}</small>
                                 </div>
                                 {delete_button}
                             </div>
-                            <p class="comment-text text-secondary mt-2 mb-0" style="white-space: pre-line;">{cmt.text}</p>
+                            <p class="comment-text text-secondary mt-2 mb-0"
+                             style="white-space: pre-line;">{cmt.text}</p>
                         </div>
                     </div>
                     """
@@ -225,8 +241,10 @@ def add_comment(request, route_id):
                 if comments_count == 0:
                     html = """
                     <div class="text-center py-4 text-muted">
-                        <i class="far fa-comment-dots fa-3x mb-3 opacity-25"></i>
-                        <p class="mb-0">Комментариев пока нет. Будьте первым!</p>
+                        <i class="far fa-comment-dots fa-3x mb-3
+                         opacity-25"></i>
+                        <p class="mb-0">Комментариев пока нет.
+                         Будьте первым!</p>
                     </div>
                     """
                 else:
@@ -262,7 +280,7 @@ def add_comment(request, route_id):
         return redirect("route_detail", pk=route_id)
 
     except Exception as e:
-        print(f"\n=== DEBUG: КРИТИЧЕСКАЯ ОШИБКА ===")
+        print("\n=== DEBUG: КРИТИЧЕСКАЯ ОШИБКА ===")
         print(f"Тип ошибки: {type(e).__name__}")
         print(f"Сообщение: {str(e)}")
         import traceback
@@ -286,7 +304,7 @@ def add_comment(request, route_id):
 @login_required
 def delete_comment(request, comment_id):
     try:
-        print(f"\n=== DEBUG: Начало delete_comment ===")
+        print("\n=== DEBUG: Начало delete_comment ===")
         print(f"comment_id: {comment_id}")
 
         if request.method != "POST":
@@ -306,7 +324,8 @@ def delete_comment(request, comment_id):
 
         if comment.user != request.user:
             print(
-                f"DEBUG: Нет прав на удаление. Владелец: {comment.user}, запросил: {request.user}"
+                f"DEBUG: Нет прав на удаление. Владелец: {comment.user}, "
+                f"запросил: {request.user}"
             )
             if request.headers.get("X-Requested-With") == "XMLHttpRequest":
                 return JsonResponse(
@@ -318,7 +337,10 @@ def delete_comment(request, comment_id):
 
         route = comment.route
         print(f"DEBUG: Удаляем комментарий к маршруту: {route.name}")
-        print(f"DEBUG: Автор маршрута: {route.author.username}, ID: {route.author.id}")
+        print(
+            f"DEBUG: Автор маршрута: {route.author.username}, ID: "
+            f"{route.author.id}"
+        )
 
         comment.delete()
         print("DEBUG: Комментарий удален")
@@ -337,20 +359,24 @@ def delete_comment(request, comment_id):
                     can_delete = cmt.user == request.user
                     is_author = cmt.user == route.author
                     delete_button = ""
-                    
+
                     if can_delete:
                         delete_button = f"""
-                        <button type="button" class="btn btn-link text-danger p-0 btn-sm opacity-75 hover-opacity-100 delete-comment-btn" 
-                                data-comment-id="{cmt.id}" title="Удалить">
+                        <button type="button" class="btn btn-link text-danger
+                         p-0 btn-sm opacity-75 hover-opacity-
+                         100 delete-comment-btn"
+                         data-comment-id="{cmt.id}" title="Удалить">
                             <i class="far fa-trash-alt"></i>
                         </button>
                         """
-                    
+
                     # МЕТКА АВТОРА МАРШРУТА
                     author_badge = ""
                     if is_author:
-                        author_badge = f"""
-                        <span class="badge bg-light text-muted border px-2 py-1 ms-2" style="font-size: 0.65rem; font-weight: 500;">
+                        author_badge = """
+                        <span class="badge bg-light text-muted border px-2
+                         py-1 ms-2" style="font-size: 0.65rem;
+                          font-weight: 500;">
                             <i class="fas fa-feather-alt me-1"></i>Автор
                         </span>
                         """
@@ -361,33 +387,41 @@ def delete_comment(request, comment_id):
 
                     # ISO формат времени для JavaScript
                     iso_time = cmt.created_at.isoformat()
-                    
-                    # ВРЕМЕННО показываем серверное время (JavaScript потом заменит)
+
                     server_time = cmt.created_at.strftime("%d.%m.%Y %H:%M")
 
                     html_parts.append(
                         f"""
-                    <div class="comment-item d-flex mb-3 pb-3 {border_class}" 
+                    <div class="comment-item d-flex mb-3 pb-3 {border_class}"
                          data-comment-id="{cmt.id}"
                          data-user-id="{cmt.user.id}"
                          data-timestamp="{iso_time}">
                         <div class="flex-shrink-0">
-                            <div class="avatar-placeholder rounded-circle bg-light d-flex align-items-center justify-content-center border" style="width: 40px; height: 40px;">
+                            <div class="avatar-placeholder rounded-circle
+                             bg-light d-flex align-items-center
+                             justify-content-center border"
+                              style="width: 40px; height: 40px;">
                                 <i class="fas fa-user text-secondary"></i>
                             </div>
                         </div>
                         <div class="flex-grow-1 ms-3">
-                            <div class="d-flex justify-content-between align-items-start">
+                            <div class="d-flex justify-content
+                            -between align-items-start">
                                 <div>
-                                    <div class="d-flex align-items-center gap-2 mb-1">
-                                        <h6 class="mb-0 text-dark fw-bold">{cmt.user.username}</h6>
+                                    <div class="d-flex align-items-
+                                    center gap-2 mb-1">
+                                        <h6 class="mb-0 text-dark fw-
+                                        bold">{cmt.user.username}</h6>
                                         {author_badge}
                                     </div>
-                                    <small class="text-muted comment-time" data-timestamp="{iso_time}">{server_time}</small>
+                                    <small class="text-muted comment-time"
+                                     data-timestamp=
+                                     "{iso_time}">{server_time}</small>
                                 </div>
                                 {delete_button}
                             </div>
-                            <p class="comment-text text-secondary mt-2 mb-0" style="white-space: pre-line;">{cmt.text}</p>
+                            <p class="comment-text text-secondary mt-2 mb-0"
+                             style="white-space: pre-line;">{cmt.text}</p>
                         </div>
                     </div>
                     """
@@ -396,14 +430,14 @@ def delete_comment(request, comment_id):
                 if comments_count == 0:
                     html = """
                     <div class="text-center py-4 text-muted">
-                        <i class="far fa-comment-dots fa-3x mb-3 opacity-25"></i>
-                        <p class="mb-0">Комментариев пока нет. Будьте первым!</p>
+                        <i class="far fa-comment-dots fa-3x
+                         mb-3 opacity-25"></i>
+                        <p class="mb-0">Комментариев
+                         пока нет. Будьте первым!</p>
                     </div>
                     """
                 else:
                     html = "".join(html_parts)
-
-                print(f"DEBUG: HTML сгенерирован успешно")
 
                 return JsonResponse(
                     {
@@ -433,7 +467,7 @@ def delete_comment(request, comment_id):
         return redirect("route_detail", pk=route.id)
 
     except Exception as e:
-        print(f"\n=== DEBUG: КРИТИЧЕСКАЯ ОШИБКА В delete_comment ===")
+        print("\n=== DEBUG: КРИТИЧЕСКАЯ ОШИБКА В delete_comment ===")
         print(f"Тип ошибки: {type(e).__name__}")
         print(f"Сообщение: {str(e)}")
         import traceback

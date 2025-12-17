@@ -1,15 +1,11 @@
-# routes/views.py
-__all__ = ()
-
 import json
 import math
-from io import BytesIO
-from django.core.files.base import ContentFile
 import base64
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.files.base import ContentFile
 from django.core.paginator import Paginator
 from django.db.models import Q, Count, Avg
 from django.http import JsonResponse
@@ -18,8 +14,6 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
-from django.core.files import File
-from django.http import HttpResponse
 
 from routes.models import (
     Route,
@@ -83,7 +77,9 @@ def home(request):
 
 def all_routes(request):
     """Все публичные маршруты"""
-    routes = Route.objects.filter(privacy="public", is_active=True).prefetch_related('photos')
+    routes = Route.objects.filter(
+        privacy="public", is_active=True
+    ).prefetch_related("photos")
 
     # Фильтрация
     route_type = request.GET.get("type")
@@ -108,8 +104,7 @@ def all_routes(request):
 
     # Аннотируем средний рейтинг
     routes = routes.annotate(
-        rating=Avg("ratings__rating"),
-        rating_count=Count("ratings")
+        rating=Avg("ratings__rating"), rating_count=Count("ratings")
     ).order_by("-created_at")
 
     # Пагинация
@@ -138,18 +133,19 @@ def all_routes(request):
 @login_required
 def my_routes(request):
     """Маршруты пользователя с разделением на активные/неактивные"""
-    routes = Route.objects.filter(author=request.user).prefetch_related('photos')
-    
+    routes = Route.objects.filter(author=request.user).prefetch_related(
+        "photos"
+    )
+
     # Аннотируем средний рейтинг
     routes = routes.annotate(
-        rating=Avg("ratings__rating"),
-        rating_count=Count("ratings")
+        rating=Avg("ratings__rating"), rating_count=Count("ratings")
     ).order_by("-created_at")
-    
+
     # Разделяем маршруты на активные и неактивные
     active_routes = routes.filter(is_active=True)
     inactive_routes = routes.filter(is_active=False)
-    
+
     context = {
         "routes": routes,
         "active_routes": active_routes,
@@ -167,25 +163,32 @@ def my_routes(request):
 @login_required
 def shared_routes(request):
     # Все в одном запросе с Q объектами
-    routes = Route.objects.filter(
-        Q(shared_with=request.user) | Q(privacy="link"),
-        is_active=True
-    ).exclude(author=request.user).prefetch_related('photos').distinct()
-    
+    routes = (
+        Route.objects.filter(
+            Q(shared_with=request.user) | Q(privacy="link"), is_active=True
+        )
+        .exclude(author=request.user)
+        .prefetch_related("photos")
+        .distinct()
+    )
+
     # Аннотируем средний рейтинг
     routes = routes.annotate(
-        rating=Avg("ratings__rating"),
-        rating_count=Count("ratings")
+        rating=Avg("ratings__rating"), rating_count=Count("ratings")
     ).order_by("-created_at")
 
     # Считаем отдельно для контекста
-    shared_count = Route.objects.filter(
-        shared_with=request.user, is_active=True
-    ).exclude(author=request.user).count()
-    
-    link_count = Route.objects.filter(
-        privacy="link", is_active=True
-    ).exclude(author=request.user).count()
+    shared_count = (
+        Route.objects.filter(shared_with=request.user, is_active=True)
+        .exclude(author=request.user)
+        .count()
+    )
+
+    link_count = (
+        Route.objects.filter(privacy="link", is_active=True)
+        .exclude(author=request.user)
+        .count()
+    )
 
     context = {
         "routes": routes,
@@ -305,7 +308,6 @@ def send_to_friend(request, route_id):
     try:
         data = json.loads(request.body)
         friend_id = data.get("friend_id")
-        message = data.get("message", "")
 
         if not friend_id:
             return JsonResponse({"success": False, "error": "Не выбран друг"})
@@ -343,7 +345,8 @@ def send_to_friend(request, route_id):
                 Notification.objects.create(
                     user=friend,
                     title="Вам отправили маршрут",
-                    message=f'{request.user.username} отправил(а) вам маршрут "{route.name}"',
+                    message=f"""{request.user.username} отправил(а)
+                     вам маршрут "{route.name}""""",
                     notification_type="route_shared",
                     related_object_id=route.id,
                     related_object_type="route",
@@ -357,7 +360,8 @@ def send_to_friend(request, route_id):
             return JsonResponse(
                 {
                     "success": True,
-                    "message": f'Маршрут "{route.name}" отправлен другу {friend_name}',
+                    "message": f"""Маршрут "{route.name}"
+                                отправлен другу {friend_name}""",
                 }
             )
 
@@ -428,7 +432,6 @@ def create_route(request):
                         elif photo_data.startswith(
                             "/uploads/"
                         ) or photo_data.startswith("/media/"):
-                            # Это уже сохраненное фото - копируем из существующего
                             photo = copy_existing_photo(
                                 photo_data, route, RoutePhoto, order=i
                             )
@@ -510,34 +513,51 @@ def edit_route(request, route_id):
         try:
             data = json.loads(request.body)
             print("=== РЕДАКТИРОВАНИЕ МАРШРУТА ===")
-            print("Полученные данные:", data.get("name"), "точек:", len(data.get("points", [])))
-            
+            print(
+                "Полученные данные:",
+                data.get("name"),
+                "точек:",
+                len(data.get("points", [])),
+            )
+
             # Обновляем основные поля маршрута
             route.name = data.get("name", route.name)
             route.description = data.get("description", route.description)
-            route.short_description = data.get("short_description", route.short_description)
+            route.short_description = data.get(
+                "short_description", route.short_description
+            )
             route.privacy = data.get("privacy", route.privacy)
             route.route_type = data.get("route_type", route.route_type)
             route.mood = data.get("mood", route.mood)
             route.theme = data.get("theme", route.theme)
-            route.duration_minutes = data.get("duration_minutes", route.duration_minutes)
-            route.total_distance = data.get("total_distance", route.total_distance)
-            route.has_audio_guide = data.get("has_audio_guide", route.has_audio_guide)
-            route.is_elderly_friendly = data.get("is_elderly_friendly", route.is_elderly_friendly)
+            route.duration_minutes = data.get(
+                "duration_minutes", route.duration_minutes
+            )
+            route.total_distance = data.get(
+                "total_distance", route.total_distance
+            )
+            route.has_audio_guide = data.get(
+                "has_audio_guide", route.has_audio_guide
+            )
+            route.is_elderly_friendly = data.get(
+                "is_elderly_friendly", route.is_elderly_friendly
+            )
             route.is_active = data.get("is_active", route.is_active)
             route.save()
-            
+
             # === ОБРАБОТКА ФОТО МАРШРУТА ===
             photos_data = data.get("photos_data", {})
-            
+
             # Обрабатываем существующие фото
             existing_main_photo_id = photos_data.get("existing_main_photo_id")
-            existing_additional_ids = photos_data.get("existing_additional_photo_ids", [])
+            existing_additional_ids = photos_data.get(
+                "existing_additional_photo_ids", []
+            )
             removed_photo_ids = data.get("removed_photo_ids", [])
-            
+
             # Обновляем существующие фото (подписи и порядок)
             captions = photos_data.get("captions", {})
-            
+
             # Помечаем фото как удаленные
             for photo_id in removed_photo_ids:
                 try:
@@ -546,70 +566,96 @@ def edit_route(request, route_id):
                     print(f"🗑️ Удалено фото ID: {photo_id}")
                 except RoutePhoto.DoesNotExist:
                     pass
-            
+
             # Удаляем все существующие точки (для простоты)
             route.points.all().delete()
-            
+
             # === ОБРАБОТКА ТОЧЕК ===
             points_data = data.get("points", [])
             print(f"Точек получено: {len(points_data)}")
-            
+
             # Создаем новые точки
             for i, point_data in enumerate(points_data):
                 point_name = point_data.get("name", f"Точка {i+1}")
                 print(f"Создание точки {i}: {point_name}")
-                
+
                 point = RoutePoint.objects.create(
                     route=route,
                     name=point_name,
                     description=point_data.get("description", ""),
                     address=point_data.get("address", ""),
-                    latitude=point_data.get("lat", point_data.get("latitude", 0)),
-                    longitude=point_data.get("lng", point_data.get("longitude", 0)),
+                    latitude=point_data.get(
+                        "lat", point_data.get("latitude", 0)
+                    ),
+                    longitude=point_data.get(
+                        "lng", point_data.get("longitude", 0)
+                    ),
                     category=point_data.get("category", ""),
                     hint_author=point_data.get("hint_author", ""),
                     tags=point_data.get("tags", []),
                     order=i,
                 )
-                
+
                 # Обрабатываем фото точки
                 point_photos_data = point_data.get("photos", [])
                 print(f"  Фото точки: {len(point_photos_data)} шт.")
-                
+
                 for j, photo_data in enumerate(point_photos_data):
                     if isinstance(photo_data, dict):
                         photo_url = photo_data.get("url", "")
                         photo_caption = photo_data.get("caption", "")
-                        
+
                         if photo_url and photo_url.startswith("data:"):
                             # Новое фото в base64
-                            save_base64_photo(photo_url, point, PointPhoto, order=j, caption=photo_caption)
+                            save_base64_photo(
+                                photo_url,
+                                point,
+                                PointPhoto,
+                                order=j,
+                                caption=photo_caption,
+                            )
                             print(f"  ✅ Добавлено новое фото из base64")
-                        elif photo_url and (photo_url.startswith("/media/") or photo_url.startswith("/uploads/")):
+                        elif photo_url and (
+                            photo_url.startswith("/media/")
+                            or photo_url.startswith("/uploads/")
+                        ):
                             # Копируем существующее фото
-                            copy_existing_photo(photo_url, point, PointPhoto, order=j, caption=photo_caption)
+                            copy_existing_photo(
+                                photo_url,
+                                point,
+                                PointPhoto,
+                                order=j,
+                                caption=photo_caption,
+                            )
                             print(f"  ✅ Скопировано существующее фото")
                     elif isinstance(photo_data, str) and photo_data:
                         # Старый формат - строка URL
                         if photo_data.startswith("data:"):
-                            save_base64_photo(photo_data, point, PointPhoto, order=j)
-                        elif photo_data.startswith("/media/") or photo_data.startswith("/uploads/"):
-                            copy_existing_photo(photo_data, point, PointPhoto, order=j)
-            
+                            save_base64_photo(
+                                photo_data, point, PointPhoto, order=j
+                            )
+                        elif photo_data.startswith(
+                            "/media/"
+                        ) or photo_data.startswith("/uploads/"):
+                            copy_existing_photo(
+                                photo_data, point, PointPhoto, order=j
+                            )
+
             print("=== УСПЕШНО СОХРАНЕНО ===")
             return JsonResponse({"success": True, "route_id": route.id})
-            
+
         except Exception as e:
             print(f"=== ОШИБКА ПРИ РЕДАКТИРОВАНИИ ===")
             print(f"Ошибка: {str(e)}")
             import traceback
+
             print(f"Traceback: {traceback.format_exc()}")
             return JsonResponse({"success": False, "error": str(e)})
 
     # ============ ОБРАБОТКА GET ЗАПРОСА ============
     print("=== ПОДГОТОВКА ДАННЫХ ДЛЯ РЕДАКТОРА МАРШРУТА ===")
     print(f"Загрузка маршрута {route.id}: {route.name}")
-    
+
     # Основные данные маршрута
     route_data = {
         "id": route.id,
@@ -626,27 +672,29 @@ def edit_route(request, route_id):
         "is_elderly_friendly": route.is_elderly_friendly,
         "is_active": route.is_active,
         "route_photos": [],
-        "points": []
+        "points": [],
     }
 
     # Загружаем фото маршрута
     route_photos = route.photos.all().order_by("order")
     print(f"Фото маршрута: {route_photos.count()} шт.")
-    
+
     for photo in route_photos:
         photo_data = {
             "id": photo.id,
             "url": photo.image.url if photo.image else "",
             "caption": photo.caption or "",
-            "order": photo.order
+            "order": photo.order,
         }
         route_data["route_photos"].append(photo_data)
-        print(f"  Фото ID {photo.id}: {photo.image.url if photo.image else 'нет URL'}")
+        print(
+            f"  Фото ID {photo.id}: {photo.image.url if photo.image else 'нет URL'}"
+        )
 
     # Загружаем точки
     points = route.points.all().order_by("order")
     print(f"Точек маршрута: {points.count()} шт.")
-    
+
     for point in points:
         point_data = {
             "id": point.id,
@@ -658,23 +706,25 @@ def edit_route(request, route_id):
             "category": point.category or "",
             "hint_author": point.hint_author or "",
             "tags": point.tags if point.tags else [],
-            "photos": []
+            "photos": [],
         }
-        
+
         # Загружаем фото точки
         point_photos = point.photos.all().order_by("order")
         for photo in point_photos:
-            point_data["photos"].append({
-                "id": photo.id,
-                "url": photo.image.url if photo.image else "",
-                "caption": photo.caption or "",
-                "order": photo.order
-            })
-        
+            point_data["photos"].append(
+                {
+                    "id": photo.id,
+                    "url": photo.image.url if photo.image else "",
+                    "caption": photo.caption or "",
+                    "order": photo.order,
+                }
+            )
+
         route_data["points"].append(point_data)
 
     print("=== ДАННЫЕ ПОДГОТОВЛЕНЫ ===")
-    
+
     context = {
         "route": route,
         "route_data_json": json.dumps(route_data),
@@ -685,15 +735,19 @@ def edit_route(request, route_id):
             to_user=request.user, status="pending"
         ).count(),
     }
-    
+
     return render(request, "routes/route_editor.html", context)
 
 
-def save_base64_photo(photo_data, parent_obj, photo_model, order=0, caption=""):
+def save_base64_photo(
+    photo_data, parent_obj, photo_model, order=0, caption=""
+):
     """Сохранение фото из base64 DataURL"""
     try:
         print(f"=== DEBUG SAVE BASE64 PHOTO ===")
-        print(f"🔧 Сохранение фото для {parent_obj.__class__.__name__} {parent_obj.id if hasattr(parent_obj, 'id') else 'new'}")
+        print(
+            f"🔧 Сохранение фото для {parent_obj.__class__.__name__} {parent_obj.id if hasattr(parent_obj, 'id') else 'new'}"
+        )
         print(f"📷 Photo model: {photo_model.__name__}")
         print(f"📝 Caption: {caption}")
         print(f"📊 Order: {order}")
@@ -706,7 +760,7 @@ def save_base64_photo(photo_data, parent_obj, photo_model, order=0, caption=""):
         if not isinstance(photo_data, str):
             print(f"❌ Не строка: {type(photo_data)}")
             return None
-            
+
         if not photo_data.startswith("data:"):
             print(f"❌ Это не DataURL: {photo_data[:50]}...")
             return None
@@ -755,9 +809,7 @@ def save_base64_photo(photo_data, parent_obj, photo_model, order=0, caption=""):
 
         # Добавляем caption и order
         photo = photo_model.objects.create(
-            **kwargs, 
-            order=order, 
-            caption=caption
+            **kwargs, order=order, caption=caption
         )
 
         print(f"📸 Создан объект фото: {photo.id}")
@@ -775,11 +827,14 @@ def save_base64_photo(photo_data, parent_obj, photo_model, order=0, caption=""):
     except Exception as e:
         print(f"❌ КРИТИЧЕСКАЯ ОШИБКА сохранения фото: {e}")
         import traceback
+
         print(f"🔍 Traceback: {traceback.format_exc()}")
         return None
 
 
-def copy_existing_photo(photo_url, parent_obj, photo_model, order=0, caption=""):
+def copy_existing_photo(
+    photo_url, parent_obj, photo_model, order=0, caption=""
+):
     """Копирование существующего фото"""
     try:
         print(f"=== DEBUG COPY EXISTING PHOTO ===")
@@ -799,7 +854,7 @@ def copy_existing_photo(photo_url, parent_obj, photo_model, order=0, caption="")
         else:
             print(f"❌ Неверный URL фото: {photo_url}")
             return None
-            
+
         full_path = os.path.join(settings.MEDIA_ROOT, media_path)
 
         if not os.path.exists(full_path):
@@ -823,9 +878,7 @@ def copy_existing_photo(photo_url, parent_obj, photo_model, order=0, caption="")
             kwargs["point"] = parent_obj
 
         photo = photo_model.objects.create(
-            **kwargs, 
-            order=order, 
-            caption=caption
+            **kwargs, order=order, caption=caption
         )
 
         # Сохраняем копию файла
@@ -840,6 +893,7 @@ def copy_existing_photo(photo_url, parent_obj, photo_model, order=0, caption="")
     except Exception as e:
         print(f"❌ Ошибка копирования фото: {e}")
         import traceback
+
         print(f"🔍 Traceback: {traceback.format_exc()}")
         return None
 
@@ -1134,7 +1188,9 @@ def haversine_distance(lat1, lon1, lat2, lon2):
 
 def walking_routes(request):
     """Страница с пешими маршрутами"""
-    routes = Route.objects.filter(route_type="walking", is_active=True).prefetch_related('photos')
+    routes = Route.objects.filter(
+        route_type="walking", is_active=True
+    ).prefetch_related("photos")
 
     context = {
         "routes": routes,
@@ -1144,9 +1200,12 @@ def walking_routes(request):
     }
     return render(request, "routes/filtered_routes.html", context)
 
+
 def driving_routes(request):
     """Страница с автомобильными маршрутами"""
-    routes = Route.objects.filter(route_type="driving", is_active=True).prefetch_related('photos')
+    routes = Route.objects.filter(
+        route_type="driving", is_active=True
+    ).prefetch_related("photos")
 
     context = {
         "routes": routes,
@@ -1156,9 +1215,12 @@ def driving_routes(request):
     }
     return render(request, "routes/filtered_routes.html", context)
 
+
 def cycling_routes(request):
     """Страница с велосипедными маршрутами"""
-    routes = Route.objects.filter(route_type="cycling", is_active=True).prefetch_related('photos')
+    routes = Route.objects.filter(
+        route_type="cycling", is_active=True
+    ).prefetch_related("photos")
 
     context = {
         "routes": routes,
@@ -1168,9 +1230,12 @@ def cycling_routes(request):
     }
     return render(request, "routes/filtered_routes.html", context)
 
+
 def adventure_routes(request):
     """Страница с приключенческими маршрутами"""
-    routes = Route.objects.filter(mood="adventure", is_active=True).prefetch_related('photos')
+    routes = Route.objects.filter(
+        mood="adventure", is_active=True
+    ).prefetch_related("photos")
 
     context = {
         "routes": routes,

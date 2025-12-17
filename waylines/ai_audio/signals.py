@@ -1,11 +1,12 @@
+import logging
+
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.db import transaction
 from routes.models import RoutePoint
-from .models import AudioGeneration, VoiceProfile, RouteAudioGuide
-from .services.tts_service import TTSService
+
+from .models import AudioGeneration, VoiceProfile
 from .tasks import generate_point_audio, generate_route_audio_guide
-import logging
 
 logger = logging.getLogger(__name__)
 

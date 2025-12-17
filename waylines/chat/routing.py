@@ -1,6 +1,9 @@
 import json
 
 from channels.generic.websocket import AsyncWebsocketConsumer
+from django.urls import re_path
+
+from chat import consumers
 
 
 class TestConsumer(AsyncWebsocketConsumer):

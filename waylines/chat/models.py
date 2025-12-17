@@ -137,7 +137,10 @@ class RouteChatMessage(models.Model):
         ordering = ["timestamp"]
 
     def __str__(self):
-        return f"{self.user.username} в {self.route_chat.route.name}: {self.message[:50]}"
+        return (
+            f"{self.user.username} в {self.route_chat.route.name}:"
+            f" {self.message[:50]}"
+        )
 
     def save(self, *args, **kwargs):
         """Переопределяем save для обновления времени чата"""

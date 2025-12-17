@@ -1,12 +1,11 @@
-__all__ = ()
+from io import BytesIO
 
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
+
 import qrcode
-from io import BytesIO
 from django.core.files import File
-from django.urls import reverse
 
 
 class Route(models.Model):
@@ -155,10 +154,8 @@ class Route(models.Model):
         return self.qr_code.url
 
     def save(self, *args, **kwargs):
-        # При сохранении генерируем QR код если его нет
         if not self.qr_code and self.id:
             super().save(*args, **kwargs)
-            # Генерацию QR кода делаем отдельно, так как нужен request для полного URL
         else:
             super().save(*args, **kwargs)
 

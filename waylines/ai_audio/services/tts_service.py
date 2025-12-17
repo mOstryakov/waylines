@@ -1,8 +1,9 @@
-import os
-import requests
 import time
-from django.conf import settings
 import logging
+
+import requests
+
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,8 @@ class TTSService:
                         return audio_content, processing_time
                     except Exception as fallback_error:
                         logger.error(
-                            f"Fallback {backup_provider} also failed: {fallback_error}"
+                            f"Fallback {backup_provider} also "
+                            f"failed: {fallback_error}"
                         )
             raise Exception(f"All TTS providers failed: {e}")
 

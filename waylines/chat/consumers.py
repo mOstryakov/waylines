@@ -6,6 +6,7 @@ from django.contrib.auth.models import AnonymousUser
 from django.utils import timezone
 
 from routes.models import Route
+
 from .models import Conversation, PrivateMessage, RouteChat, RouteChatMessage
 
 
@@ -79,7 +80,6 @@ class PrivateChatConsumer(AsyncWebsocketConsumer):
 
     async def handle_chat_message(self, data):
         message = data.get("message", "").strip()
-        user_id = data.get("user_id")
 
         if not message or len(message) > 1000:
             await self.send_error("Invalid message")
@@ -280,7 +280,6 @@ class RouteChatConsumer(AsyncWebsocketConsumer):
 
     async def handle_route_chat_message(self, data):
         message = data.get("message", "").strip()
-        user_id = data.get("user_id")
 
         if not message or len(message) > 1000:
             await self.send_error("Invalid message")

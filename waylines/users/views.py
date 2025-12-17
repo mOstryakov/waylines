@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth import login, logout
+from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm
@@ -237,7 +238,6 @@ def user_profile(request, username):
     return render(request, "profile/user_profile.html", context)
 
 
-# Аутентификация
 def register(request):
     if request.method == "POST":
         form = UserRegistrationForm(request.POST)
@@ -275,7 +275,6 @@ def logout_view(request):
 @login_required
 @csrf_exempt
 def send_to_friend(request, route_id):
-    """Отправка маршрута другу"""
     route = get_object_or_404(Route, id=route_id)
 
     if route.author != request.user and not request.user.is_staff:
@@ -316,11 +315,9 @@ def send_to_friend(request, route_id):
                     }
                 )
 
-            # Добавляем маршрут в общий доступ
             route.shared_with.add(friend)
             route.save()
 
-            # Создаем уведомление (если есть модель Notification)
             try:
                 from notifications.models import Notification
 
@@ -333,7 +330,6 @@ def send_to_friend(request, route_id):
                     related_object_type="route",
                 )
             except ImportError:
-                # Модель уведомлений не найдена - пропускаем
                 pass
 
             friend_name = friend.first_name or friend.username
@@ -393,7 +389,6 @@ def get_friends_list(request):
 @login_required
 @csrf_exempt
 def send_to_friend(request, route_id):
-    """Отправка маршрута другу"""
     route = get_object_or_404(Route, id=route_id)
 
     try:

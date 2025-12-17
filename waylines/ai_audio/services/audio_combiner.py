@@ -1,6 +1,5 @@
 import os
 import tempfile
-from django.core.files.storage import default_storage
 import logging
 
 logger = logging.getLogger(__name__)
@@ -18,7 +17,8 @@ class AudioCombiner:
     def __init__(self):
         if not PYDUB_AVAILABLE:
             raise Exception(
-                "pydub is required for audio combining. Install with: pip install pydub"
+                "pydub is required for audio combining."
+                " Install with: pip install pydub"
             )
 
         self.intro_duration = 2000  # 2 секунды для интро

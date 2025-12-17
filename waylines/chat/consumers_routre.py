@@ -6,6 +6,7 @@ from django.contrib.auth.models import AnonymousUser
 from django.utils import timezone
 
 from routes.models import Route
+
 from .models import RouteChat, RouteChatMessage
 
 
@@ -41,7 +42,6 @@ class RouteChatConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         data = json.loads(text_data)
         message = data["message"]
-        user_id = data["user_id"]
 
         # Сохраняем сообщение в БД
         message_obj = await self.save_message(message)

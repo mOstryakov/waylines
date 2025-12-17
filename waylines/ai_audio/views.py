@@ -1,7 +1,7 @@
 import json
 import logging
+
 from django.http import JsonResponse
-from django.contrib import messages
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.shortcuts import get_object_or_404
@@ -9,6 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.files.base import ContentFile
 
 from routes.models import Route, RoutePoint
+
 from .models import AudioGeneration, VoiceProfile, RouteAudioGuide
 from .services.tts_service import TTSService
 
@@ -219,7 +220,8 @@ def generate_all_points_audio(request, route_id):
     return JsonResponse(
         {
             "status": "started",
-            "message": f"Запущена генерация аудио для {points_without_audio.count()} точек",
+            "message": f"Запущена генерация аудио для "
+            f"{points_without_audio.count()} точек",
             "points_count": points_without_audio.count(),
         }
     )

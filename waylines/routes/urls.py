@@ -1,4 +1,7 @@
+from django.conf import settings
+from django.conf.urls.static import static
 from django.urls import path
+
 from . import views
 
 urlpatterns = [
@@ -76,10 +79,6 @@ urlpatterns = [
     # Поиск
     path("search/", views.search_routes, name="search"),
 ]
-
-# Добавляем обработку статических файлов для разработки
-from django.conf import settings
-from django.conf.urls.static import static
 
 if settings.DEBUG:
     urlpatterns += static(
