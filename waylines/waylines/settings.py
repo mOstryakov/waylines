@@ -26,8 +26,8 @@ INSTALLED_APPS = [
     "chat.apps.ChatConfig",
     "interactions.apps.InteractionsConfig",
     "users.apps.UsersConfig",
-    "django_cleanup.apps.CleanupConfig",
     "ai_audio.apps.AiAudioConfig",
+    
 ]
 
 MIDDLEWARE = [
@@ -60,23 +60,6 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "waylines.wsgi.application"
-ASGI_APPLICATION = "waylines.asgi.application"
-
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer",
-    },
-}
-
-# CHANNEL_LAYERS = {
-#     'default': {
-#         'BACKEND': 'channels_redis.core.RedisChannelLayer',
-#         'CONFIG': {
-#             "hosts": [('127.0.0.1', 6379)],
-#         },
-#     },
-# }
-
 
 DATABASES = {
     "default": {
@@ -85,6 +68,8 @@ DATABASES = {
     }
 }
 
+YANDEX_API_KEY = "AQVN3h5QwSX2b3vUHfW8x_9hO7iEYdLBUEIswTwk"
+YANDEX_FOLDER_ID = "b1gqv1ek8siro4365epf"
 
 AUTH_PASSWORD_VALIDATORS = [
     {

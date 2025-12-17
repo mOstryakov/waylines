@@ -1,134 +1,92 @@
-from io import BytesIO
+__all__ = ()
 
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
-
+from django.utils.translation import gettext_lazy as _
 import qrcode
+from io import BytesIO
 from django.core.files import File
+from django.urls import reverse
+from django.conf import settings
 
 
 class Route(models.Model):
     PRIVACY_CHOICES = [
-        ("public", "Публичный"),
-        ("private", "Приватный"),
-        ("link", "По ссылке"),
-        ("personal", "Персональный"),
+        ("public", _("Public")),
+        ("private", _("Private")),
+        ("link", _("Link-only")),
+        ("personal", _("Personal")),
     ]
 
     ROUTE_TYPE_CHOICES = [
-        ("driving", "Автомобильный"),
-        ("walking", "Пеший"),
-        ("cycling", "Велосипедный"),
-        ("mixed", "Смешанный"),
-    ]
-
-    MOOD_CHOICES = [
-        ("calm", "Спокойный"),
-        ("active", "Активный"),
-        ("extreme", "Экстремальный"),
-        ("romantic", "Романтический"),
-        ("family", "Семейный"),
-        ("adventure", "Приключенческий"),
-    ]
-
-    THEME_CHOICES = [
-        ("historical", "Исторический"),
-        ("nature", "Природный"),
-        ("urban", "Городской"),
-        ("cultural", "Культурный"),
-        ("gastronomic", "Гастрономический"),
-        ("religious", "Религиозный"),
-        ("architectural", "Архитектурный"),
+        ("driving", _("Driving")),
+        ("walking", _("Walking")),
+        ("cycling", _("Cycling")),
+        ("mixed", _("Mixed")),
     ]
 
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name="routes",
-        verbose_name="Автор",
+        verbose_name=_("Author"),
     )
-    name = models.CharField("Название", max_length=200)
-    description = models.TextField("Описание", blank=True)
+    name = models.CharField(_("Name"), max_length=200)
+    description = models.TextField(_("Description"), blank=True)
     short_description = models.TextField(
-        "Краткое описание", max_length=300, blank=True
+        _("Short description"), max_length=300, blank=True
     )
     privacy = models.CharField(
-        "Приватность", max_length=20, choices=PRIVACY_CHOICES, default="public"
+        _("Privacy"), max_length=20, choices=PRIVACY_CHOICES, default="public"
     )
     route_type = models.CharField(
-        "Тип маршрута",
-        max_length=20,
-        choices=ROUTE_TYPE_CHOICES,
-        default="walking",
+        _("Route type"), max_length=20, choices=ROUTE_TYPE_CHOICES, default="walking"
     )
-    mood = models.CharField(
-        "Настроение", max_length=20, choices=MOOD_CHOICES, blank=True
+    duration_minutes = models.IntegerField(_("Duration (minutes)"), default=0)
+    duration_display = models.CharField(
+        _("Display duration"),
+        max_length=100,
+        blank=True,
+        help_text=_("e.g. 2-3 hours, 1 day, 30 minutes")
     )
-    theme = models.CharField(
-        "Тема", max_length=20, choices=THEME_CHOICES, blank=True
-    )
-    duration_minutes = models.IntegerField(
-        "Продолжительность (минут)", default=0
-    )
-    country = models.CharField(
-        max_length=100, blank=True, null=True, verbose_name="Страна"
-    )
-    total_distance = models.FloatField("Общее расстояние (км)", default=0)
-    is_active = models.BooleanField("Актуален", default=True)
-    has_audio_guide = models.BooleanField("Есть аудиогид", default=False)
-    is_elderly_friendly = models.BooleanField("Для пожилых", default=False)
+    country = models.CharField(_("Country"), max_length=100, blank=True, null=True)
+    total_distance = models.FloatField(_("Total distance (km)"), default=0)
+    is_active = models.BooleanField(_("Active"), default=True)
+    has_audio_guide = models.BooleanField(_("Has audio guide"), default=False)
+    is_elderly_friendly = models.BooleanField(_("Elderly-friendly"), default=False)
     shared_with = models.ManyToManyField(
         User,
         related_name="shared_routes",
         blank=True,
-        verbose_name="Доступно для",
+        verbose_name=_("Shared with"),
     )
-    created_at = models.DateTimeField("Создан", auto_now_add=True)
-    updated_at = models.DateTimeField("Обновлён", auto_now=True)
-    last_status_update = models.DateTimeField(
-        "Последнее обновление статуса", auto_now=True
-    )
-
-    qr_code = models.ImageField(
-        upload_to="qr_codes/", blank=True, null=True, verbose_name="QR код"
-    )
+    created_at = models.DateTimeField(_("Created"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("Updated"), auto_now=True)
+    last_status_update = models.DateTimeField(_("Last status update"), auto_now=True)
+    qr_code = models.ImageField(_("QR code"), upload_to="qr_codes/", blank=True, null=True)
 
     class Meta:
-        verbose_name = "Маршрут"
-        verbose_name_plural = "Маршруты"
+        verbose_name = _("Route")
+        verbose_name_plural = _("Routes")
         ordering = ["-created_at"]
 
     def __str__(self):
         return f"{self.name} (ID: {self.id})"
 
-    def get_average_rating(self):
-        ratings = self.ratings.all()
-        if ratings:
-            return sum(r.rating for r in ratings) / len(ratings)
-        return 0
-
     def get_absolute_url(self):
-        from django.urls import reverse
-
         return reverse("route_detail", kwargs={"route_id": self.id})
 
     def generate_qr_code(self, request=None):
-        """Генерация QR кода для маршрута"""
         if self.qr_code:
             return self.qr_code.url
 
-        # Генерируем полный URL маршрута
         if request:
             full_url = request.build_absolute_uri(self.get_absolute_url())
         else:
-            # Fallback - используем домен из настроек
-            from django.conf import settings
-
             domain = getattr(settings, "DOMAIN", "http://localhost:8000")
             full_url = f"{domain}{self.get_absolute_url()}"
 
-        # Создаем QR код
         qr = qrcode.QRCode(
             version=1,
             error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -137,27 +95,44 @@ class Route(models.Model):
         )
         qr.add_data(full_url)
         qr.make(fit=True)
-
-        # Создаем изображение
         img = qr.make_image(fill_color="black", back_color="white")
 
-        # Сохраняем в BytesIO
         buffer = BytesIO()
         img.save(buffer, format="PNG")
         buffer.seek(0)
 
-        # Создаем файл для Django
         filename = f"qr_code_route_{self.id}.png"
         self.qr_code.save(filename, File(buffer), save=False)
-        self.save()
-
+        self.save(update_fields=["qr_code"])
         return self.qr_code.url
 
     def save(self, *args, **kwargs):
-        if not self.qr_code and self.id:
-            super().save(*args, **kwargs)
-        else:
-            super().save(*args, **kwargs)
+        super().save(*args, **kwargs)
+
+    def get_average_rating(self):
+        from django.db.models import Avg
+        from interactions.models import Rating
+        result = Rating.objects.filter(route=self).aggregate(average=Avg('score'))
+        return result['average'] or 0
+
+    def get_ratings_count(self):
+        from interactions.models import Rating
+        return Rating.objects.filter(route=self).count()
+
+    @property
+    def interaction_comments(self):
+        from interactions.models import Comment
+        return Comment.objects.filter(route=self)
+
+    @property
+    def interaction_ratings(self):
+        from interactions.models import Rating
+        return Rating.objects.filter(route=self)
+
+    @property
+    def favorites_by(self):
+        from interactions.models import Favorite
+        return Favorite.objects.filter(route=self)
 
 
 class RoutePhoto(models.Model):
@@ -165,20 +140,21 @@ class RoutePhoto(models.Model):
         Route,
         on_delete=models.CASCADE,
         related_name="photos",
-        verbose_name="Маршрут",
+        verbose_name=_("Route"),
     )
-    image = models.ImageField("Фото", upload_to="route_photos/")
-    caption = models.CharField("Подпись", max_length=255, blank=True)
-    order = models.PositiveIntegerField("Порядок", default=0)
-    created_at = models.DateTimeField("Создано", auto_now_add=True)
+    image = models.ImageField(_("Photo"), upload_to="route_photos/")
+    caption = models.CharField(_("Caption"), max_length=255, blank=True)
+    is_main = models.BooleanField(_("Main photo"), default=False)
+    order = models.PositiveIntegerField(_("Order"), default=0)
+    created_at = models.DateTimeField(_("Created"), auto_now_add=True)
 
     class Meta:
-        verbose_name = "Фото маршрута"
-        verbose_name_plural = "Фото маршрута"
+        verbose_name = _("Route photo")
+        verbose_name_plural = _("Route photos")
         ordering = ["order"]
 
     def __str__(self):
-        return f"Фото для {self.route.name}"
+        return f"Photo for {self.route.name}"
 
 
 class RouteRating(models.Model):
@@ -186,24 +162,22 @@ class RouteRating(models.Model):
         Route,
         on_delete=models.CASCADE,
         related_name="ratings",
-        verbose_name="Маршрут",
+        verbose_name=_("Route"),
     )
-    user = models.ForeignKey(
-        User, on_delete=models.CASCADE, verbose_name="Пользователь"
-    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name=_("User"))
     rating = models.IntegerField(
-        "Оценка", validators=[MinValueValidator(1), MaxValueValidator(5)]
+        _("Rating"), validators=[MinValueValidator(1), MaxValueValidator(5)]
     )
-    comment = models.TextField("Комментарий", blank=True)
-    created_at = models.DateTimeField("Создано", auto_now_add=True)
+    comment = models.TextField(_("Comment"), blank=True)
+    created_at = models.DateTimeField(_("Created"), auto_now_add=True)
 
     class Meta:
-        verbose_name = "Оценка маршрута"
-        verbose_name_plural = "Оценки маршрута"
+        verbose_name = _("Route rating")
+        verbose_name_plural = _("Route ratings")
         unique_together = ["route", "user"]
 
     def __str__(self):
-        return f"{self.rating}★ для {self.route.name}"
+        return f"{self.rating}★ for {self.route.name}"
 
 
 class RouteFavorite(models.Model):
@@ -211,16 +185,14 @@ class RouteFavorite(models.Model):
         Route,
         on_delete=models.CASCADE,
         related_name="favorites",
-        verbose_name="Маршрут",
+        verbose_name=_("Route"),
     )
-    user = models.ForeignKey(
-        User, on_delete=models.CASCADE, verbose_name="Пользователь"
-    )
-    created_at = models.DateTimeField("Добавлено", auto_now_add=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name=_("User"))
+    created_at = models.DateTimeField(_("Added"), auto_now_add=True)
 
     class Meta:
-        verbose_name = "Избранный маршрут"
-        verbose_name_plural = "Избранные маршруты"
+        verbose_name = _("Favorite route")
+        verbose_name_plural = _("Favorite routes")
         unique_together = ["route", "user"]
 
     def __str__(self):
@@ -229,55 +201,49 @@ class RouteFavorite(models.Model):
 
 class RoutePoint(models.Model):
     CATEGORY_CHOICES = [
-        ("attraction", "Изюминка"),
-        ("nature", "Естественная"),
-        ("forest", "Лес"),
-        ("bus_stop", "Автобусная остановка"),
-        ("viewpoint", "Смотровая площадка"),
-        ("restaurant", "Ресторан"),
-        ("hotel", "Отель"),
-        ("museum", "Музей"),
-        ("park", "Парк"),
-        ("monument", "Памятник"),
-        ("church", "Храм"),
-        ("beach", "Пляж"),
+        ("attraction", _("Attraction")),
+        ("nature", _("Natural")),
+        ("forest", _("Forest")),
+        ("bus_stop", _("Bus stop")),
+        ("viewpoint", _("Viewpoint")),
+        ("restaurant", _("Restaurant")),
+        ("hotel", _("Hotel")),
+        ("museum", _("Museum")),
+        ("park", _("Park")),
+        ("monument", _("Monument")),
+        ("church", _("Church")),
+        ("beach", _("Beach")),
     ]
 
     route = models.ForeignKey(
         Route,
         on_delete=models.CASCADE,
         related_name="points",
-        verbose_name="Маршрут",
+        verbose_name=_("Route"),
     )
-    name = models.CharField("Название", max_length=200)
-    description = models.TextField("Описание", blank=True)
-    address = models.TextField("Адрес", blank=True)
+    name = models.CharField(_("Name"), max_length=200)
+    description = models.TextField(_("Description"), blank=True)
+    address = models.TextField(_("Address"), blank=True)
     latitude = models.FloatField(
-        "Широта",
+        _("Latitude"),
         validators=[MinValueValidator(-90.0), MaxValueValidator(90.0)],
     )
     longitude = models.FloatField(
-        "Долгота",
+        _("Longitude"),
         validators=[MinValueValidator(-180.0), MaxValueValidator(180.0)],
     )
-    elevation = models.FloatField("Высота", null=True, blank=True)
-    category = models.CharField(
-        "Категория", max_length=20, choices=CATEGORY_CHOICES, blank=True
-    )
-    hint_author = models.CharField(
-        "Автор подсказки", max_length=100, blank=True
-    )
-    tags = models.JSONField("Теги", default=list, blank=True)
-    order = models.PositiveIntegerField("Порядок", default=0)
-    has_panorama = models.BooleanField("Есть панорама", default=False)
-    audio_guide = models.FileField(
-        "Аудиогид", upload_to="point_audio/", blank=True, null=True
-    )
-    created_at = models.DateTimeField("Создано", auto_now_add=True)
+    elevation = models.FloatField(_("Elevation"), null=True, blank=True)
+    category = models.CharField(_("Category"), max_length=20, choices=CATEGORY_CHOICES, blank=True)
+    hint_author = models.CharField(_("Hint author"), max_length=100, blank=True)
+    tags = models.JSONField(_("Tags"), default=list, blank=True)
+    order = models.PositiveIntegerField(_("Order"), default=0)
+    has_panorama = models.BooleanField(_("Has panorama"), default=False)
+    audio_guide = models.FileField(_("Audio guide"), upload_to="point_audio/", blank=True, null=True)
+    created_at = models.DateTimeField(_("Created"), auto_now_add=True)
 
     class Meta:
-        verbose_name = "Точка маршрута"
-        verbose_name_plural = "Точки маршрута"
+        verbose_name = _("Route point")
+        verbose_name_plural = _("Route points")
         ordering = ["order"]
 
     def __str__(self):
@@ -289,20 +255,20 @@ class PointPhoto(models.Model):
         RoutePoint,
         on_delete=models.CASCADE,
         related_name="photos",
-        verbose_name="Точка маршрута",
+        verbose_name=_("Route point"),
     )
-    image = models.ImageField("Фото", upload_to="point_photos/")
-    caption = models.CharField("Подпись", max_length=255, blank=True)
-    order = models.PositiveIntegerField("Порядок", default=0)
-    created_at = models.DateTimeField("Создано", auto_now_add=True)
+    image = models.ImageField(_("Photo"), upload_to="point_photos/")
+    caption = models.CharField(_("Caption"), max_length=255, blank=True)
+    order = models.PositiveIntegerField(_("Order"), default=0)
+    created_at = models.DateTimeField(_("Created"), auto_now_add=True)
 
     class Meta:
-        verbose_name = "Фото точки"
-        verbose_name_plural = "Фото точки"
+        verbose_name = _("Point photo")
+        verbose_name_plural = _("Point photos")
         ordering = ["order"]
 
     def __str__(self):
-        return f"Фото для {self.point.name}"
+        return f"Photo for {self.point.name}"
 
 
 class PointComment(models.Model):
@@ -310,22 +276,20 @@ class PointComment(models.Model):
         RoutePoint,
         on_delete=models.CASCADE,
         related_name="comments",
-        verbose_name="Точка",
+        verbose_name=_("Point"),
     )
-    user = models.ForeignKey(
-        User, on_delete=models.CASCADE, verbose_name="Пользователь"
-    )
-    text = models.TextField("Текст комментария")
-    created_at = models.DateTimeField("Создан", auto_now_add=True)
-    updated_at = models.DateTimeField("Обновлён", auto_now=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name=_("User"))
+    text = models.TextField(_("Comment text"))
+    created_at = models.DateTimeField(_("Created"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("Updated"), auto_now=True)
 
     class Meta:
-        verbose_name = "Комментарий точки"
-        verbose_name_plural = "Комментарии точки"
+        verbose_name = _("Point comment")
+        verbose_name_plural = _("Point comments")
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"Комментарий {self.user.username} для {self.point.name}"
+        return f"Comment by {self.user.username} for {self.point.name}"
 
 
 class RouteComment(models.Model):
@@ -333,22 +297,20 @@ class RouteComment(models.Model):
         Route,
         on_delete=models.CASCADE,
         related_name="comments",
-        verbose_name="Маршрут",
+        verbose_name=_("Route"),
     )
-    user = models.ForeignKey(
-        User, on_delete=models.CASCADE, verbose_name="Пользователь"
-    )
-    text = models.TextField("Текст комментария")
-    created_at = models.DateTimeField("Создан", auto_now_add=True)
-    updated_at = models.DateTimeField("Обновлён", auto_now=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name=_("User"))
+    text = models.TextField(_("Comment text"))
+    created_at = models.DateTimeField(_("Created"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("Updated"), auto_now=True)
 
     class Meta:
-        verbose_name = "Комментарий маршрута"
-        verbose_name_plural = "Комментарии маршрута"
+        verbose_name = _("Route comment")
+        verbose_name_plural = _("Route comments")
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"Комментарий {self.user.username} для {self.route.name}"
+        return f"Comment by {self.user.username} for {self.route.name}"
 
 
 class UserVisitedPoint(models.Model):
@@ -356,60 +318,15 @@ class UserVisitedPoint(models.Model):
         User,
         on_delete=models.CASCADE,
         related_name="visited_points",
-        verbose_name="Пользователь",
+        verbose_name=_("User"),
     )
-    point = models.ForeignKey(
-        RoutePoint, on_delete=models.CASCADE, verbose_name="Точка"
-    )
-    visited_at = models.DateTimeField("Посещено", auto_now_add=True)
+    point = models.ForeignKey(RoutePoint, on_delete=models.CASCADE, verbose_name=_("Point"))
+    visited_at = models.DateTimeField(_("Visited at"), auto_now_add=True)
 
     class Meta:
-        verbose_name = "Посещенная точка"
-        verbose_name_plural = "Посещенные точки"
+        verbose_name = _("Visited point")
+        verbose_name_plural = _("Visited points")
         unique_together = ["user", "point"]
 
     def __str__(self):
-        return f"{self.user.username} посетил {self.point.name}"
-
-
-class SavedPlace(models.Model):
-    CATEGORY_CHOICES = [
-        ("home", "Дом"),
-        ("work", "Работа"),
-        ("favorite", "Избранное"),
-        ("restaurant", "Ресторан"),
-        ("park", "Парк"),
-        ("shop", "Магазин"),
-        ("hotel", "Отель"),
-        ("other", "Другое"),
-    ]
-
-    user = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name="saved_places",
-        verbose_name="Пользователь",
-    )
-    name = models.CharField("Название", max_length=200)
-    category = models.CharField(
-        "Категория", max_length=20, choices=CATEGORY_CHOICES, default="other"
-    )
-    address = models.TextField("Адрес")
-    latitude = models.FloatField(
-        "Широта",
-        validators=[MinValueValidator(-90.0), MaxValueValidator(90.0)],
-    )
-    longitude = models.FloatField(
-        "Долгота",
-        validators=[MinValueValidator(-180.0), MaxValueValidator(180.0)],
-    )
-    notes = models.TextField("Заметки", blank=True)
-    created_at = models.DateTimeField("Создано", auto_now_add=True)
-
-    class Meta:
-        verbose_name = "Сохраненное место"
-        verbose_name_plural = "Сохраненные места"
-        ordering = ["-created_at"]
-
-    def __str__(self):
-        return f"{self.name} ({self.user.username})"
+        return f"{self.user.username} visited {self.point.name}"

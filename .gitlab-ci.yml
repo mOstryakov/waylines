@@ -1,0 +1,20 @@
+image: python:3.13
+
+stages:
+  - lint
+  - test
+
+linting:
+  stage: lint
+  image: registry.gitlab.com/pipeline-components/flake8:latest
+  script:
+    - pip install -r requirements/test.txt
+    - flake8 --verbose .
+  allow_failure: false
+
+black:
+  stage: lint
+  image: registry.gitlab.com/pipeline-components/black:latest
+  script:
+    - black --check --diff .
+  allow_failure: false

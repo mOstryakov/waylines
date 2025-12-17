@@ -1,520 +1,515 @@
-// audio_generation.js
-class AudioGenerationManager {
-    constructor() {
-        this.currentPointId = null;
-        this.currentAudioUrl = null;
-        this.generationStatusInterval = null;
-        this.modalIsOpening = false;
-        this.initEventListeners();
-    }
+    // static/js/audio_generation.js
+    class AudioGenerationManager {
+        constructor() {
+            this.currentPointId = null;
+            this.currentPointIndex = null;
+            this.audioUrl = null;
+            this.isGenerating = false;
+            this.audioElement = null;
+            
+            this.init();
+        }
 
-    initEventListeners() {
-        console.log('🎵 Setting up audio event listeners...');
+        init() {
+            console.log('🎵 Инициализация AudioGenerationManager');
+            this.setupEventListeners();
+            this.setupAudioElement();
+        }
 
-        // Удаляем все существующие обработчики перед добавлением новых
-        this.removeAllEventListeners();
+        setupEventListeners() {
+            // Кнопка "Использовать текст описания"
+            document.getElementById('use-description-text')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.useDescriptionText();
+            });
 
-        // Делегирование событий для всех кнопок аудио
-        document.addEventListener('click', (e) => {
-            if (e.target.closest('.generate-audio-btn')) {
+            // Кнопка "Сгенерировать AI-аудио"
+            document.getElementById('generate-ai-audio')?.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('🎵 Generate button clicked');
-                this.openAudioSettings();
-            }
-            else if (e.target.closest('.regenerate-audio-btn')) {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('🎵 Regenerate button clicked');
-                this.openAudioSettings();
-            }
-            else if (e.target.closest('.delete-audio-btn')) {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('🎵 Delete button clicked');
-                this.deleteAudio();
-            }
-            else if (e.target.closest('.retry-audio-btn')) {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('🎵 Retry button clicked');
-                this.openAudioSettings();
-            }
-        });
-
-        // Обработчик для кнопки подтверждения в модальном окне
-        const confirmBtn = document.getElementById('confirm-generate-audio');
-        if (confirmBtn) {
-            confirmBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('🎵 Confirm generate clicked');
                 this.generateAudio();
             });
-        }
 
-        console.log('🎵 Audio event listeners setup complete');
-    }
-
-    removeAllEventListeners() {
-        // Клонируем и заменяем элементы чтобы удалить все обработчики
-        const elementsToClean = [
-            '.generate-audio-btn',
-            '.regenerate-audio-btn', 
-            '.delete-audio-btn',
-            '.retry-audio-btn',
-            '#confirm-generate-audio'
-        ];
-
-        elementsToClean.forEach(selector => {
-            const elements = document.querySelectorAll(selector);
-            elements.forEach(element => {
-                if (element.parentNode) {
-                    const newElement = element.cloneNode(true);
-                    element.parentNode.replaceChild(newElement, element);
-                }
-            });
-        });
-    }
-
-    // Показывает аудио контролы для конкретной точки
-    showAudioForPoint(pointId, pointData) {
-        console.log(`🎵 Showing audio for point: ${pointId}`);
-        this.currentPointId = pointId;
-        
-        if (pointData && pointData.audio_guide) {
-            this.showAudioExists(pointData.audio_guide, pointData.audio_metadata);
-        } else {
-            this.showNoAudio();
-        }
-    }
-
-    showNoAudio() {
-        this.hideAllSections();
-        const section = document.getElementById('no-audio-section');
-        const badge = document.getElementById('audio-status-badge');
-        
-        if (section) section.style.display = 'block';
-        if (badge) {
-            badge.textContent = 'Не сгенерирован';
-            badge.className = 'badge bg-secondary bg-opacity-10 text-secondary small';
-        }
-    }
-
-    showAudioExists(audioUrl, metadata = {}) {
-        this.hideAllSections();
-        this.currentAudioUrl = audioUrl;
-        
-        // Настраиваем аудиоплеер
-        const audioPlayer = document.getElementById('point-audio-player');
-        if (audioPlayer && audioUrl) {
-            audioPlayer.src = audioUrl;
-            audioPlayer.load().catch(e => console.error('Audio load error:', e));
-        }
-
-        // Обновляем информацию
-        this.updateAudioInfo(metadata);
-        
-        const section = document.getElementById('audio-exists-section');
-        const badge = document.getElementById('audio-status-badge');
-        
-        if (section) section.style.display = 'block';
-        if (badge) {
-            badge.textContent = 'Сгенерирован';
-            badge.className = 'badge bg-success bg-opacity-10 text-success small';
-        }
-    }
-
-    showGenerating() {
-        this.hideAllSections();
-        const section = document.getElementById('audio-generating-section');
-        const badge = document.getElementById('audio-status-badge');
-        
-        if (section) section.style.display = 'block';
-        if (badge) {
-            badge.textContent = 'Генерация...';
-            badge.className = 'badge bg-warning bg-opacity-10 text-warning small';
-        }
-    }
-
-    showError(errorMessage) {
-        this.hideAllSections();
-        const errorElement = document.getElementById('audio-error-message');
-        const section = document.getElementById('audio-error-section');
-        const badge = document.getElementById('audio-status-badge');
-        
-        if (errorElement) errorElement.textContent = errorMessage;
-        if (section) section.style.display = 'block';
-        if (badge) {
-            badge.textContent = 'Ошибка';
-            badge.className = 'badge bg-danger bg-opacity-10 text-danger small';
-        }
-    }
-
-    hideAllSections() {
-        const sections = [
-            'no-audio-section',
-            'audio-exists-section', 
-            'audio-generating-section',
-            'audio-error-section'
-        ];
-        
-        sections.forEach(sectionId => {
-            const section = document.getElementById(sectionId);
-            if (section) section.style.display = 'none';
-        });
-    }
-
-    updateAudioInfo(metadata) {
-        const voiceInfo = document.getElementById('audio-voice-info');
-        const languageInfo = document.getElementById('audio-language-info');
-        
-        if (voiceInfo && metadata.voice_type) {
-            voiceInfo.textContent = this.getVoiceDisplayName(metadata.voice_type);
-        }
-        if (languageInfo && metadata.language) {
-            languageInfo.textContent = this.getLanguageDisplayName(metadata.language);
-        }
-    }
-
-    openAudioSettings() {
-        console.log('🎵 Opening audio settings modal');
-        
-        // Защита от множественных вызовов
-        if (this.modalIsOpening) {
-            console.log('🎵 Modal already opening, skipping');
-            return;
-        }
-        
-        if (!this.currentPointId) {
-            this.showError('Сначала выберите точку маршрута');
-            return;
-        }
-        
-        this.modalIsOpening = true;
-        
-        // 🔥 ИСПОЛЬЗУЕМ ПРОСТОЙ ДИАЛОГ ВМЕСТО BOOTSTRAP MODAL
-        this.showSimpleAudioDialog();
-    }
-
-    showSimpleAudioDialog() {
-        console.log('🎵 Using simple audio dialog');
-        
-        // Получаем текущие значения
-        const currentVoice = document.getElementById('audio-voice-select')?.value || 'alloy';
-        const currentLanguage = document.getElementById('audio-language-select')?.value || 'auto';
-        
-        const dialogHtml = `
-            <div id="simple-audio-dialog" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; z-index: 1050;">
-                <div style="background: white; padding: 24px; border-radius: 12px; width: 90%; max-width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); border: 1px solid #e0e0e0;">
-                    <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 20px;">
-                        <h5 style="margin: 0; color: #333; font-weight: 600;">Настройки аудио</h5>
-                        <button type="button" id="simple-dialog-close" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #666; padding: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">×</button>
-                    </div>
-                    
-                    <div style="margin-bottom: 20px;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #555; font-size: 14px;">Голос</label>
-                        <select id="simple-voice-select" style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; background: white; font-size: 14px; color: #333;">
-                            <option value="alloy">Alloy (нейтральный)</option>
-                            <option value="echo">Echo (мужской)</option>
-                            <option value="nova">Nova (женский)</option>
-                            <option value="onyx">Onyx (глубокий)</option>
-                            <option value="fable">Fable (сказочный)</option>
-                            <option value="shimmer">Shimmer (легкий)</option>
-                        </select>
-                    </div>
-                    
-                    <div style="margin-bottom: 24px;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #555; font-size: 14px;">Язык</label>
-                        <select id="simple-language-select" style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; background: white; font-size: 14px; color: #333;">
-                            <option value="auto">Автоопределение</option>
-                            <option value="ru-RU">Русский</option>
-                            <option value="en-US">Английский</option>
-                            <option value="es-ES">Испанский</option>
-                            <option value="fr-FR">Французский</option>
-                        </select>
-                    </div>
-                    
-                    <div style="display: flex; gap: 12px;">
-                        <button type="button" id="simple-dialog-cancel" style="flex: 1; padding: 10px 16px; background: #6c757d; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer;">Отмена</button>
-                        <button type="button" id="simple-dialog-confirm" style="flex: 1; padding: 10px 16px; background: #007bff; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer;">
-                            Сгенерировать
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        // Удаляем существующий диалог если есть
-        const existingDialog = document.getElementById('simple-audio-dialog');
-        if (existingDialog) {
-            existingDialog.remove();
-        }
-        
-        // Добавляем новый диалог
-        document.body.insertAdjacentHTML('beforeend', dialogHtml);
-        
-        // Устанавливаем текущие значения
-        const voiceSelect = document.getElementById('simple-voice-select');
-        const languageSelect = document.getElementById('simple-language-select');
-        
-        if (voiceSelect) voiceSelect.value = currentVoice;
-        if (languageSelect) languageSelect.value = currentLanguage;
-        
-        // Добавляем обработчики для диалога
-        this.setupSimpleDialogHandlers();
-        
-        this.modalIsOpening = false;
-    }
-
-    setupSimpleDialogHandlers() {
-        const closeBtn = document.getElementById('simple-dialog-close');
-        const cancelBtn = document.getElementById('simple-dialog-cancel');
-        const confirmBtn = document.getElementById('simple-dialog-confirm');
-        const dialog = document.getElementById('simple-audio-dialog');
-        
-        const closeDialog = () => {
-            if (dialog) {
-                dialog.remove();
-            }
-        };
-        
-        if (closeBtn) {
-            closeBtn.addEventListener('click', closeDialog);
-        }
-        
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', closeDialog);
-        }
-        
-        if (confirmBtn) {
-            confirmBtn.addEventListener('click', () => {
-                const voiceType = document.getElementById('simple-voice-select')?.value || 'alloy';
-                const language = document.getElementById('simple-language-select')?.value || 'auto';
-                
-                // Обновляем основные селекты
-                const mainVoiceSelect = document.getElementById('audio-voice-select');
-                const mainLanguageSelect = document.getElementById('audio-language-select');
-                
-                if (mainVoiceSelect) mainVoiceSelect.value = voiceType;
-                if (mainLanguageSelect) mainLanguageSelect.value = language;
-                
-                closeDialog();
+            // Кнопка "Повторить" при ошибке
+            document.getElementById('retry-ai-generation')?.addEventListener('click', (e) => {
+                e.preventDefault();
                 this.generateAudio();
             });
-        }
-        
-        // Закрытие по клику на фон
-        if (dialog) {
-            dialog.addEventListener('click', (e) => {
-                if (e.target === dialog) {
-                    closeDialog();
-                }
-            });
-        }
-        
-        // Закрытие по ESC
-        const handleEscape = (e) => {
-            if (e.key === 'Escape') {
-                closeDialog();
-                document.removeEventListener('keydown', handleEscape);
-            }
-        };
-        document.addEventListener('keydown', handleEscape);
-    }
 
-    async generateAudio() {
-        console.log('🎵 Starting audio generation for point:', this.currentPointId);
-        
-        if (!this.currentPointId) {
-            this.showError('Не выбрана точка маршрута');
-            return;
-        }
-
-        const voiceType = document.getElementById('audio-voice-select')?.value || 'alloy';
-        const language = document.getElementById('audio-language-select')?.value || 'auto';
-        
-        this.showGenerating();
-        
-        try {
-            const response = await fetch(`/audio/generate/${this.currentPointId}/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': this.getCsrfToken()
-                },
-                body: JSON.stringify({
-                    voice_type: voiceType,
-                    language: language
-                })
+            // Слушаем изменения в поле описания
+            document.getElementById('point-description')?.addEventListener('input', () => {
+                this.syncDescriptionToPreview();
             });
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`HTTP ${response.status}: ${errorText}`);
-            }
+            // Кнопки управления аудиоплеером
+            document.getElementById('re-record-audio')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.resetAudio();
+            });
 
-            const data = await response.json();
-            console.log('🎵 Generation response:', data);
+            document.getElementById('remove-audio')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.removeAudio();
+            });
 
-            if (data.status === 'success') {
-                this.checkGenerationStatus(data.generation_id);
+            // Переключатель аудиогида
+            document.getElementById('enable-audio-guide')?.addEventListener('change', (e) => {
+                this.handleAudioToggle(e.target.checked);
+            });
+        }
+
+        setupAudioElement() {
+            // Создаем скрытый аудио элемент если его нет
+            if (!document.getElementById('audio-player-element')) {
+                this.audioElement = document.createElement('audio');
+                this.audioElement.id = 'audio-player-element';
+                this.audioElement.style.display = 'none';
+                document.body.appendChild(this.audioElement);
             } else {
-                throw new Error(data.message || 'Ошибка генерации');
+                this.audioElement = document.getElementById('audio-player-element');
             }
-
-        } catch (error) {
-            console.error('🎵 Audio generation error:', error);
-            this.showError(this.getUserFriendlyError(error));
         }
-    }
 
-    async checkGenerationStatus(generationId) {
-        console.log('🎵 Checking generation status:', generationId);
-        
-        this.cancelGenerationStatusCheck();
+        // Вызывается из RouteEditor при открытии точки
+        setupForPoint(pointId, pointIndex, pointData = null) {
+            console.log('🎵 Настройка аудио для точки:', pointId, pointData);
+            this.currentPointId = pointId;
+            this.currentPointIndex = pointIndex;
+            
+            // Сброс состояния UI
+            this.resetGenerationUI();
+            
+            // Предзаполняем текст из описания точки
+            if (pointData?.description) {
+                const preview = document.getElementById('ai-text-preview');
+                if (preview) {
+                    preview.textContent = pointData.description;
+                }
+            } else {
+                this.syncDescriptionToPreview();
+            }
+            
+            // Если у точки уже есть аудио, показываем плеер
+            if (pointData?.audio_url) {
+                this.showAudioPlayer(pointData.audio_url, pointData.audio_filename || 'Аудиогид точки');
+            }
+            
+            // Сброс состояния генерации
+            this.hideGenerationProgress();
+            this.hideGenerationError();
+            this.hideGenerationSuccess();
+        }
 
-        const maxAttempts = 30;
-        let attempts = 0;
+        useDescriptionText() {
+            const descriptionField = document.getElementById('point-description');
+            const preview = document.getElementById('ai-text-preview');
+            
+            if (descriptionField && preview) {
+                const desc = descriptionField.value.trim();
+                if (desc) {
+                    preview.textContent = desc;
+                    this.showToast('Текст загружен в область генерации', 'info');
+                } else {
+                    this.showToast('Описание точки пустое', 'warning');
+                }
+            }
+        }
 
-        const checkStatus = async () => {
-            if (attempts >= maxAttempts) {
-                this.showError('Превышено время ожидания генерации (60 секунд)');
+        syncDescriptionToPreview() {
+            const descriptionField = document.getElementById('point-description');
+            const preview = document.getElementById('ai-text-preview');
+            
+            if (descriptionField && preview) {
+                const desc = descriptionField.value.trim();
+                // Обновляем только если превью пустое
+                if (desc && (!preview.textContent || preview.textContent.trim() === '')) {
+                    preview.textContent = desc;
+                }
+            }
+        }
+
+        async generateAudio() {
+            // Проверяем, что точка сохранена
+            if (!this.currentPointId || this.currentPointId <= 0) {
+                this.showToast('Сначала сохраните точку, затем сгенерируйте аудио', 'warning');
                 return;
             }
 
-            try {
-                const response = await fetch(`/audio/status/${generationId}/`);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                
-                const data = await response.json();
-                console.log('🎵 Status check response:', data);
+            const text = document.getElementById('ai-text-preview')?.textContent.trim();
+            if (!text) {
+                this.showToast('Текст для генерации пуст', 'warning');
+                return;
+            }
 
-                if (data.status === 'completed') {
-                    console.log('✅ Audio generation completed');
-                    this.showAudioExists(data.audio_url, {
-                        voice_type: document.getElementById('audio-voice-select')?.value,
-                        language: document.getElementById('audio-language-select')?.value
-                    });
+            if (text.length > 5000) {
+                this.showToast('Текст слишком длинный (максимум 5000 символов)', 'warning');
+                return;
+            }
+
+            if (this.isGenerating) {
+                return;
+            }
+
+            this.isGenerating = true;
+            this.showGenerationProgress();
+
+            try {
+                const voice = document.getElementById('ai-voice-select')?.value || 'alloy';
+                const language = document.getElementById('ai-language-select')?.value || 'ru-RU';
+                const csrfToken = this.getCsrfToken();
+
+                console.log('🎵 Отправка запроса на генерацию аудио:', {
+                    pointId: this.currentPointId,
+                    textLength: text.length,
+                    voice,
+                    language
+                });
+
+                const response = await fetch(`/api/ai-audio/generate/${this.currentPointId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        voice_type: voice,
+                        language: language
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.status === 'success') {
+                    // Успешная генерация
+                    this.audioUrl = data.audio_url;
+                    const filename = `AI-аудиогид_${new Date().toLocaleDateString('ru-RU')}.mp3`;
                     
-                    if (window.routeEditor && window.routeEditor.updatePointAudio) {
-                        window.routeEditor.updatePointAudio(this.currentPointId, data.audio_url);
+                    this.showAudioPlayer(data.audio_url, filename);
+                    this.showGenerationSuccess();
+                    
+                    // Обновляем RouteEditor
+                    if (window.routeEditor?.updatePointAudio) {
+                        window.routeEditor.updatePointAudio(this.currentPointId, data.audio_url, filename);
                     }
                     
-                } else if (data.status === 'failed') {
-                    this.showError(data.error_message || 'Ошибка генерации аудио');
+                    this.showToast('✅ Аудиогид успешно сгенерирован!', 'success');
                 } else {
-                    attempts++;
-                    this.generationStatusInterval = setTimeout(checkStatus, 2000);
+                    throw new Error(data.error || 'Ошибка сервера');
                 }
             } catch (error) {
-                console.error('🎵 Status check error:', error);
-                attempts++;
-                
-                if (attempts < maxAttempts) {
-                    this.generationStatusInterval = setTimeout(checkStatus, 2000);
-                } else {
-                    this.showError('Не удалось проверить статус генерации');
-                }
+                console.error('❌ Ошибка генерации аудио:', error);
+                this.showGenerationError(error.message || 'Неизвестная ошибка');
+                this.showToast(`Ошибка генерации: ${error.message}`, 'danger');
+            } finally {
+                this.isGenerating = false;
+                this.hideGenerationProgress();
             }
-        };
-
-        checkStatus();
-    }
-
-    cancelGenerationStatusCheck() {
-        if (this.generationStatusInterval) {
-            clearTimeout(this.generationStatusInterval);
-            this.generationStatusInterval = null;
-        }
-    }
-
-    async deleteAudio() {
-        if (!this.currentPointId) {
-            this.showError('Не выбрана точка маршрута');
-            return;
         }
 
-        if (!confirm('Удалить сгенерированное аудио?')) {
-            return;
+        // Показать аудиоплеер
+        showAudioPlayer(audioUrl, filename = 'Аудиогид точки') {
+            // Показываем плеер и скрываем рекордер
+            document.getElementById('point-audio-player').style.display = 'block';
+            document.getElementById('point-audio-recorder').style.display = 'none';
+            
+            // Устанавливаем имя файла
+            document.getElementById('audio-filename').textContent = filename;
+            
+            // Включаем аудио
+            document.getElementById('enable-audio-guide').checked = true;
+            
+            // Настраиваем аудио элемент
+            if (this.audioElement) {
+                this.audioElement.src = audioUrl;
+                this.setupAudioPlayerControls();
+            }
+            
+            // Показываем кнопки управления
+            this.showAudioControls();
         }
 
-        console.log('🗑️ Deleting audio for point:', this.currentPointId);
-
-        try {
-            const response = await fetch(`/audio/delete/${this.currentPointId}/`, {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRFToken': this.getCsrfToken(),
-                    'Content-Type': 'application/json'
+        // Настройка элементов управления аудиоплеером
+        setupAudioPlayerControls() {
+            if (!this.audioElement) return;
+            
+            const playBtn = document.querySelector('.audio-play-btn');
+            const progressBar = document.querySelector('.audio-progress');
+            const durationSpan = document.querySelector('.audio-duration');
+            
+            if (!playBtn) return;
+            
+            // Форматирование времени
+            const formatTime = (seconds) => {
+                if (isNaN(seconds)) return '0:00';
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${mins}:${secs.toString().padStart(2, '0')}`;
+            };
+            
+            // Сброс предыдущих обработчиков
+            const newPlayBtn = playBtn.cloneNode(true);
+            playBtn.parentNode.replaceChild(newPlayBtn, playBtn);
+            
+            // Обработчик воспроизведения
+            newPlayBtn.addEventListener('click', () => {
+                if (this.audioElement.paused) {
+                    this.audioElement.play().catch(e => {
+                        console.error('Ошибка воспроизведения:', e);
+                        this.showToast('Ошибка воспроизведения аудио', 'danger');
+                    });
+                    newPlayBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                } else {
+                    this.audioElement.pause();
+                    newPlayBtn.innerHTML = '<i class="fas fa-play"></i>';
                 }
             });
+            
+            // Обновление прогресса
+            this.audioElement.addEventListener('timeupdate', () => {
+                if (this.audioElement.duration && progressBar) {
+                    const progress = (this.audioElement.currentTime / this.audioElement.duration) * 100;
+                    progressBar.style.width = `${progress}%`;
+                }
+                if (durationSpan) {
+                    durationSpan.textContent = formatTime(this.audioElement.currentTime);
+                }
+            });
+            
+            // Сброс при завершении
+            this.audioElement.addEventListener('ended', () => {
+                newPlayBtn.innerHTML = '<i class="fas fa-play"></i>';
+                if (progressBar) progressBar.style.width = '0%';
+                if (durationSpan) durationSpan.textContent = '0:00';
+            });
+            
+            // Загрузка метаданных
+            this.audioElement.addEventListener('loadedmetadata', () => {
+                if (durationSpan) {
+                    durationSpan.textContent = formatTime(this.audioElement.duration);
+                }
+            });
+            
+            // Обработка ошибок
+            this.audioElement.addEventListener('error', (e) => {
+                console.error('Ошибка загрузки аудио:', e);
+                this.showToast('Ошибка загрузки аудиофайла', 'danger');
+            });
+        }
 
-            if (response.ok) {
-                this.showNoAudio();
-                this.currentAudioUrl = null;
+        // Показать элементы управления аудио
+        showAudioControls() {
+            const controls = document.querySelectorAll('#re-record-audio, #remove-audio');
+            controls.forEach(control => {
+                control.style.display = 'inline-block';
+            });
+        }
+
+        // Скрыть элементы управления аудио
+        hideAudioControls() {
+            const controls = document.querySelectorAll('#re-record-audio, #remove-audio');
+            controls.forEach(control => {
+                control.style.display = 'none';
+            });
+        }
+
+        // Сброс аудио (начать запись заново)
+        resetAudio() {
+            if (confirm('Вы уверены, что хотите перезаписать аудио?')) {
+                this.audioUrl = null;
+                if (this.audioElement) {
+                    this.audioElement.src = '';
+                    this.audioElement.pause();
+                }
                 
-                if (window.routeEditor && window.routeEditor.updatePointAudio) {
+                // Скрываем плеер, показываем рекордер
+                document.getElementById('point-audio-player').style.display = 'none';
+                document.getElementById('point-audio-recorder').style.display = 'block';
+                
+                // Сбрасываем переключатель
+                document.getElementById('enable-audio-guide').checked = false;
+                
+                // Сбрасываем состояние генерации
+                this.resetGenerationUI();
+                
+                this.showToast('Аудио сброшено. Можете записать новое.', 'info');
+            }
+        }
+
+        // Удалить аудио
+        removeAudio() {
+            if (confirm('Вы уверены, что хотите удалить аудио?')) {
+                this.audioUrl = null;
+                if (this.audioElement) {
+                    this.audioElement.src = '';
+                    this.audioElement.pause();
+                }
+                
+                // Скрываем плеер, показываем рекордер
+                document.getElementById('point-audio-player').style.display = 'none';
+                document.getElementById('point-audio-recorder').style.display = 'block';
+                
+                // Сбрасываем переключатель
+                document.getElementById('enable-audio-guide').checked = false;
+                
+                // Сбрасываем состояние генерации
+                this.resetGenerationUI();
+                
+                // Обновляем RouteEditor
+                if (window.routeEditor?.updatePointAudio) {
                     window.routeEditor.updatePointAudio(this.currentPointId, null);
                 }
                 
-                console.log('✅ Audio deleted successfully');
-            } else {
-                throw new Error('Ошибка удаления аудио');
+                this.showToast('Аудио удалено', 'info');
             }
+        }
 
-        } catch (error) {
-            console.error('🎵 Delete audio error:', error);
-            this.showError('Ошибка удаления аудио');
+        // Обработка переключения аудио
+        handleAudioToggle(isEnabled) {
+            if (!isEnabled && this.audioUrl) {
+                if (confirm('Отключение аудио скроет плеер. Хотите продолжить?')) {
+                    document.getElementById('point-audio-player').style.display = 'none';
+                    document.getElementById('point-audio-recorder').style.display = 'block';
+                } else {
+                    // Возвращаем переключатель в положение "включено"
+                    document.getElementById('enable-audio-guide').checked = true;
+                }
+            } else if (isEnabled && !this.audioUrl) {
+                // Если аудио нет, показываем рекордер
+                document.getElementById('point-audio-player').style.display = 'none';
+                document.getElementById('point-audio-recorder').style.display = 'block';
+            }
+        }
+
+        // Сброс UI генерации
+        resetGenerationUI() {
+            this.hideGenerationProgress();
+            this.hideGenerationError();
+            this.hideGenerationSuccess();
+            const generateBtn = document.getElementById('generate-ai-audio');
+            if (generateBtn) generateBtn.disabled = false;
+        }
+
+        // Показать прогресс генерации
+        showGenerationProgress() {
+            const progressEl = document.getElementById('ai-generation-progress');
+            const generateBtn = document.getElementById('generate-ai-audio');
+            if (progressEl) progressEl.style.display = 'block';
+            if (generateBtn) generateBtn.disabled = true;
+            
+            this.hideGenerationError();
+            this.hideGenerationSuccess();
+        }
+
+        // Скрыть прогресс генерации
+        hideGenerationProgress() {
+            const progressEl = document.getElementById('ai-generation-progress');
+            if (progressEl) progressEl.style.display = 'none';
+        }
+
+        // Показать ошибку генерации
+        showGenerationError(errorMessage) {
+            const errorEl = document.getElementById('ai-generation-error');
+            const errorMsg = document.getElementById('ai-error-message');
+            const generateBtn = document.getElementById('generate-ai-audio');
+            
+            if (errorEl && errorMsg) {
+                errorMsg.textContent = errorMessage;
+                errorEl.style.display = 'block';
+            }
+            if (generateBtn) generateBtn.disabled = false;
+            
+            this.hideGenerationProgress();
+            this.hideGenerationSuccess();
+        }
+
+        // Скрыть ошибку генерации
+        hideGenerationError() {
+            const errorEl = document.getElementById('ai-generation-error');
+            if (errorEl) errorEl.style.display = 'none';
+        }
+
+        // Показать успех генерации
+        showGenerationSuccess() {
+            const successEl = document.getElementById('ai-generation-success');
+            if (successEl) successEl.style.display = 'block';
+            
+            this.hideGenerationProgress();
+            this.hideGenerationError();
+        }
+
+        // Скрыть успех генерации
+        hideGenerationSuccess() {
+            const successEl = document.getElementById('ai-generation-success');
+            if (successEl) successEl.style.display = 'none';
+        }
+
+        // Получить CSRF токен
+        getCsrfToken() {
+            // Попробовать найти в форме
+            const tokenInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+            if (tokenInput) {
+                return tokenInput.value;
+            }
+            
+            // Попробовать найти в cookies
+            const name = 'csrftoken';
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Показать уведомление
+        showToast(message, type = 'info') {
+            // Используем существующую функцию если есть
+            if (window.routeEditor && typeof window.routeEditor.showToast === 'function') {
+                window.routeEditor.showToast(message, type);
+            } else {
+                console.log(`[${type.toUpperCase()}] ${message}`);
+                
+                // Простая реализация тоста
+                const toast = document.createElement('div');
+                toast.className = `toast align-items-center text-white bg-${type} border-0 position-fixed bottom-0 end-0 m-3`;
+                toast.setAttribute('role', 'alert');
+                toast.style.zIndex = '9999';
+                toast.innerHTML = `
+                    <div class="d-flex">
+                        <div class="toast-body">${message}</div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                    </div>
+                `;
+                document.body.appendChild(toast);
+                
+                const bsToast = new bootstrap.Toast(toast);
+                bsToast.show();
+                
+                setTimeout(() => {
+                    toast.remove();
+                }, 3000);
+            }
         }
     }
 
-    getVoiceDisplayName(voiceType) {
-        const voices = {
-            'alloy': 'Alloy (нейтральный)',
-            'echo': 'Echo (мужской)', 
-            'nova': 'Nova (женский)',
-            'onyx': 'Onyx (глубокий)',
-            'fable': 'Fable (сказочный)',
-            'shimmer': 'Shimmer (легкий)'
-        };
-        return voices[voiceType] || voiceType;
-    }
-
-    getLanguageDisplayName(language) {
-        const languages = {
-            'auto': 'Автоопределение',
-            'ru-RU': 'Русский',
-            'en-US': 'Английский',
-            'es-ES': 'Испанский',
-            'fr-FR': 'Французский'
-        };
-        return languages[language] || language;
-    }
-
-    getUserFriendlyError(error) {
-        if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
-            return 'Проблемы с подключением к серверу';
-        }
-        if (error.message.includes('500')) {
-            return 'Внутренняя ошибка сервера';
-        }
-        if (error.message.includes('404')) {
-            return 'Сервис генерации аудио временно недоступен';
-        }
-        return error.message;
-    }
-
-    getCsrfToken() {
-        return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
-    }
-}
-
-// Инициализация при загрузке
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🎵 DOM loaded, initializing Audio Generation Manager...');
+    // Создаем глобальный экземпляр менеджера
     window.audioGenerationManager = new AudioGenerationManager();
-});
+
+    // Добавляем функцию для вызова из pointEditor
+    window.setupPointAudio = function(pointId, pointIndex, pointData) {
+        if (window.audioGenerationManager) {
+            window.audioGenerationManager.setupForPoint(pointId, pointIndex, pointData);
+        }
+    };
+
+    // Инициализация при загрузке DOM
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('✅ AudioGenerationManager загружен и готов к работе');
+    });

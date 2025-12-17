@@ -9,7 +9,7 @@
             <!-- Левая колонка - фиксированная высота -->
             <div class="col-lg-4 h-100">
                 <div class="left-panel-wrapper h-100 position-relative">
-                    <div class="left-panel-scrollable h-100 overflow-y-auto" id="left-panel-scrollable">
+                    <div class="left-panel-scrollable h-100 overflow-y-auto">
                         <!-- Панель поиска и управления -->
                         <div class="card shadow-sm border-0 m-3">
                             <div class="card-body">
@@ -107,23 +107,40 @@
                                 <input type="hidden" id="duration_minutes" value="0">
                                 <input type="hidden" id="is_active" value="true">
                                 
+                                <!-- Название маршрута с кнопкой удаления -->
                                 <div class="mb-3">
                                     <label class="form-label fw-semibold">Название маршрута *</label>
-                                    <input type="text" class="form-control form-control-lg border-0 bg-light" id="name" 
-                                           placeholder="Введите название маршрута" required
-                                           style="border-radius: 12px; padding: 12px 16px;">
+                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                        <input type="text" class="form-control form-control-lg border-0 bg-light flex-grow-1" id="name" 
+                                               placeholder="Введите название маршрута" required
+                                               style="border-radius: 12px; padding: 12px 16px;">
+                                        {% if route %}
+                                        <button type="button" class="btn btn-outline-danger btn-lg" 
+                                                data-bs-toggle="modal" data-bs-target="#deleteRouteModal"
+                                                title="Удалить маршрут" style="border-radius: 12px; padding: 12px 16px;">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">Краткое описание</label>
+                                    <textarea class="form-control border-0 bg-light" id="short_description" rows="3" 
+                                              placeholder="Краткое описание вашего маршрута..."
+                                              style="border-radius: 12px; padding: 12px 16px; resize: none;"></textarea>
                                 </div>
                                 
                                 <div class="mb-4">
-                                    <label class="form-label fw-semibold">Краткое описание</label>
-                                    <textarea class="form-control border-0 bg-light" id="short_description" rows="3" 
-                                              placeholder="Расскажите кратко о вашем маршруте..."
+                                    <label class="form-label fw-semibold">Полное описание маршрута</label>
+                                    <textarea class="form-control border-0 bg-light" id="description" rows="5" 
+                                              placeholder="Подробное описание вашего маршрута..."
                                               style="border-radius: 12px; padding: 12px 16px; resize: none;"></textarea>
                                 </div>
 
                                 <!-- Параметры маршрута -->
                                 <div class="route-params mb-4">
-                                    <h6 class="fw-bold text-dark mb-3">Характеристики маршрута</h6>
+                                    <h6 class="fw-bold text-dark mb-3">Параметры маршрута</h6>
                                     
                                     <div class="row g-3">
                                         <!-- Тип маршрута -->
@@ -140,47 +157,6 @@
                                                     <i class="fas fa-bicycle me-1"></i>Вело
                                                 </button>
                                             </div>
-                                        </div>
-
-                                        <!-- Сложность -->
-                                        <div class="col-12">
-                                            <label class="form-label small fw-semibold text-muted">Сложность</label>
-                                            <select class="form-select border-0 bg-light" id="difficulty" style="border-radius: 12px; padding: 8px 16px;">
-                                                <option value="easy">😊 Лёгкая</option>
-                                                <option value="medium">😐 Средняя</option>
-                                                <option value="hard">😰 Сложная</option>
-                                                <option value="extreme">💀 Экстрим</option>
-                                            </select>
-                                        </div>
-
-                                        <!-- Настроение -->
-                                        <div class="col-12">
-                                            <label class="form-label small fw-semibold text-muted">Настроение</label>
-                                            <select class="form-select border-0 bg-light" id="mood" style="border-radius: 12px; padding: 8px 16px;">
-                                                <option value="">🎭 Выберите настроение</option>
-                                                <option value="adventure">🏔️ Приключение</option>
-                                                <option value="relax">😌 Отдых</option>
-                                                <option value="romantic">💖 Романтика</option>
-                                                <option value="family">👨‍👩‍👧‍👦 Семейный</option>
-                                                <option value="extreme">⚡ Экстрим</option>
-                                                <option value="historical">🏛️ Исторический</option>
-                                                <option value="nature">🌳 Природный</option>
-                                            </select>
-                                        </div>
-
-                                        <!-- Тема -->
-                                        <div class="col-12">
-                                            <label class="form-label small fw-semibold text-muted">Тематика</label>
-                                            <select class="form-select border-0 bg-light" id="theme" style="border-radius: 12px; padding: 8px 16px;">
-                                                <option value="">🏷️ Выберите тему</option>
-                                                <option value="historical">🏛️ Историческая</option>
-                                                <option value="nature">🌳 Природная</option>
-                                                <option value="urban">🏙️ Городская</option>
-                                                <option value="cultural">🎨 Культурная</option>
-                                                <option value="gastronomic">🍴 Гастрономическая</option>
-                                                <option value="religious">⛪ Религиозная</option>
-                                                <option value="architectural">🏗️ Архитектурная</option>
-                                            </select>
                                         </div>
 
                                         <!-- Время прохождения -->
@@ -204,7 +180,7 @@
                                 </div>
 
                                 <!-- Дополнительные настройки -->
-                                <div class="additional-settings">
+                                <div class="additional-settings mb-4">
                                     <h6 class="fw-bold text-dark mb-3">Особенности</h6>
                                     <div class="row g-2">
                                         <div class="col-6">
@@ -249,98 +225,91 @@
                                 <!-- Скрытые поля для существующих фото -->
                                 <div id="existing-photos-data" style="display: none;">
                                     {% if route and route.photos.all %}
-                                        {% for photo in route.photos.all %}
+                                        {% for photo in route.photos.all|dictsort:"order" %}
                                             <div class="existing-photo-data"
                                                  data-photo-id="{{ photo.id }}"
                                                  data-image-url="{{ photo.image.url }}"
                                                  data-caption="{{ photo.caption|default:'' }}"
-                                                 data-is-main="{% if photo.is_main %}true{% else %}false{% endif %}">
+                                                 data-is-main="{% if photo.is_main %}true{% else %}false{% endif %}"
+                                                 data-order="{{ photo.order }}">
                                             </div>
                                         {% endfor %}
                                     {% endif %}
                                 </div>
                                 
-                                <!-- Основное фото -->
-                                <div class="main-photo-section mb-4">
-                                    <label class="form-label fw-semibold small text-muted mb-3">Главное фото</label>
-                                    <div class="main-photo-upload position-relative border-2 border-dashed rounded-4 p-4 text-center cursor-pointer bg-light bg-opacity-50"
-                                         onclick="document.getElementById('route-main-photo').click()">
-                                        <input type="file" id="route-main-photo" class="d-none" accept="image/*">
-                                        
-                                        <!-- Определяем есть ли главное фото -->
-                                        {% with main_photo=route.photos.all|dictsort:"is_main"|last %}
-                                        {% if route and route.photos.all and main_photo.is_main %}
-                                            <!-- Если есть главное фото - показываем его -->
-                                            <div class="main-photo-preview position-absolute top-0 start-0 w-100 h-100 rounded-3">
-                                                <img src="{{ main_photo.image.url }}" 
-                                                     class="w-100 h-100 object-fit-cover rounded-3 shadow-sm"
-                                                     data-photo-id="{{ main_photo.id }}">
-                                                <button type="button" class="btn btn-sm btn-light position-absolute top-0 end-0 m-3 photo-remove-btn shadow"
-                                                        onclick="removeMainRoutePhoto('{{ main_photo.id }}')">
-                                                    <i class="fas fa-times text-danger"></i>
-                                                </button>
-                                            </div>
-                                            <!-- Скрываем плейсхолдер -->
-                                            <div class="h-100 d-flex flex-column align-items-center justify-content-center text-muted placeholder-content" 
-                                                 style="display: none;">
-                                                <i class="fas fa-camera fa-3x mb-3 opacity-50"></i>
-                                                <div class="fw-medium mb-1">Добавить главное фото</div>
-                                                <small class="opacity-75">Рекомендуется 16:9</small>
-                                            </div>
-                                        {% else %}
-                                            <!-- Если нет фото - показываем плейсхолдер -->
-                                            <div class="h-100 d-flex flex-column align-items-center justify-content-center text-muted placeholder-content">
-                                                <i class="fas fa-camera fa-3x mb-3 opacity-50"></i>
-                                                <div class="fw-medium mb-1">Добавить главное фото</div>
-                                                <small class="opacity-75">Рекомендуется 16:9</small>
-                                            </div>
-                                            <!-- Скрываем превью -->
-                                            <div class="main-photo-preview position-absolute top-0 start-0 w-100 h-100 rounded-3" style="display: none;">
-                                                <img src="" class="w-100 h-100 object-fit-cover rounded-3 shadow-sm">
-                                                <button type="button" class="btn btn-sm btn-light position-absolute top-0 end-0 m-3 photo-remove-btn shadow">
-                                                    <i class="fas fa-times text-danger"></i>
-                                                </button>
-                                            </div>
-                                        {% endif %}
-                                        {% endwith %}
-                                    </div>
-                                </div>
-
-                                <!-- Дополнительные фото -->
-                                <div class="additional-photos-section">
-                                    <label class="form-label fw-semibold small text-muted mb-3">Дополнительные фото</label>
+                                <!-- Галерея фото маршрута -->
+                                <div class="route-photos-section">
+                                    <label class="form-label fw-semibold small text-muted mb-3 d-block">
+                                        Загрузите фото. Нажмите на ⭐ чтобы сделать фото главным
+                                    </label>
+                                    
                                     <div class="additional-photos-grid">
-                                        <!-- Показываем существующие дополнительные фото -->
+                                        <!-- Существующие фото -->
                                         {% if route and route.photos.all %}
-                                            {% for photo in route.photos.all %}
-                                                {% if not photo.is_main %} {# Пропускаем главное фото #}
-                                                    <div class="additional-photo-item existing-photo" 
-                                                         data-photo-id="{{ photo.id }}">
-                                                        <img src="{{ photo.image.url }}" 
-                                                             class="w-100 h-100 object-fit-cover"
-                                                             data-caption="{{ photo.caption|default:'' }}">
-                                                        <button type="button" class="btn btn-sm btn-light position-absolute top-0 end-0 m-1 photo-remove-btn shadow-sm" 
-                                                                onclick="removeAdditionalRoutePhoto(this, '{{ photo.id }}')">
-                                                            <i class="fas fa-times text-danger" style="font-size: 10px;"></i>
+                                            {% for photo in route.photos.all|dictsort:"order" %}
+                                                <div class="additional-photo-item existing-photo{% if photo.is_main %} main-photo-selected{% endif %}" 
+                                                     data-photo-id="{{ photo.id }}"
+                                                     data-order="{{ photo.order }}">
+                                                    <img src="{{ photo.image.url }}" 
+                                                         class="w-100 h-100"
+                                                         data-caption="{{ photo.caption|default:'' }}"
+                                                         data-is-main="{% if photo.is_main %}true{% else %}false{% endif %}">
+                                                    
+                                                    <!-- Верхние кнопки -->
+                                                    <div class="photo-controls-top">
+                                                        <button type="button" 
+                                                                onclick="makeMainRoutePhoto(this)"
+                                                                title="Сделать главным">
+                                                            <i class="fas fa-star {% if photo.is_main %}text-warning{% else %}text-light{% endif %}"></i>
+                                                        </button>
+                                                        <button type="button" class="photo-remove-btn" 
+                                                                onclick="removeAdditionalRoutePhoto(this, '{{ photo.id }}')"
+                                                                title="Удалить">
+                                                            <i class="fas fa-times text-danger"></i>
                                                         </button>
                                                     </div>
-                                                {% endif %}
+                                                    
+                                                    <!-- Нижние кнопки -->
+                                                    <div class="photo-controls-bottom">
+                                                        <button type="button" 
+                                                                onclick="moveRoutePhotoUp(this)"
+                                                                title="Переместить вверх">
+                                                            <i class="fas fa-arrow-up"></i>
+                                                        </button>
+                                                        <button type="button" 
+                                                                onclick="moveRoutePhotoDown(this)"
+                                                                title="Переместить вниз">
+                                                            <i class="fas fa-arrow-down"></i>
+                                                        </button>
+                                                    </div>
+                                                    
+                                                    <!-- Номер порядка -->
+                                                    <div class="photo-order-badge">{{ forloop.counter }}</div>
+                                                </div>
                                             {% endfor %}
                                         {% endif %}
                                         
                                         <!-- Кнопка добавления новых фото -->
-                                        <div class="additional-photo-upload border-2 border-dashed rounded-3 p-3 text-center cursor-pointer bg-light bg-opacity-50"
-                                             onclick="document.getElementById('route-additional-photos').click()">
-                                            <input type="file" id="route-additional-photos" class="d-none" accept="image/*" multiple>
+                                        <div class="additional-photo-upload"
+                                             onclick="document.getElementById('route-photos-input').click()">
+                                            <input type="file" id="route-photos-input" class="d-none" accept="image/*" multiple>
                                             <i class="fas fa-plus-circle fa-2x text-muted mb-2"></i>
                                             <div class="small text-muted fw-medium">Добавить фото</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Подсказка про главное фото -->
+                                    <div class="mt-3 pt-3 border-top">
+                                        <div class="alert alert-info bg-primary bg-opacity-10 border-primary border-opacity-25 small mb-0">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            Главное фото отмечено золотой звездой ⭐
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Список точек маршрута -->
+                        <!-- Список точек маршрута с галереей ВСЕХ фото -->
                         <div class="card shadow-sm border-0 m-3 mb-4">
                             <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
                                 <h5 class="card-title mb-0 fw-bold text-dark">
@@ -354,7 +323,8 @@
                             </div>
                             <div class="card-body p-0">
                                 <div id="points-list" class="points-list">
-                                    <div class="empty-state text-center py-5">
+                                    <!-- Пустое состояние -->
+                                    <div class="empty-state text-center py-5" id="empty-points-state">
                                         <div class="empty-icon mb-3">
                                             <i class="fas fa-map-marked-alt fa-3x text-muted opacity-50"></i>
                                         </div>
@@ -384,7 +354,7 @@
 
             <!-- Правая колонка - карта фиксированная -->
             <div class="col-lg-8 h-100 position-relative">
-                <div class="map-container h-100 position-sticky top-0">
+                <div class="map-container h-100">
                     <div class="card shadow-sm border-0 h-100">
                         <div class="card-body p-0 position-relative h-100">
                             <!-- Карта -->
@@ -405,6 +375,128 @@
     </div>
 </div>
 
+<!-- Модальное окно для подтверждения удаления маршрута -->
+<div class="modal fade" id="deleteRouteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title text-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Удаление маршрута
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-4">
+                <div class="alert alert-warning border-warning bg-warning bg-opacity-10 mb-4">
+                    <div class="d-flex">
+                        <i class="fas fa-exclamation-circle me-3 mt-1 text-warning"></i>
+                        <div>
+                            <h6 class="alert-heading text-dark mb-1">Внимание!</h6>
+                            <p class="mb-0 text-dark">Это действие нельзя отменить. Маршрут будет удален безвозвратно.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="delete-options mb-4">
+                    <h6 class="text-dark mb-3">Настройки удаления:</h6>
+                    
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="deleteAllData" checked>
+                        <label class="form-check-label text-dark" for="deleteAllData">
+                            <strong>Удалить все медиафайлы</strong>
+                            <p class="small text-muted mb-0">Все фото маршрута, фото точек и аудиофайлы будут удалены с сервера</p>
+                        </label>
+                    </div>
+                    
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="clearCache" checked>
+                        <label class="form-check-label text-dark" for="clearCache">
+                            <strong>Очистить кеш</strong>
+                            <p class="small text-muted mb-0">Очистить кешированные данные маршрута для повышения производительности</p>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="confirmation-section">
+                    <p class="text-muted small mb-3">
+                        Для подтверждения удаления введите название маршрута:
+                        <strong class="text-dark" id="routeNameToDelete">{{ route.name|default:"[название маршрута]" }}</strong>
+                    </p>
+                    <input type="text" class="form-control" id="confirmRouteName" 
+                           placeholder="Введите название маршрута для подтверждения">
+                    <div class="invalid-feedback" id="confirmError" style="display: none;">
+                        Название не совпадает с именем маршрута
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Отмена
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn" disabled>
+                    <i class="fas fa-trash-alt me-2"></i>Удалить маршрут
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для галереи фото точки -->
+<div class="modal fade" id="pointGalleryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title text-dark">
+                    <i class="fas fa-images me-2 text-primary"></i>
+                    <span id="pointGalleryTitle">Фотографии точки</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <!-- Карусель для фото -->
+                <div id="pointGalleryCarousel" class="carousel slide">
+                    <div class="carousel-inner" id="pointGalleryCarouselInner">
+                        <!-- Фото будут добавлены через JavaScript -->
+                    </div>
+                    
+                    <!-- Кнопки навигации -->
+                    <button class="carousel-control-prev" type="button" data-bs-target="#pointGalleryCarousel" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Предыдущее</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#pointGalleryCarousel" data-bs-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Следующее</span>
+                    </button>
+                </div>
+                
+                <!-- Подпись к фото -->
+                <div class="p-3 border-top">
+                    <div id="pointPhotoCaption" class="text-center text-muted small">
+                        <!-- Подпись будет обновляться через JavaScript -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <div class="d-flex justify-content-between align-items-center w-100">
+                    <div class="photo-counter">
+                        <span class="badge bg-primary bg-opacity-10 text-primary">
+                            Фото <span id="currentPhotoIndex">1</span> из <span id="totalPhotosCount">0</span>
+                        </span>
+                    </div>
+                    <div class="photo-actions">
+                        <button type="button" class="btn btn-outline-primary btn-sm me-2" id="makeMainPhotoBtn" onclick="makePointPhotoMain()">
+                            <i class="fas fa-star me-1"></i>Сделать главным
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-sm" id="deleteCurrentPhotoBtn" onclick="deleteCurrentPointPhoto()">
+                            <i class="fas fa-trash-alt me-1"></i>Удалить
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Включаем модальные окна -->
 {% include 'routes/modals/delete_confirm_modal.html' %}
 {% include 'routes/modals/point_editor_modal.html' %}
@@ -415,6 +507,7 @@
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
     height: 100vh;
     overflow: hidden;
+    position: relative;
 }
 
 .left-panel-wrapper {
@@ -438,10 +531,34 @@
 .route-editor-map {
     border-radius: 0;
     height: 100%;
-    touch-action: pan-x pan-y;
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
 }
 
-/* Стили для красивых точек */
+/* Убедитесь что карта всегда имеет корректные размеры */
+#map {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 1;
+}
+
+/* Для Leaflet-контейнера */
+.leaflet-container {
+    position: absolute !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Стили для списка точек */
 .points-list {
     max-height: 500px;
     overflow-y: auto;
@@ -452,7 +569,7 @@
     border: 1px solid #e9ecef;
     transition: all 0.3s ease;
     background: white;
-    margin-bottom: 0.75rem;
+    margin: 0.75rem;
     overflow: hidden;
 }
 
@@ -471,6 +588,7 @@
     padding: 1rem;
     border-bottom: 1px solid #f8f9fa;
     background: white;
+    cursor: pointer;
 }
 
 .point-content {
@@ -509,131 +627,90 @@
     line-height: 1.4;
 }
 
-/* Стили для дополнительных фото */
-.additional-photos-grid {
+/* СТИЛИ ДЛЯ ГАЛЕРЕИ ФОТО ТОЧЕК (ВСЕХ ФОТО!) */
+.point-photos-section {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e9ecef;
+    display: block !important; /* Всегда показываем галерею */
+}
+
+.point-photos-section h6 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.75rem;
     display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
     align-items: center;
 }
 
-.additional-photo-item {
-    width: 80px;
-    height: 80px;
-    position: relative;
-    border-radius: 8px;
-    overflow: hidden;
-    border: 2px solid #e5e7eb;
-    transition: all 0.3s ease;
-}
-
-.additional-photo-item:hover {
-    transform: scale(1.05);
-    border-color: #3b82f6;
-}
-
-.additional-photo-item img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.additional-photo-upload {
-    width: 80px;
-    height: 80px;
-    border: 2px dashed #d1d5db;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: #f9fafb;
+.point-photos-section h6 i {
+    margin-right: 0.5rem;
     color: #6b7280;
 }
 
-.additional-photo-upload:hover {
-    border-color: #3b82f6;
-    background: #f0f4ff;
-    color: #3b82f6;
-}
-
-/* Основное фото */
-.main-photo-upload {
-    min-height: 200px;
-    position: relative;
-}
-
-.main-photo-preview {
-    display: block !important; /* Важно: переопределяем inline стили */
-}
-
-.main-photo-preview img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.h-100 {
-    min-height: 200px;
-}
-
-/* Галерея фото точки */
+/* Галерея миниатюр - ВСЕ ФОТО */
 .point-photos-gallery {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-    gap: 0.5rem;
-    margin-top: 0.75rem;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 10px;
+    margin-top: 0.5rem;
 }
 
 .point-photo-item {
-    aspect-ratio: 1;
-    border-radius: 8px;
-    overflow: hidden;
     position: relative;
+    aspect-ratio: 1;
+    border-radius: 10px;
+    overflow: hidden;
     border: 2px solid #e5e7eb;
     transition: all 0.3s ease;
+    background: #f8f9fa;
+    cursor: pointer;
 }
 
 .point-photo-item:hover {
-    transform: scale(1.05);
+    transform: translateY(-3px) scale(1.05);
     border-color: #3b82f6;
+    box-shadow: 0 6px 15px rgba(59, 130, 246, 0.2);
+    z-index: 5;
 }
 
 .point-photo-item img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: transform 0.3s ease;
 }
 
-.point-photo-remove {
+.point-photo-item:hover img {
+    transform: scale(1.1);
+}
+
+/* Индикатор главного фото */
+.point-photo-main-badge {
     position: absolute;
-    top: 4px;
-    right: 4px;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: rgba(239, 68, 68, 0.9);
+    top: 6px;
+    left: 6px;
+    width: 22px;
+    height: 22px;
+    background: #f59e0b;
     color: white;
-    border: none;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 10px;
-    opacity: 0;
-    transition: opacity 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    z-index: 10;
 }
 
-.point-photo-item:hover .point-photo-remove {
-    opacity: 1;
-}
-
+/* Кнопка добавления фото */
 .point-add-photo {
     aspect-ratio: 1;
     border: 2px dashed #d1d5db;
-    border-radius: 8px;
+    border-radius: 10px;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     background: #f9fafb;
@@ -646,59 +723,418 @@
     border-color: #3b82f6;
     background: #f0f4ff;
     color: #3b82f6;
+    transform: translateY(-2px);
 }
 
-/* Индикаторы медиа */
-.point-media-indicators {
-    display: flex;
-    gap: 8px;
-    margin-top: 0.75rem;
-    flex-wrap: wrap;
+.point-add-photo i {
+    font-size: 20px;
+    margin-bottom: 6px;
 }
 
-.media-indicator {
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 0.75rem;
+.point-add-photo .small {
+    font-size: 10px;
     font-weight: 500;
+}
+
+/* Кнопка просмотра всех фото (для множества фото) */
+.view-all-photos-btn {
+    margin-top: 0.75rem;
+    font-size: 0.85rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    color: #6c757d;
+    transition: all 0.3s ease;
+}
+
+.view-all-photos-btn:hover {
+    background: #e9ecef;
+    border-color: #3b82f6;
+    color: #3b82f6;
+    transform: translateY(-1px);
+}
+
+.view-all-photos-btn i {
+    margin-right: 0.25rem;
+    font-size: 0.75rem;
+}
+
+/* МИНИАТЮРЫ В ШАПКЕ ТОЧКИ (главное фото) */
+.point-photo-preview {
+    width: 80px;
+    height: 80px;
+    flex-shrink: 0;
+    position: relative;
+    cursor: pointer;
+    margin-right: 1rem;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 2px solid #e5e7eb;
+    transition: all 0.3s ease;
+    background: #f8f9fa;
+}
+
+.point-photo-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: all 0.3s ease;
+}
+
+.point-photo-preview:hover {
+    border-color: #3b82f6;
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+/* Индикатор главного фото в превью */
+.main-photo-indicator {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    width: 22px;
+    height: 22px;
+    background: #f59e0b;
+    color: white;
+    border-radius: 50%;
     display: flex;
     align-items: center;
-    gap: 4px;
+    justify-content: center;
+    font-size: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    z-index: 2;
+}
+
+/* Бейдж количества фото */
+.photo-count-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 22px;
+    height: 22px;
+    background: #3b82f6;
+    color: white;
+    border-radius: 50%;
+    font-size: 10px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    z-index: 3;
+}
+
+/* Галерея в модальном окне */
+#pointGalleryCarouselInner .carousel-item {
+    text-align: center;
+    padding: 20px;
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8f9fa;
+}
+
+#pointGalleryCarouselInner .carousel-item img {
+    max-height: 60vh;
+    width: auto;
+    max-width: 100%;
+    margin: 0 auto;
+    display: block;
+    border-radius: 8px;
+    object-fit: contain;
+}
+
+.carousel-control-prev,
+.carousel-control-next {
+    width: 50px;
+    height: 50px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    margin: 0 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.carousel-control-prev:hover,
+.carousel-control-next:hover {
+    background: white;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+}
+
+.carousel-control-prev-icon,
+.carousel-control-next-icon {
+    filter: invert(30%);
+}
+
+/* Кнопки в галерее */
+.photo-actions .btn {
     transition: all 0.3s ease;
 }
 
-.media-indicator:hover {
-    transform: translateY(-1px);
+.photo-actions .btn:hover {
+    transform: translateY(-2px);
 }
 
-.media-photo { background: #fef3c7; color: #d97706; border: 1px solid #fcd34d; }
-.media-audio { background: #dbeafe; color: #2563eb; border: 1px solid #93c5fd; }
-.media-category { background: #f3e8ff; color: #7c3aed; border: 1px solid #c4b5fd; }
+#makeMainPhotoBtn.active {
+    background-color: #f59e0b;
+    border-color: #f59e0b;
+    color: white;
+}
 
-/* Действия с точкой */
+#makeMainPhotoBtn.active:hover {
+    background-color: #d97706;
+    border-color: #d97706;
+}
+
+/* УЛУЧШЕННЫЕ СТИЛИ ДЛЯ ГАЛЕРЕИ ФОТО МАРШРУТА */
+.route-photos-section {
+    margin-top: 0.5rem;
+}
+
+.additional-photos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 12px;
+    margin-top: 0.5rem;
+}
+
+.additional-photo-item {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid #e5e7eb;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: #f8f9fa;
+}
+
+.additional-photo-item:hover {
+    transform: translateY(-3px) scale(1.05);
+    border-color: #3b82f6;
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.2);
+    z-index: 10;
+}
+
+.additional-photo-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.additional-photo-item:hover img {
+    transform: scale(1.1);
+}
+
+/* Выбранное главное фото */
+.additional-photo-item.main-photo-selected {
+    border: 3px solid #f59e0b;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1), 0 6px 20px rgba(245, 158, 11, 0.25);
+    animation: glow 2s infinite alternate;
+}
+
+@keyframes glow {
+    from {
+        box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1), 0 6px 20px rgba(245, 158, 11, 0.25);
+    }
+    to {
+        box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.2), 0 8px 25px rgba(245, 158, 11, 0.3);
+    }
+}
+
+/* Номер порядка фото */
+.photo-order-badge {
+    position: absolute;
+    bottom: 6px;
+    left: 6px;
+    width: 22px;
+    height: 22px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.9;
+    z-index: 5;
+}
+
+/* КНОПКИ УПРАВЛЕНИЯ ФОТО */
+.photo-controls-top {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transform: translateY(-5px);
+    transition: all 0.3s ease;
+    z-index: 20;
+}
+
+.additional-photo-item:hover .photo-controls-top {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.photo-controls-top button {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    transition: all 0.2s ease;
+}
+
+.photo-controls-top button:hover {
+    transform: scale(1.1);
+    background: white;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+}
+
+.photo-controls-top button i {
+    font-size: 11px;
+}
+
+/* Стиль для звездочки главного фото */
+.photo-controls-top button i.fa-star.text-warning {
+    color: #f59e0b !important;
+}
+
+.photo-controls-top button i.fa-star.text-light {
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.photo-controls-top button:hover i.fa-star.text-light {
+    color: #f59e0b !important;
+}
+
+.photo-controls-bottom {
+    position: absolute;
+    bottom: 6px;
+    right: 6px;
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transform: translateY(5px);
+    transition: all 0.3s ease;
+    z-index: 20;
+}
+
+.additional-photo-item:hover .photo-controls-bottom {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.photo-controls-bottom button {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    transition: all 0.2s ease;
+}
+
+.photo-controls-bottom button:hover {
+    transform: scale(1.1);
+    background: white;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+}
+
+.photo-controls-bottom button i {
+    font-size: 11px;
+}
+
+/* КНОПКА ДОБАВЛЕНИЯ НОВЫХ ФОТО */
+.additional-photo-upload {
+    aspect-ratio: 1;
+    border: 2px dashed #d1d5db;
+    border-radius: 12px;
+    background: #f9fafb;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: #6b7280;
+}
+
+.additional-photo-upload:hover {
+    border-color: #3b82f6;
+    background: #f0f4ff;
+    color: #3b82f6;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+}
+
+.additional-photo-upload i {
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+.additional-photo-upload .small {
+    font-size: 11px;
+    font-weight: 500;
+    text-align: center;
+    padding: 0 4px;
+}
+
+/* Действия точек */
 .point-actions {
     display: flex;
-    gap: 0.5rem;
-    margin-top: 0.75rem;
+    gap: 4px;
 }
 
-.point-action-btn {
-    flex: 1;
-    padding: 6px 12px;
-    font-size: 0.8rem;
-    border-radius: 6px;
-    transition: all 0.3s ease;
+.point-actions .btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
 }
 
-.point-action-btn:hover {
-    transform: translateY(-1px);
+/* Стили для адреса точки */
+.point-address {
+    font-size: 0.85rem;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
 }
 
-/* Анимации */
-@keyframes slideInUp {
+.point-address i {
+    font-size: 12px;
+    margin-right: 4px;
+}
+
+/* Плавная анимация появления/исчезновения */
+.point-item {
+    animation: fadeInUp 0.3s ease forwards;
+}
+
+@keyframes fadeInUp {
     from {
         opacity: 0;
-        transform: translateY(20px);
+        transform: translateY(10px);
     }
     to {
         opacity: 1;
@@ -706,8 +1142,143 @@
     }
 }
 
-.point-item {
-    animation: slideInUp 0.4s ease-out;
+/* Стили для модального окна удаления */
+.delete-options .form-check {
+    padding-left: 2rem;
+}
+
+.delete-options .form-check-input {
+    width: 1.2em;
+    height: 1.2em;
+    margin-left: -2rem;
+}
+
+.delete-options .form-check-input:checked {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+.confirmation-section input {
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.confirmation-section input:focus {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
+}
+
+#confirmDeleteBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+#confirmDeleteBtn:not(:disabled):hover {
+    background-color: #bb2d3b;
+    border-color: #b02a37;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+/* АДАПТИВНОСТЬ */
+@media (max-width: 768px) {
+    .additional-photos-grid {
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 10px;
+    }
+    
+    .point-photos-gallery {
+        grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+        gap: 8px;
+    }
+    
+    .point-photo-preview {
+        width: 60px;
+        height: 60px;
+        margin-right: 0.75rem;
+    }
+    
+    .photo-count-badge {
+        width: 20px;
+        height: 20px;
+        font-size: 9px;
+    }
+    
+    .main-photo-indicator {
+        width: 20px;
+        height: 20px;
+        font-size: 9px;
+    }
+    
+    .map-container {
+        position: relative;
+        height: 50vh;
+    }
+    
+    .left-panel-scrollable {
+        height: auto;
+        max-height: 50vh;
+    }
+    
+    .point-marker {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 576px) {
+    .additional-photos-grid {
+        grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+        gap: 8px;
+    }
+    
+    .point-photos-gallery {
+        grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+        gap: 6px;
+    }
+    
+    .point-photo-preview {
+        width: 50px;
+        height: 50px;
+        margin-right: 0.5rem;
+    }
+    
+    .photo-count-badge {
+        width: 18px;
+        height: 18px;
+        font-size: 8px;
+    }
+    
+    .main-photo-indicator {
+        width: 18px;
+        height: 18px;
+        font-size: 8px;
+    }
+    
+    .point-marker {
+        width: 32px;
+        height: 32px;
+        font-size: 12px;
+    }
+    
+    .point-title {
+        font-size: 0.9rem;
+    }
+    
+    .point-description {
+        font-size: 0.8rem;
+    }
+}
+
+/* Улучшенный empty state */
+.empty-state {
+    color: #6c757d;
+    padding: 3rem 2rem;
+}
+
+.empty-icon {
+    opacity: 0.7;
 }
 
 /* Кастомный скроллбар */
@@ -728,188 +1299,6 @@
 .left-panel-scrollable::-webkit-scrollbar-thumb:hover {
     background: #a8a8a8;
 }
-
-/* Адаптивность */
-@media (max-width: 992px) {
-    .map-container {
-        position: relative;
-        height: 50vh;
-    }
-    
-    .left-panel-scrollable {
-        height: auto;
-        max-height: 50vh;
-    }
-    
-    .additional-photos-grid {
-        justify-content: center;
-    }
-}
-
-/* Стили для поисковых подсказок */
-.search-suggestions {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 0 0 1rem 1rem;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    z-index: 1000;
-    display: none;
-    max-height: 300px;
-    overflow-y: auto;
-}
-
-.search-suggestion {
-    padding: 12px 16px;
-    cursor: pointer;
-    border-bottom: 1px solid #f8f9fa;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.search-suggestion:hover {
-    background-color: #f8f9fa;
-    transform: translateX(4px);
-}
-
-.search-suggestion:last-child {
-    border-bottom: none;
-}
-
-.search-suggestion i {
-    font-size: 18px;
-    width: 24px;
-    text-align: center;
-}
-
-.search-suggestion-content {
-    flex: 1;
-    min-width: 0;
-}
-
-.search-suggestion-name {
-    font-weight: 600;
-    margin-bottom: 2px;
-    color: #1f2937;
-}
-
-.search-suggestion-address {
-    font-size: 12px;
-    color: #6b7280;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* Улучшенный empty state */
-.empty-state {
-    color: #6c757d;
-    padding: 3rem 2rem;
-}
-
-.empty-icon {
-    opacity: 0.7;
-}
-
-/* Фикс для предотвращения смещения панели */
-.map-container * {
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-}
-
-.left-panel-scrollable * {
-    -webkit-user-select: auto;
-    -moz-user-select: auto;
-    -ms-user-select: auto;
-    user-select: auto;
-}
-
-.user-location-marker {
-    background: transparent;
-    border: none;
-}
-
-.user-location-pulse {
-    position: relative;
-    width: 20px;
-    height: 20px;
-}
-
-.user-location-dot {
-    width: 12px;
-    height: 12px;
-    background: #ff4444;
-    border: 3px solid white;
-    border-radius: 50%;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7);
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0% {
-        box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7);
-    }
-    70% {
-        box-shadow: 0 0 0 10px rgba(255, 68, 68, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(255, 68, 68, 0);
-    }
-}
-
-/* Стили для аудио визуализации */
-.audio-bar {
-    width: 3px;
-    background: #3b82f6;
-    border-radius: 1px;
-    transition: height 0.1s ease;
-}
-
-.recording-pulse {
-    animation: recordingPulse 1.5s infinite;
-}
-
-@keyframes recordingPulse {
-    0% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.2); opacity: 0.7; }
-    100% { transform: scale(1); opacity: 1; }
-}
-
-.audio-recording-section.recording-active {
-    background: #fef3cd;
-    border-color: #f59e0b;
-}
-
-.generate-audio-btn,
-.regenerate-audio-btn,
-.delete-audio-btn,
-.retry-audio-btn {
-    pointer-events: auto !important;
-    cursor: pointer !important;
-    opacity: 1 !important;
-}
-
-/* Убедись что кнопки не перекрыты */
-.audio-generation-section {
-    position: relative;
-    z-index: 10;
-}
-
-/* Убери любые блокировки */
-.audio-generation-section * {
-    pointer-events: auto !important;
-}
 </style>
 {% endblock %}
 
@@ -922,181 +1311,649 @@
     window.routeData = null;
 {% endif %}
 
-// Глобальные переменные для хранения информации о фото
-let removedExistingPhotos = new Set(); // ID удаленных существующих фото
-let newMainPhotoFile = null;
-let newAdditionalPhotoFiles = [];
+// Глобальные переменные для фото маршрута
+let removedExistingPhotos = new Set();
+let newPhotoFiles = [];
+window.mainPhotoToSet = null;
+window.routeSaveUrl = '{% if route %}/routes/api/routes/{{ route.id }}/{% else %}/routes/api/routes/{% endif %}';
 
-// Сохраняем информацию о существующих фото
-let existingPhotos = {
-    main: null,
-    additional: []
-};
+// Глобальные переменные для фото точек
+window.removedPointPhotoIds = new Set();
+window.newPointPhotoFiles = [];
+window.pointMainPhotoToSet = null;
+window.currentPointId = null;
 
-// Инициализируем существующие фото при загрузке
+// Хранилище точек маршрута
+window.routePoints = [];
+
+// Переменные для галереи точек
+let currentPointGallery = null;
+let currentPointGalleryIndex = 0;
+let currentGalleryPhotos = [];
+
+// Инициализируем при загрузке
 document.addEventListener('DOMContentLoaded', function() {
-    // Собираем информацию о существующих фото из скрытых полей
-    const existingPhotoData = document.querySelectorAll('#existing-photos-data .existing-photo-data');
-    existingPhotoData.forEach(div => {
-        const photoId = parseInt(div.dataset.photoId);
-        const isMain = div.dataset.isMain === 'true';
-        const caption = div.dataset.caption || '';
+    // Заполняем форму данными маршрута если редактируем
+    if (window.routeData) {
+        populateFormData();
+        // Инициализируем точки из данных маршрута
+        if (window.routeData.points && window.routeData.points.length > 0) {
+            window.routePoints = window.routeData.points;
+            updatePointsList(window.routePoints);
+        }
+    }
+    
+    setupPhotoUploadHandlers();
+    setupRouteTypeButtons();
+    
+    // Настройка кнопки сохранения
+    const saveBtn = document.getElementById('save-btn');
+    if (saveBtn && typeof routeEditor?.saveRoute === 'function') {
+        saveBtn.addEventListener('click', () => routeEditor.saveRoute());
+    }
+    
+    // Настройка модального окна удаления маршрута
+    setupDeleteModal();
+    
+    // Настройка галереи точек
+    setupPointGallery();
+    
+    // Обновляем порядковые номера фото при загрузке
+    updatePhotoOrderNumbers();
+});
+
+// Настройка модального окна удаления маршрута
+function setupDeleteModal() {
+    const confirmInput = document.getElementById('confirmRouteName');
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+    const routeName = document.getElementById('routeNameToDelete').textContent;
+    const confirmError = document.getElementById('confirmError');
+    
+    if (!confirmInput || !confirmBtn) return;
+    
+    confirmInput.addEventListener('input', function() {
+        const isMatch = this.value.trim() === routeName;
+        confirmBtn.disabled = !isMatch;
         
-        if (isMain) {
-            existingPhotos.main = { id: photoId, caption: caption };
+        if (this.value.trim() && !isMatch) {
+            this.classList.add('is-invalid');
+            confirmError.style.display = 'block';
         } else {
-            existingPhotos.additional.push({ id: photoId, caption: caption });
+            this.classList.remove('is-invalid');
+            confirmError.style.display = 'none';
         }
     });
     
-    console.log('📸 Существующие фото загружены:', existingPhotos);
-});
+    confirmBtn.addEventListener('click', deleteRoute);
+}
 
-// URL для сохранения
-window.routeSaveUrl = '{% if route %}/routes/api/routes/{{ route.id }}/{% else %}/routes/api/routes/{% endif %}';
-</script>
-<script src="{% static 'js/audio_generation.js' %}"></script>
-<script src="{% static 'js/route_editor.js' %}"></script>
-<script>
-// Инициализация при загрузке страницы
-document.addEventListener('DOMContentLoaded', function() {
+// Функция удаления маршрута
+async function deleteRoute() {
+    const deleteAllData = document.getElementById('deleteAllData').checked;
+    const clearCache = document.getElementById('clearCache').checked;
+    const routeId = '{{ route.id }}';
+    
+    try {
+        showLoading('Удаление маршрута...');
+        
+        const response = await fetch(`/routes/api/routes/${routeId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({
+                delete_all_data: deleteAllData,
+                clear_cache: clearCache
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Маршрут успешно удален', 'success');
+            
+            // Закрываем модальное окно
+            const modal = bootstrap.Modal.getInstance(document.getElementById('deleteRouteModal'));
+            modal.hide();
+            
+            // Перенаправляем на страницу моих маршрутов
+            setTimeout(() => {
+                window.location.href = '/routes/my/';
+            }, 1500);
+        } else {
+            throw new Error(data.error || 'Ошибка при удалении маршрута');
+        }
+    } catch (error) {
+        console.error('Ошибка удаления маршрута:', error);
+        showToast(error.message, 'danger');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Настройка галереи точек
+function setupPointGallery() {
+    const galleryModal = document.getElementById('pointGalleryModal');
+    if (!galleryModal) return;
+    
+    // Инициализация карусели
+    const carousel = new bootstrap.Carousel(document.getElementById('pointGalleryCarousel'), {
+        interval: false
+    });
+    
+    // Обновление счетчика при смене слайда
+    galleryModal.addEventListener('slide.bs.carousel', function(event) {
+        currentPointGalleryIndex = event.to;
+        updateGalleryCounter();
+        updateGalleryActions();
+        updateGalleryCaption();
+    });
+    
+    // Закрытие модального окна
+    galleryModal.addEventListener('hidden.bs.modal', function() {
+        currentPointGallery = null;
+        currentGalleryPhotos = [];
+    });
+}
+
+// Функция для создания элемента точки маршрута в списке (ОБНОВЛЕННАЯ - ПОКАЗЫВАЕТ ВСЕ ФОТО)
+function createPointListItem(pointData) {
+    const pointId = pointData.id || pointData.tempId || 'point-' + Date.now();
+    const pointNumber = pointData.order || 1;
+    const pointName = pointData.name || `Точка ${pointNumber}`;
+    const pointDescription = pointData.description || '';
+    const pointAddress = pointData.address || '';
+    const pointCategory = pointData.category || '';
+    
+    // Получаем ВСЕ фото точки
+    const pointPhotos = pointData.photos || [];
+    
+    // Находим главное фото
+    const mainPhoto = pointPhotos.find(p => p.is_main);
+    
+    // Если нет главного, берем первое фото для превью
+    const previewPhoto = mainPhoto || (pointPhotos.length > 0 ? pointPhotos[0] : null);
+    
+    // Создаем элемент
+    const pointItem = document.createElement('div');
+    pointItem.className = 'point-item';
+    pointItem.dataset.pointId = pointId;
+    pointItem.dataset.lat = pointData.lat || '';
+    pointItem.dataset.lng = pointData.lng || '';
+    
+    // Определяем тип маркера
+    let markerClass = 'marker-waypoint';
+    let markerText = pointNumber;
+    
+    if (pointData.is_start) {
+        markerClass = 'marker-start';
+    } else if (pointData.is_end) {
+        markerClass = 'marker-end';
+    }
+    
+    // HTML для превью главного фото в шапке
+    let photoPreviewHtml = '';
+    if (previewPhoto) {
+        const photoUrl = getPhotoUrl(previewPhoto);
+        
+        photoPreviewHtml = `
+            <div class="point-photo-preview position-relative me-3" 
+                 onclick="openPointGallery('${pointId}', ${pointPhotos.indexOf(previewPhoto)})"
+                 title="${pointPhotos.length > 1 ? 'Нажмите для просмотра всех фотографий' : 'Нажмите для просмотра фото'}">
+                <img src="${photoUrl}" 
+                     alt="Фото точки">
+                
+                ${previewPhoto.is_main ? `
+                    <div class="main-photo-indicator" title="Главное фото">
+                        <i class="fas fa-star"></i>
+                    </div>
+                ` : ''}
+                
+                ${pointPhotos.length > 1 ? `
+                    <div class="photo-count-badge" title="${pointPhotos.length - 1} дополнительных фото">
+                        +${pointPhotos.length - 1}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+    
+    // Создаем галерею ВСЕХ фото для точки
+    let photosGalleryHtml = '';
+    if (pointPhotos.length > 0) {
+        photosGalleryHtml = `
+            <div class="point-photos-section">
+                <h6>
+                    <i class="fas fa-images"></i>
+                    Фотографии точки
+                    <span class="badge bg-primary bg-opacity-10 text-primary ms-2">${pointPhotos.length}</span>
+                </h6>
+                <div class="point-photos-gallery">
+                    ${pointPhotos.map((photo, index) => {
+                        const photoUrl = getPhotoUrl(photo);
+                        return `
+                            <div class="point-photo-item" onclick="openPointGallery('${pointId}', ${index})">
+                                <img src="${photoUrl}" 
+                                     alt="${photo.caption || 'Фото точки'}"
+                                     class="w-100 h-100 object-fit-cover">
+                                ${photo.is_main ? `
+                                    <div class="point-photo-main-badge">
+                                        <i class="fas fa-star"></i>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    }).join('')}
+                    <div class="point-add-photo" onclick="openPointPhotoUploader('${pointId}')">
+                        <i class="fas fa-plus"></i>
+                        <div class="small">Добавить</div>
+                    </div>
+                </div>
+                ${pointPhotos.length > 8 ? `
+                    <div class="text-center mt-2">
+                        <button class="btn btn-sm view-all-photos-btn" onclick="openPointGallery('${pointId}')">
+                            <i class="fas fa-expand-alt me-1"></i> Показать все ${pointPhotos.length} фото
+                        </button>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    } else {
+        photosGalleryHtml = `
+            <div class="point-photos-section">
+                <h6>
+                    <i class="fas fa-images"></i>
+                    Фотографии точки
+                </h6>
+                <div class="point-photos-gallery">
+                    <div class="point-add-photo" onclick="openPointPhotoUploader('${pointId}')">
+                        <i class="fas fa-plus"></i>
+                        <div class="small">Добавить фото</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    pointItem.innerHTML = `
+        <div class="point-header d-flex align-items-center p-3">
+            ${photoPreviewHtml}
+            
+            <div class="point-marker ${markerClass} me-3">
+                ${markerText}
+            </div>
+            
+            <div class="flex-grow-1">
+                <div class="point-title d-flex align-items-center">
+                    ${pointName}
+                    ${pointCategory ? `<span class="badge bg-light text-dark ms-2">${pointCategory}</span>` : ''}
+                </div>
+                ${pointAddress ? `
+                    <div class="point-address small text-muted mt-1">
+                        <i class="fas fa-location-dot me-1"></i>${pointAddress}
+                    </div>
+                ` : ''}
+                ${pointDescription ? `
+                    <div class="point-description small text-muted mt-2">
+                        ${pointDescription.substring(0, 100)}${pointDescription.length > 100 ? '...' : ''}
+                    </div>
+                ` : ''}
+            </div>
+            
+            <div class="point-actions ms-3">
+                <button class="btn btn-sm btn-outline-secondary edit-point-btn" 
+                        onclick="editPoint('${pointId}')"
+                        title="Редактировать">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger delete-point-btn ms-1"
+                        onclick="deletePoint('${pointId}')"
+                        title="Удалить">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="point-content">
+            <!-- Галерея ВСЕХ фото точки -->
+            ${photosGalleryHtml}
+        </div>
+    `;
+    
+    return pointItem;
+}
+
+// Вспомогательная функция для получения URL фото
+function getPhotoUrl(photo) {
+    if (photo.url) return photo.url;
+    if (photo.image) return photo.image;
+    if (photo.image_url) return photo.image_url;
+    if (photo instanceof File) {
+        return URL.createObjectURL(photo);
+    }
+    return '/static/images/default-photo.jpg';
+}
+
+// Открытие галереи фото точки (ВСЕХ ФОТО)
+function openPointGallery(pointId, startIndex = 0) {
+    const point = getPointById(pointId);
+    if (!point) {
+        showToast('Точка не найдена', 'warning');
+        return;
+    }
+    
+    const pointPhotos = point.photos || [];
+    if (pointPhotos.length === 0) {
+        showToast('У этой точки нет фотографий', 'warning');
+        return;
+    }
+    
+    // Если передан индекс фото, но его нет в массиве, используем 0
+    const safeStartIndex = startIndex < pointPhotos.length ? startIndex : 0;
+    
+    currentPointGallery = point;
+    currentGalleryPhotos = pointPhotos;
+    currentPointGalleryIndex = safeStartIndex;
+    
+    // Обновляем заголовок
+    const title = document.getElementById('pointGalleryTitle');
+    if (title) {
+        title.textContent = `Фотографии точки: ${point.name}`;
+    }
+    
+    // Заполняем карусель
+    const carouselInner = document.getElementById('pointGalleryCarouselInner');
+    if (carouselInner) {
+        carouselInner.innerHTML = '';
+        
+        pointPhotos.forEach((photo, index) => {
+            const isActive = index === safeStartIndex;
+            const photoUrl = getPhotoUrl(photo);
+            
+            const item = document.createElement('div');
+            item.className = `carousel-item ${isActive ? 'active' : ''}`;
+            item.innerHTML = `
+                <img src="${photoUrl}" 
+                     class="d-block" 
+                     alt="${photo.caption || 'Фото точки'}"
+                     style="max-height: 60vh; max-width: 100%; border-radius: 8px; object-fit: contain;">
+            `;
+            carouselInner.appendChild(item);
+        });
+        
+        // Обновляем счетчик
+        updateGalleryCounter();
+        
+        // Обновляем подпись
+        updateGalleryCaption();
+        
+        // Обновляем кнопки действий
+        updateGalleryActions();
+    }
+    
+    // Показываем модальное окно
+    const modal = new bootstrap.Modal(document.getElementById('pointGalleryModal'));
+    modal.show();
+}
+
+// Обновление счетчика фото в галерее
+function updateGalleryCounter() {
+    const currentIndex = document.getElementById('currentPhotoIndex');
+    const totalCount = document.getElementById('totalPhotosCount');
+    
+    if (currentIndex) {
+        currentIndex.textContent = currentPointGalleryIndex + 1;
+    }
+    if (totalCount) {
+        totalCount.textContent = currentGalleryPhotos.length;
+    }
+}
+
+// Обновление подписи фото в галерее
+function updateGalleryCaption() {
+    const captionDiv = document.getElementById('pointPhotoCaption');
+    if (!captionDiv || !currentGalleryPhotos[currentPointGalleryIndex]) return;
+    
+    const currentPhoto = currentGalleryPhotos[currentPointGalleryIndex];
+    captionDiv.textContent = currentPhoto.caption || 'Нет описания';
+}
+
+// Обновление действий с фото в галерее
+function updateGalleryActions() {
+    const currentPhoto = currentGalleryPhotos[currentPointGalleryIndex];
+    const makeMainBtn = document.getElementById('makeMainPhotoBtn');
+    
+    if (makeMainBtn && currentPhoto) {
+        const isMain = currentPhoto.is_main || false;
+        makeMainBtn.classList.toggle('active', isMain);
+        makeMainBtn.innerHTML = isMain 
+            ? '<i class="fas fa-star me-1"></i>Главное фото' 
+            : '<i class="fas fa-star me-1"></i>Сделать главным';
+        
+        // Включаем/выключаем кнопку в зависимости от состояния
+        makeMainBtn.disabled = isMain;
+    }
+}
+
+// Сделать фото точки главным
+function makePointPhotoMain() {
+    if (!currentPointGallery) return;
+    
+    const point = currentPointGallery;
+    const currentPhoto = currentGalleryPhotos[currentPointGalleryIndex];
+    
+    // Сбрасываем главное фото для всех фото точки
+    point.photos.forEach(p => {
+        p.is_main = false;
+    });
+    
+    // Устанавливаем текущее фото как главное
+    currentPhoto.is_main = true;
+    
+    // Обновляем точку в хранилище
+    const pointIndex = window.routePoints.findIndex(p => 
+        p.id === point.id || p.tempId === point.id
+    );
+    if (pointIndex !== -1) {
+        window.routePoints[pointIndex] = point;
+    }
+    
+    // Обновляем UI
+    updateGalleryActions();
+    updatePointsList(window.routePoints);
+    
+    showToast('Фото установлено как главное для точки', 'success');
+}
+
+// Удалить текущее фото точки
+function deleteCurrentPointPhoto() {
+    if (!currentPointGallery || !currentGalleryPhotos[currentPointGalleryIndex]) return;
+    
+    const photo = currentGalleryPhotos[currentPointGalleryIndex];
+    const photoId = photo.id;
+    
+    if (!confirm('Удалить это фото?')) return;
+    
+    const point = currentPointGallery;
+    const photoIndex = point.photos.findIndex(p => 
+        (p.id && p.id === photoId) || p === photo
+    );
+    
+    if (photoIndex !== -1) {
+        // Если фото уже сохранено на сервере, добавляем в список удаленных
+        if (photoId && typeof photoId === 'number') {
+            window.removedPointPhotoIds.add(photoId);
+        }
+        
+        // Удаляем из массива
+        point.photos.splice(photoIndex, 1);
+        currentGalleryPhotos.splice(currentPointGalleryIndex, 1);
+        
+        // Обновляем точку в хранилище
+        const pointIndex = window.routePoints.findIndex(p => 
+            p.id === point.id || p.tempId === point.id
+        );
+        if (pointIndex !== -1) {
+            window.routePoints[pointIndex] = point;
+        }
+        
+        // Закрываем галерею если фото больше нет
+        if (point.photos.length === 0) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('pointGalleryModal'));
+            if (modal) modal.hide();
+            
+            // Обновляем список точек
+            updatePointsList(window.routePoints);
+            showToast('Фото удалено', 'success');
+            return;
+        }
+        
+        // Обновляем галерею
+        const newIndex = Math.min(currentPointGalleryIndex, point.photos.length - 1);
+        openPointGallery(point.id, newIndex);
+        updatePointsList(window.routePoints);
+        showToast('Фото удалено', 'success');
+    }
+}
+
+// Заполнение формы данными маршрута
+function populateFormData() {
+    if (!window.routeData) return;
+    
+    console.log('📝 Заполняем форму данными маршрута...');
+    
+    // Основные поля
+    document.getElementById('name').value = window.routeData.name || '';
+    document.getElementById('short_description').value = window.routeData.short_description || '';
+    document.getElementById('description').value = window.routeData.description || '';
+    document.getElementById('duration_display').value = window.routeData.duration_display || '';
+    document.getElementById('privacy').value = window.routeData.privacy || 'public';
+    
+    // Чекбоксы
+    if (window.routeData.has_audio_guide) {
+        document.getElementById('has_audio_guide').checked = true;
+    }
+    if (window.routeData.is_elderly_friendly) {
+        document.getElementById('is_elderly_friendly').checked = true;
+    }
+    if (window.routeData.is_child_friendly) {
+        document.getElementById('is_child_friendly').checked = true;
+    }
+    
     // Тип маршрута
+    if (window.routeData.route_type) {
+        document.querySelectorAll('.route-type-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.type === window.routeData.route_type) {
+                btn.classList.add('active');
+            }
+        });
+    }
+    
+    console.log('✅ Форма заполнена данными маршрута');
+}
+
+// Настройка кнопок типа маршрута
+function setupRouteTypeButtons() {
     document.querySelectorAll('.route-type-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             document.querySelectorAll('.route-type-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
-            
-            // Обновляем время при смене типа маршрута
-            if (window.routeEditorUtils && typeof window.routeEditorUtils.updateEstimatedTime === 'function') {
-                window.routeEditorUtils.updateEstimatedTime();
-            }
+            console.log('🔄 Тип маршрута изменен на:', this.dataset.type);
         });
     });
-    
-    // Предотвращаем всплытие событий от карты к левой панели
-    const map = document.getElementById('map');
-    if (map) {
-        map.addEventListener('click', function(e) {
-            e.stopPropagation();
-        });
-        
-        map.addEventListener('touchstart', function(e) {
-            e.stopPropagation();
-        });
-    }
-
-    // Обработчик для сохранения маршрута
-    const saveBtn = document.getElementById('save-btn');
-    if (saveBtn) {
-        saveBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            console.log('🔄 Кнопка сохранения нажата');
-            saveRouteWithPhotos();
-        });
-    }
-
-    // Обработчики для загрузки фото
-    setupPhotoUploadHandlers();
-});
+}
 
 // Настройка обработчиков загрузки фото
 function setupPhotoUploadHandlers() {
-    // Обработчик основного фото
-    const mainPhotoInput = document.getElementById('route-main-photo');
-    if (mainPhotoInput) {
-        mainPhotoInput.addEventListener('change', handleMainPhotoUpload);
-    }
-    
-    // Обработчик дополнительных фото
-    const additionalPhotosInput = document.getElementById('route-additional-photos');
-    if (additionalPhotosInput) {
-        additionalPhotosInput.addEventListener('change', handleAdditionalPhotosUpload);
+    // Единый input для всех фото маршрута
+    const photosInput = document.getElementById('route-photos-input');
+    if (photosInput) {
+        photosInput.addEventListener('change', handlePhotosUpload);
     }
 }
 
-// Обработчик загрузки основного фото
-function handleMainPhotoUpload(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    if (!validateImageFile(file)) return;
-
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const uploadSection = document.querySelector('.main-photo-upload');
-        const preview = uploadSection.querySelector('.main-photo-preview');
-        const placeholder = uploadSection.querySelector('.placeholder-content');
-        
-        // Создаем превью если его нет
-        if (!preview) {
-            const previewDiv = document.createElement('div');
-            previewDiv.className = 'main-photo-preview position-absolute top-0 start-0 w-100 h-100 rounded-3';
-            previewDiv.innerHTML = `
-                <img src="" class="w-100 h-100 object-fit-cover rounded-3 shadow-sm">
-                <button type="button" class="btn btn-sm btn-light position-absolute top-0 end-0 m-3 photo-remove-btn shadow" onclick="removeMainRoutePhoto('new')">
-                    <i class="fas fa-times text-danger"></i>
-                </button>
-            `;
-            uploadSection.appendChild(previewDiv);
+// Обновление порядковых номеров фото маршрута
+function updatePhotoOrderNumbers() {
+    const photoItems = document.querySelectorAll('.additional-photo-item:not(.additional-photo-upload)');
+    photoItems.forEach((item, index) => {
+        const orderBadge = item.querySelector('.photo-order-badge');
+        if (orderBadge) {
+            orderBadge.textContent = index + 1;
+        } else {
+            // Создаем бейдж если его нет
+            const badge = document.createElement('div');
+            badge.className = 'photo-order-badge';
+            badge.textContent = index + 1;
+            item.appendChild(badge);
         }
-        
-        const newPreview = uploadSection.querySelector('.main-photo-preview');
-        if (newPreview) {
-            const img = newPreview.querySelector('img');
-            if (img) img.src = e.target.result;
-            newPreview.style.display = 'block';
-        }
-        
-        if (placeholder) placeholder.style.display = 'none';
-        
-        // Сохраняем файл
-        newMainPhotoFile = file;
-        console.log('🖼️ Новое основное фото загружено:', file.name);
-    };
-    reader.readAsDataURL(file);
+        item.dataset.order = index;
+    });
 }
 
-// Обработчик загрузки дополнительных фото
-function handleAdditionalPhotosUpload(e) {
+// Обработчик загрузки фото маршрута
+function handlePhotosUpload(e) {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     
     const grid = document.querySelector('.additional-photos-grid');
     if (!grid) return;
     
-    // Считаем сколько уже есть фото (существующие + новые)
-    const existingCount = grid.querySelectorAll('.additional-photo-item').length;
+    // Считаем сколько уже есть фото
+    const existingCount = grid.querySelectorAll('.additional-photo-item:not(.additional-photo-upload)').length;
     const uploadButton = grid.querySelector('.additional-photo-upload');
     
     if (existingCount + files.length > 10) {
         showToast('Максимум можно загрузить 10 фото', 'warning');
+        e.target.value = '';
         return;
     }
     
-    Array.from(files).forEach(file => {
+    Array.from(files).forEach((file, index) => {
         if (!validateImageFile(file)) return;
         
         const reader = new FileReader();
         reader.onload = function(e) {
+            const photoId = 'new-' + Date.now() + '-' + index + '-' + Math.random().toString(36).substr(2, 9);
+            
             const photoItem = document.createElement('div');
             photoItem.className = 'additional-photo-item new-photo';
-            photoItem.style.cssText = 'width: 80px; height: 80px; position: relative; border-radius: 8px; overflow: hidden;';
+            photoItem.dataset.photoId = photoId;
+            photoItem.dataset.order = existingCount + index;
             photoItem.innerHTML = `
                 <img src="${e.target.result}" class="w-100 h-100 object-fit-cover">
-                <button type="button" class="btn btn-sm btn-light position-absolute top-0 end-0 m-1 photo-remove-btn shadow-sm" 
-                        style="width: 20px; height: 20px; padding: 0; display: flex; align-items: center; justify-content: center;"
-                        onclick="removeAdditionalRoutePhoto(this, 'new')">
-                    <i class="fas fa-times text-danger" style="font-size: 10px;"></i>
-                </button>
+                <div class="photo-controls-top">
+                    <button type="button" 
+                            onclick="makeMainRoutePhoto(this)"
+                            title="Сделать главным">
+                        <i class="fas fa-star text-light"></i>
+                    </button>
+                    <button type="button" class="photo-remove-btn" 
+                            onclick="removeAdditionalRoutePhoto(this, '${photoId}')"
+                            title="Удалить">
+                        <i class="fas fa-times text-danger"></i>
+                    </button>
+                </div>
+                <div class="photo-controls-bottom">
+                    <button type="button" 
+                            onclick="moveRoutePhotoUp(this)"
+                            title="Переместить вверх">
+                        <i class="fas fa-arrow-up"></i>
+                    </button>
+                    <button type="button" 
+                            onclick="moveRoutePhotoDown(this)"
+                            title="Переместить вниз">
+                        <i class="fas fa-arrow-down"></i>
+                    </button>
+                </div>
+                <div class="photo-order-badge">${existingCount + index + 1}</div>
             `;
             
-            // Сохраняем файл с ссылкой на элемент
-            const fileWithPreview = file;
-            fileWithPreview.previewElement = photoItem;
-            newAdditionalPhotoFiles.push(fileWithPreview);
-            console.log('🖼️ Новое дополнительное фото загружено:', file.name);
+            // Сохраняем файл с уникальным ID
+            file.previewId = photoId;
+            newPhotoFiles.push(file);
+            console.log('🖼️ Новое фото загружено:', file.name, 'ID:', photoId);
             
             // Вставляем перед кнопкой загрузки
             if (uploadButton) {
@@ -1104,226 +1961,238 @@ function handleAdditionalPhotosUpload(e) {
             } else {
                 grid.appendChild(photoItem);
             }
+            
+            // Обновляем порядковые номера
+            updatePhotoOrderNumbers();
         };
         reader.readAsDataURL(file);
     });
     
-    // Очищаем input для возможности повторной загрузки
+    // Сбрасываем значение input
     e.target.value = '';
 }
 
-// Функция для сохранения маршрута с фото
-async function saveRouteWithPhotos() {
-    try {
-        console.log('💾 Начинаем сохранение маршрута с фото...');
-        
-        // Получаем данные формы
-        const formData = getRouteFormData();
-        
-        // Собираем данные о фото
-        const photosData = collectPhotosData();
-        console.log('📷 Данные о фото:', photosData);
-        
-        // Добавляем данные о фото в formData
-        formData.append('photos_data', JSON.stringify(photosData));
-        
-        // Если есть новое основное фото, добавляем его
-        if (newMainPhotoFile) {
-            console.log('🖼️ Добавляем новое основное фото');
-            formData.append('main_photo', newMainPhotoFile);
-        }
-        
-        // Добавляем новые дополнительные фото
-        newAdditionalPhotoFiles.forEach((file, index) => {
-            console.log(`🖼️ Добавляем дополнительное фото ${index + 1}`);
-            formData.append(`additional_photos_${index}`, file);
-        });
-        
-        // Добавляем ID удаленных фото
-        if (removedExistingPhotos.size > 0) {
-            console.log('🗑️ Удаленные фото:', Array.from(removedExistingPhotos));
-            formData.append('removed_photo_ids', JSON.stringify(Array.from(removedExistingPhotos)));
-        }
-        
-        // Показываем индикатор загрузки
-        showLoading('Сохранение маршрута...');
-        
-        console.log('📤 Отправляем запрос по URL:', window.routeSaveUrl);
-        
-        // Отправляем данные
-        const response = await fetch(window.routeSaveUrl, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRFToken': getCSRFToken()
-            }
-        });
-        
-        console.log('📥 Получен ответ, статус:', response.status);
-        
-        if (!response.ok) {
-            throw new Error(`Ошибка сервера: ${response.status} ${response.statusText}`);
-        }
-        
-        const result = await response.json();
-        console.log('✅ Результат сохранения:', result);
-        
-        if (result.success) {
-            showToast('Маршрут успешно сохранен!', 'success');
-            
-            // Перенаправляем на страницу маршрута
-            setTimeout(() => {
-                if (result.route_id) {
-                    window.location.href = `/routes/${result.route_id}/`;
-                } else if (window.routeData && window.routeData.id) {
-                    window.location.href = `/routes/${window.routeData.id}/`;
-                } else {
-                    window.location.href = '/routes/my/';
-                }
-            }, 1500);
-        } else {
-            showToast(result.error || 'Ошибка при сохранении маршрута', 'danger');
-        }
-    } catch (error) {
-        console.error('❌ Ошибка при сохранении:', error);
-        showToast(error.message || 'Произошла ошибка при сохранении', 'danger');
-    } finally {
-        hideLoading();
-    }
-}
-
-// Функция для сбора данных о фото (исправленная)
-function collectPhotosData() {
+// Сбор данных о фото маршрута
+function collectRoutePhotosData() {
     const photosData = {
-        existing_main_photo_id: null,
-        existing_additional_photo_ids: [],
-        captions: {}
+        main_photo_id: null,
+        additional_photo_ids: [],
+        captions: {},
+        photo_order: {},
+        new_photos: [],
+        removed_photos: Array.from(removedExistingPhotos)
     };
     
-    // Получаем информацию о существующем основном фото
-    if (existingPhotos.main && !removedExistingPhotos.has(existingPhotos.main.id)) {
-        photosData.existing_main_photo_id = existingPhotos.main.id;
-        
-        // Добавляем подпись если есть
-        if (existingPhotos.main.caption) {
-            photosData.captions[existingPhotos.main.id] = existingPhotos.main.caption;
-        }
-    }
+    console.log('🔍 Сбор данных о фото маршрута...');
     
-    // Получаем информацию о существующих дополнительных фото
-    existingPhotos.additional.forEach(photo => {
-        if (!removedExistingPhotos.has(photo.id)) {
-            photosData.existing_additional_photo_ids.push(photo.id);
+    const allPhotoItems = document.querySelectorAll('.additional-photos-grid .additional-photo-item:not(.additional-photo-upload)');
+    
+    let mainPhotoFound = false;
+    let photoOrder = 1;
+    
+    allPhotoItems.forEach((item, index) => {
+        const photoId = item.dataset.photoId;
+        if (!photoId) return;
+        
+        const isMainByClass = item.classList.contains('main-photo-selected');
+        const isMainById = window.mainPhotoToSet === photoId;
+        const isMain = isMainByClass || isMainById;
+        
+        if (isMain && !mainPhotoFound) {
+            mainPhotoFound = true;
             
-            // Добавляем подпись если есть
-            if (photo.caption) {
-                photosData.captions[photo.id] = photo.caption;
+            if (photoId.startsWith('new-')) {
+                photosData.main_photo_id = 'new';
+            } else {
+                const photoIdInt = parseInt(photoId);
+                if (!isNaN(photoIdInt)) {
+                    photosData.main_photo_id = photoIdInt;
+                }
             }
         }
+        
+        // Пропускаем удаленные фото
+        if (!photoId.startsWith('new-')) {
+            const photoIdInt = parseInt(photoId);
+            if (!isNaN(photoIdInt) && removedExistingPhotos.has(photoIdInt)) {
+                return;
+            }
+        }
+        
+        if (isMain && photoId.startsWith('new-')) {
+            const file = newPhotoFiles.find(f => f.previewId === photoId);
+            if (file) {
+                photosData.new_photos.unshift(file);
+                photosData.photo_order['main'] = photoOrder;
+            }
+        } else if (!photoId.startsWith('new-')) {
+            const photoIdInt = parseInt(photoId);
+            if (!isNaN(photoIdInt)) {
+                if (photosData.main_photo_id !== photoIdInt) {
+                    photosData.additional_photo_ids.push(photoIdInt);
+                    photosData.photo_order[photoIdInt] = photoOrder;
+                }
+            }
+        } else if (photoId.startsWith('new-')) {
+            const file = newPhotoFiles.find(f => f.previewId === photoId);
+            if (file) {
+                photosData.new_photos.push(file);
+                photosData.photo_order[photoId] = photoOrder;
+            }
+        }
+        
+        const img = item.querySelector('img');
+        if (img && img.dataset.caption) {
+            photosData.captions[photoId] = img.dataset.caption;
+        }
+        
+        photoOrder++;
     });
+    
+    if (!mainPhotoFound && allPhotoItems.length > 0) {
+        const firstItem = allPhotoItems[0];
+        const firstPhotoId = firstItem.dataset.photoId;
+        
+        if (firstPhotoId) {
+            if (firstPhotoId.startsWith('new-')) {
+                photosData.main_photo_id = 'new';
+            } else {
+                const firstPhotoIdInt = parseInt(firstPhotoId);
+                if (!isNaN(firstPhotoIdInt)) {
+                    photosData.main_photo_id = firstPhotoIdInt;
+                }
+            }
+        }
+    }
     
     return photosData;
 }
 
-// Функция для получения данных формы маршрута
+// Получение данных формы маршрута
 function getRouteFormData() {
     const formData = new FormData();
     
-    // Основные данные маршрута
+    // Основные данные
     formData.append('name', document.getElementById('name').value || 'Без названия');
     formData.append('short_description', document.getElementById('short_description').value || '');
-    formData.append('difficulty', document.getElementById('difficulty').value || 'medium');
-    formData.append('mood', document.getElementById('mood').value || '');
-    formData.append('theme', document.getElementById('theme').value || '');
-    formData.append('duration_display', document.getElementById('duration_display').value || '');
+    formData.append('description', document.getElementById('description').value || '');
     formData.append('privacy', document.getElementById('privacy').value || 'public');
-    formData.append('has_audio_guide', document.getElementById('has_audio_guide').checked);
-    formData.append('is_elderly_friendly', document.getElementById('is_elderly_friendly').checked);
-    formData.append('is_child_friendly', document.getElementById('is_child_friendly').checked);
     
     // Тип маршрута
     const routeTypeBtn = document.querySelector('.route-type-btn.active');
     formData.append('route_type', routeTypeBtn ? routeTypeBtn.dataset.type : 'walking');
     
-    // Данные о точках маршрута
-    if (window.routeEditor && window.routeEditor.getRouteData) {
-        const routeData = window.routeEditor.getRouteData();
-        formData.append('route_data', JSON.stringify(routeData));
-    } else if (window.routeData) {
-        formData.append('route_data', JSON.stringify(window.routeData));
+    // Дополнительные параметры
+    formData.append('duration_display', document.getElementById('duration_display').value || '');
+    formData.append('has_audio_guide', document.getElementById('has_audio_guide').checked);
+    formData.append('is_elderly_friendly', document.getElementById('is_elderly_friendly').checked);
+    formData.append('is_child_friendly', document.getElementById('is_child_friendly').checked);
+    
+    // Скрытые поля
+    formData.append('total_distance', document.getElementById('total_distance').value || 0);
+    formData.append('duration_minutes', document.getElementById('duration_minutes').value || 0);
+    formData.append('is_active', document.getElementById('is_active').value || 'true');
+    
+    // Данные о фото маршрута
+    const photosData = collectRoutePhotosData();
+    formData.append('photos_data', JSON.stringify(photosData));
+    
+    // Добавляем новые фото файлы
+    photosData.new_photos.forEach((file, index) => {
+        if (file && file instanceof File) {
+            formData.append(`photo_${index}`, file);
+        }
+    });
+    
+    // Добавляем удаленные фото ID
+    if (photosData.removed_photos && photosData.removed_photos.length > 0) {
+        formData.append('removed_photos', JSON.stringify(photosData.removed_photos));
     }
     
-    console.log('📝 Данные формы:', {
-        name: document.getElementById('name').value,
-        route_type: routeTypeBtn ? routeTypeBtn.dataset.type : 'walking',
-        points_count: window.routeData ? window.routeData.points.length : 0
-    });
+    // Данные о точках маршрута
+    const routeData = {
+        waypoints: window.routePoints.map(point => ({
+            id: point.id,
+            name: point.name || `Точка ${point.order || 1}`,
+            description: point.description || '',
+            address: point.address || '',
+            lat: point.lat || 0,
+            lng: point.lng || 0,
+            category: point.category || '',
+            hint_author: point.hint_author || '',
+            tags: point.tags || [],
+            photos: point.photos || [],
+            order: point.order || 1,
+            is_start: point.is_start || false,
+            is_end: point.is_end || false
+        })),
+        total_distance: parseFloat(document.getElementById('total_distance')?.value || 0),
+        duration_minutes: parseFloat(document.getElementById('duration_minutes')?.value || 0),
+        removed_point_photo_ids: Array.from(window.removedPointPhotoIds || [])
+    };
+    
+    formData.append('route_data', JSON.stringify(routeData));
     
     return formData;
 }
 
-// Функция для удаления основного фото маршрута
-function removeMainRoutePhoto(photoId = null) {
-    const uploadSection = document.querySelector('.main-photo-upload');
-    const preview = uploadSection.querySelector('.main-photo-preview');
-    const placeholder = uploadSection.querySelector('.placeholder-content');
-    const fileInput = document.getElementById('route-main-photo');
+// Установка фото маршрута как главного
+function makeMainRoutePhoto(button) {
+    const photoItem = button.closest('.additional-photo-item');
+    if (!photoItem) return;
     
-    // Если есть ID существующего фото, добавляем его в список удаленных
-    if (photoId && photoId !== 'new') {
-        removedExistingPhotos.add(parseInt(photoId));
-        console.log('🗑️ Основное фото добавлено в список удаленных, ID:', photoId);
+    const photoId = photoItem.dataset.photoId;
+    if (!photoId) return;
+    
+    window.mainPhotoToSet = photoId;
+    
+    document.querySelectorAll('.additional-photo-item').forEach(item => {
+        item.classList.remove('main-photo-selected');
+        const starIcon = item.querySelector('.photo-controls-top button i.fa-star');
+        if (starIcon) {
+            starIcon.className = 'fas fa-star text-light';
+        }
+    });
+    
+    photoItem.classList.add('main-photo-selected');
+    const starIcon = photoItem.querySelector('.photo-controls-top button i.fa-star');
+    if (starIcon) {
+        starIcon.className = 'fas fa-star text-warning';
     }
     
-    // Если это новое фото - удаляем файл
-    if (photoId === 'new') {
-        newMainPhotoFile = null;
-        console.log('🗑️ Новое основное фото удалено');
-    }
-    
-    // Показываем плейсхолдер
-    if (placeholder) {
-        placeholder.style.display = 'flex';
-    }
-    
-    // Скрываем превью
-    if (preview) {
-        preview.style.display = 'none';
-    }
-    
-    // Очищаем файловый инпут
-    if (fileInput) {
-        fileInput.value = '';
-    }
+    showToast('Фото выбрано как главное', 'success');
 }
 
-// Функция для удаления дополнительного фото
+// Удаление фото маршрута
 function removeAdditionalRoutePhoto(button, photoId = null) {
     const photoItem = button.closest('.additional-photo-item');
     if (photoItem) {
-        // Если это существующее фото, добавляем в список удаленных
-        if (photoId && photoId !== 'new') {
-            removedExistingPhotos.add(parseInt(photoId));
-            console.log('🗑️ Дополнительное фото добавлено в список удаленных, ID:', photoId);
-        }
-        
-        // Если это новое фото, удаляем из массива
-        if (photoId === 'new') {
-            const index = newAdditionalPhotoFiles.findIndex(file => 
-                file.previewElement === photoItem
-            );
-            if (index !== -1) {
-                newAdditionalPhotoFiles.splice(index, 1);
-                console.log('🗑️ Новое фото удалено из массива, индекс:', index);
+        if (photoId && !photoId.startsWith('new-')) {
+            const idInt = parseInt(photoId);
+            if (!isNaN(idInt)) {
+                removedExistingPhotos.add(idInt);
             }
         }
         
+        if (photoId && photoId.startsWith('new-')) {
+            const index = newPhotoFiles.findIndex(file => 
+                file.previewId === photoId
+            );
+            if (index !== -1) {
+                newPhotoFiles.splice(index, 1);
+            }
+        }
+        
+        if (photoItem.classList.contains('main-photo-selected')) {
+            window.mainPhotoToSet = null;
+        }
+        
         photoItem.remove();
+        updatePhotoOrderNumbers();
     }
 }
 
-// Валидация файла
+// Валидация файла изображения
 function validateImageFile(file) {
     if (!file.type.startsWith('image/')) {
         showToast('Пожалуйста, выбирайте только изображения', 'warning');
@@ -1338,88 +2207,209 @@ function validateImageFile(file) {
     return true;
 }
 
-// Функция для обновления расчетного времени
-function updateEstimatedTime() {
-    const distanceElement = document.getElementById('total-distance');
-    const timeElement = document.getElementById('estimated-time');
-    const routeTypeBtn = document.querySelector('.route-type-btn.active');
+// Функции для перемещения фото маршрута
+function moveRoutePhotoUp(button) {
+    const photoItem = button.closest('.additional-photo-item');
+    if (!photoItem) return;
     
-    if (!distanceElement || !timeElement || !routeTypeBtn) return;
+    const prevItem = photoItem.previousElementSibling;
+    if (prevItem && !prevItem.classList.contains('additional-photo-upload')) {
+        photoItem.parentNode.insertBefore(photoItem, prevItem);
+        updatePhotoOrderNumbers();
+    }
+}
+
+function moveRoutePhotoDown(button) {
+    const photoItem = button.closest('.additional-photo-item');
+    if (!photoItem) return;
     
-    const routeType = routeTypeBtn.dataset.type;
+    const nextItem = photoItem.nextElementSibling;
+    if (nextItem && !nextItem.classList.contains('additional-photo-upload')) {
+        photoItem.parentNode.insertBefore(nextItem, photoItem);
+        updatePhotoOrderNumbers();
+    }
+}
+
+// =====================================
+// ФУНКЦИИ ДЛЯ РАБОТЫ С ТОЧКАМИ МАРШРУТА
+// =====================================
+
+// Функция для обновления списка точек (с ВСЕМИ фото)
+function updatePointsList(points) {
+    const pointsList = document.getElementById('points-list');
+    const emptyState = document.getElementById('empty-points-state');
     
-    // Получаем расстояние из текста (убираем "км" и преобразуем в число)
-    const distanceText = distanceElement.textContent.trim();
-    const distance = parseFloat(distanceText.replace(' км', '').replace(',', '.'));
+    if (!pointsList) return;
     
-    if (isNaN(distance) || distance === 0) {
-        timeElement.textContent = '-';
+    // Очищаем список
+    pointsList.innerHTML = '';
+    
+    if (!points || points.length === 0) {
+        // Показываем пустое состояние
+        const emptyClone = emptyState.cloneNode(true);
+        emptyClone.id = 'empty-points-state-active';
+        pointsList.appendChild(emptyClone);
+        document.getElementById('points-count').textContent = '0';
+        document.getElementById('points-count-display').textContent = '0';
         return;
     }
     
-    // Скорости для разных типов маршрутов (км/ч)
-    const speeds = {
-        'walking': 5,    // пешком
-        'cycling': 15,   // на велосипеде
-        'driving': 60    // на машине
-    };
+    // Сортируем точки по порядку
+    const sortedPoints = [...points].sort((a, b) => {
+        const orderA = a.order || (a.is_start ? 0 : (a.is_end ? points.length - 1 : 1));
+        const orderB = b.order || (b.is_start ? 0 : (b.is_end ? points.length - 1 : 1));
+        return orderA - orderB;
+    });
     
-    const speed = speeds[routeType] || 5;
-    const timeInHours = distance / speed;
+    // Добавляем точки в список
+    sortedPoints.forEach((point, index) => {
+        // Устанавливаем порядок
+        point.order = index + 1;
+        
+        // Определяем начало и конец
+        if (index === 0 && !point.is_end) {
+            point.is_start = true;
+            point.is_end = false;
+        } else if (index === sortedPoints.length - 1 && !point.is_start) {
+            point.is_end = true;
+            point.is_start = false;
+        } else {
+            point.is_start = false;
+            point.is_end = false;
+        }
+        
+        const pointItem = createPointListItem(point);
+        pointsList.appendChild(pointItem);
+    });
     
-    // Форматируем время
-    let formattedTime;
-    if (timeInHours < 0.1) {
-        // Меньше 6 минут - показываем в минутах
-        const minutes = Math.round(timeInHours * 60);
-        formattedTime = `${minutes} мин`;
-    } else if (timeInHours < 1) {
-        // Меньше часа - показываем в минутах
-        const minutes = Math.round(timeInHours * 60);
-        formattedTime = `${minutes} мин`;
-    } else if (timeInHours < 24) {
-        // Меньше суток - показываем в часах и минутах
-        const hours = Math.floor(timeInHours);
-        const minutes = Math.round((timeInHours - hours) * 60);
-        if (minutes > 0) {
-            formattedTime = `${hours} ч ${minutes} мин`;
-        } else {
-            formattedTime = `${hours} ч`;
-        }
-    } else {
-        // Больше суток - показываем в днях и часах
-        const days = Math.floor(timeInHours / 24);
-        const hours = Math.round(timeInHours % 24);
-        if (hours > 0) {
-            formattedTime = `${days} д ${hours} ч`;
-        } else {
-            formattedTime = `${days} д`;
-        }
+    // Обновляем счетчик
+    const count = sortedPoints.length;
+    document.getElementById('points-count').textContent = count;
+    document.getElementById('points-count-display').textContent = count;
+}
+
+// Функция для получения точки по ID
+function getPointById(pointId) {
+    return window.routePoints.find(point => 
+        point.id === pointId || point.tempId === pointId
+    );
+}
+
+// Функция для добавления новой точки
+function addNewPoint(pointData) {
+    if (!pointData.id && !pointData.tempId) {
+        pointData.tempId = 'point-' + Date.now();
     }
     
-    timeElement.textContent = formattedTime;
+    window.routePoints.push(pointData);
+    updatePointsList(window.routePoints);
+    updateRouteStats();
+    
+    showToast('Точка добавлена', 'success');
+}
+
+// Функция для редактирования точки
+function editPoint(pointId) {
+    const point = getPointById(pointId);
+    if (!point) return;
+    
+    // Открываем модальное окно редактирования точки
+    if (typeof window.openPointEditor === 'function') {
+        window.openPointEditor(point);
+    } else {
+        // Если функция не существует, показываем алерт
+        showToast('Функция редактирования точки недоступна', 'warning');
+    }
+}
+
+// Функция для удаления точки
+function deletePoint(pointId) {
+    if (!confirm('Удалить эту точку маршрута?')) return;
+    
+    const pointIndex = window.routePoints.findIndex(point => 
+        point.id === pointId || point.tempId === pointId
+    );
+    
+    if (pointIndex !== -1) {
+        window.routePoints.splice(pointIndex, 1);
+        updatePointsList(window.routePoints);
+        updateRouteStats();
+        
+        showToast('Точка удалена', 'success');
+    }
+}
+
+// Открытие загрузчика фото для точки
+function openPointPhotoUploader(pointId) {
+    const point = getPointById(pointId);
+    if (!point) return;
+    
+    // Открываем редактор точки с активацией вкладки фото
+    if (typeof window.openPointEditor === 'function') {
+        window.openPointEditor(point, 'photos');
+    } else {
+        showToast('Редактор точек не загружен', 'warning');
+    }
 }
 
 // Функция для обновления статистики маршрута
-function updateRouteStats(distance, pointsCount) {
-    const distanceElement = document.getElementById('total-distance');
-    const pointsElement = document.getElementById('points-count-display');
-    const pointsBadge = document.getElementById('points-count');
+function updateRouteStats() {
+    const distance = window.routePoints.reduce((total, point, index) => {
+        if (index === 0) return 0;
+        const prevPoint = window.routePoints[index - 1];
+        // Простая калькуляция расстояния (для демо)
+        const latDiff = point.lat - prevPoint.lat;
+        const lngDiff = point.lng - prevPoint.lng;
+        return total + Math.sqrt(latDiff * latDiff + lngDiff * lngDiff) * 111; // 1 градус ≈ 111 км
+    }, 0);
     
-    if (distanceElement) {
-        distanceElement.textContent = distance.toFixed(1) + ' км';
+    const pointsCount = window.routePoints.length;
+    
+    // Обновляем отображение статистики
+    const totalDistanceElement = document.getElementById('total-distance');
+    const pointsCountElement = document.getElementById('points-count-display');
+    
+    if (totalDistanceElement) {
+        totalDistanceElement.textContent = distance.toFixed(1) + ' км';
     }
     
-    if (pointsElement) {
-        pointsElement.textContent = pointsCount;
+    if (pointsCountElement) {
+        pointsCountElement.textContent = pointsCount;
     }
     
-    if (pointsBadge) {
-        pointsBadge.textContent = pointsCount;
+    // Обновляем скрытые поля
+    const totalDistanceHidden = document.getElementById('total_distance');
+    const durationMinutesHidden = document.getElementById('duration_minutes');
+    
+    if (totalDistanceHidden) {
+        totalDistanceHidden.value = distance.toFixed(1);
     }
     
-    // Обновляем время
-    updateEstimatedTime();
+    if (durationMinutesHidden) {
+        // Примерная оценка времени: 5 минут на километр для пешехода
+        const durationMinutes = distance * 5;
+        durationMinutesHidden.value = durationMinutes.toFixed(0);
+        
+        // Обновляем отображение времени
+        const estimatedTimeElement = document.getElementById('estimated-time');
+        if (estimatedTimeElement) {
+            if (durationMinutes < 60) {
+                estimatedTimeElement.textContent = Math.ceil(durationMinutes) + ' мин';
+            } else {
+                const hours = Math.floor(durationMinutes / 60);
+                const minutes = Math.ceil(durationMinutes % 60);
+                estimatedTimeElement.textContent = hours + ' ч ' + minutes + ' мин';
+            }
+        }
+    }
+}
+
+// Закрытие деталей точки
+function closePointDetails() {
+    const detailsDiv = document.getElementById('point-details');
+    if (detailsDiv) {
+        detailsDiv.style.display = 'none';
+    }
 }
 
 // Вспомогательные функции
@@ -1428,7 +2418,7 @@ function getCSRFToken() {
         .split('; ')
         .find(row => row.startsWith('csrftoken='))
         ?.split('=')[1];
-    return cookieValue;
+    return cookieValue || '';
 }
 
 function showLoading(message = 'Загрузка...') {
@@ -1446,69 +2436,125 @@ function hideLoading() {
     }
 }
 
-function showToast(message, type = 'info') {
-    // Используем существующую функцию из route_editor.js
-    if (window.routeEditor && typeof window.routeEditor.showToast === 'function') {
-        window.routeEditor.showToast(message, type);
-    } else {
-        // Fallback
-        const toast = document.createElement('div');
-        toast.style.cssText = `
+function showToast(message, type = 'info', duration = 3000) {
+    // Создаем контейнер для тостов если его нет
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.style.cssText = `
             position: fixed;
             top: 20px;
             right: 20px;
             z-index: 2000;
-            padding: 12px 20px;
-            border-radius: 8px;
-            color: white;
-            font-weight: 500;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
             max-width: 300px;
-            word-wrap: break-word;
         `;
-        
-        const colors = {
-            'success': '#10b981',
-            'warning': '#f59e0b', 
-            'danger': '#ef4444',
-            'info': '#3b82f6'
-        };
-        
-        toast.style.backgroundColor = colors[type] || colors.info;
-        toast.textContent = message;
-        
-        document.body.appendChild(toast);
-        
+        document.body.appendChild(toastContainer);
+    }
+    
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        padding: 12px 20px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 500;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        word-wrap: break-word;
+        animation: slideIn 0.3s ease-out;
+        transform-origin: top right;
+    `;
+    
+    // Анимация появления
+    const styleSheet = document.createElement('style');
+    styleSheet.textContent = `
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        @keyframes slideOut {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+        }
+    `;
+    document.head.appendChild(styleSheet);
+    
+    const colors = {
+        'success': '#10b981',
+        'warning': '#f59e0b', 
+        'danger': '#ef4444',
+        'info': '#3b82f6'
+    };
+    
+    toast.style.backgroundColor = colors[type] || colors.info;
+    toast.textContent = message;
+    
+    toastContainer.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease-out forwards';
         setTimeout(() => {
             if (toast.parentNode) {
                 toast.parentNode.removeChild(toast);
             }
-        }, 3000);
-    }
+        }, 300);
+    }, duration);
 }
 
-// Глобальные функции для работы с точками
-function closePointDetails() {
-    const detailsDiv = document.getElementById('point-details');
-    if (detailsDiv) {
-        detailsDiv.style.display = 'none';
-    }
-}
+// Глобальные функции
+window.removeAdditionalRoutePhoto = removeAdditionalRoutePhoto;
+window.makeMainRoutePhoto = makeMainRoutePhoto;
+window.validateImageFile = validateImageFile;
+window.moveRoutePhotoUp = moveRoutePhotoUp;
+window.moveRoutePhotoDown = moveRoutePhotoDown;
+window.closePointDetails = closePointDetails;
+window.handlePhotosUpload = handlePhotosUpload;
+window.updatePhotoOrderNumbers = updatePhotoOrderNumbers;
+window.openPointGallery = openPointGallery;
+window.openPointPhotoUploader = openPointPhotoUploader;
 
-// Экспортируем функции для использования в route_editor.js
-window.routeEditorUtils = {
-    updateRouteStats,
-    updateEstimatedTime,
-    showToast,
-    closePointDetails,
-    saveRouteWithPhotos,
-    collectPhotosData,
-    getRouteFormData
+// Экспорт функций для точек маршрута
+window.updatePointsList = updatePointsList;
+window.addNewPoint = addNewPoint;
+window.editPoint = editPoint;
+window.deletePoint = deletePoint;
+window.getPointById = getPointById;
+window.updateRouteStats = updateRouteStats;
+
+// Экспорт функций для галереи точек
+window.makePointPhotoMain = makePointPhotoMain;
+window.deleteCurrentPointPhoto = deleteCurrentPointPhoto;
+
+// Инициализация глобальных переменных
+window.initializePhotoHandlers = function() {
+    if (!window.removedExistingPhotos) window.removedExistingPhotos = new Set();
+    if (!window.newPhotoFiles) window.newPhotoFiles = [];
+    if (!window.mainPhotoToSet) window.mainPhotoToSet = null;
+    if (!window.removedPointPhotoIds) window.removedPointPhotoIds = new Set();
+    if (!window.newPointPhotoFiles) window.newPointPhotoFiles = [];
+    if (!window.pointMainPhotoToSet) window.pointMainPhotoToSet = null;
+    if (!window.routePoints) window.routePoints = [];
+    
+    console.log('✅ Глобальные переменные для фото и точек инициализированы');
 };
 
-// Глобальные функции для вызова из HTML
-window.closePointDetails = closePointDetails;
-window.removeMainRoutePhoto = removeMainRoutePhoto;
-window.removeAdditionalRoutePhoto = removeAdditionalRoutePhoto;
+// Вызываем инициализацию при загрузке
+window.initializePhotoHandlers();
 </script>
+<script src="{% static 'js/route_editor.js' %}"></script>
+<script src="{% static 'js/audio_generation.js' %}"></script>
 {% endblock %}

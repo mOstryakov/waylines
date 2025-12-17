@@ -1,885 +1,756 @@
+{% load i18n static %}
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Waylines - Платформа маршрутов{% endblock %}</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Waylines - Route Platform{% endblock %}</title>
 
-    <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+  <link href="{% static 'css/leaflet.css' %}" rel="stylesheet">
+  <link href="{% static 'css/fontawesome-all.min.css' %}" rel="stylesheet">
 
-    <style>
-        :root {
-            --primary-color: #2563eb;
-            --secondary-color: #6c757d;
-            --light-bg: #f8f9fa;
-            --border-color: #e9ecef;
-        }
+  <script src="{% static 'vendor/firebase/firebase-app-compat.js' %}"></script>
+  <script src="{% static 'vendor/firebase/firebase-database-compat.js' %}"></script>
+  <script src="{% static 'vendor/firebase/firebase-auth-compat.js' %}"></script>
 
-        /* Общие стили */
-        html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-        }
+  <style>
+    :root {
+      --primary-color: #2563eb;
+      --secondary-color: #6c757d;
+      --light-bg: #f8f9fa;
+      --border-color: #e9ecef;
+      --footer-height: 65px;
+    }
 
-        body {
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
 
-        .page-wrapper {
-            flex: 1 0 auto;
-            display: flex;
-            flex-direction: column;
-            min-height: calc(100vh - 70px);
-            padding-top: 70px;
-        }
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding-bottom: var(--footer-height);
+    }
 
-        main {
-            flex: 1 0 auto;
-            display: flex;
-            flex-direction: column;
-        }
+    .page-wrapper {
+      flex: 1 0 auto;
+      display: flex;
+      flex-direction: column;
+      min-height: calc(100vh - 70px - var(--footer-height));
+      padding-top: 70px;
+    }
 
-        .page-content {
-            flex: 1 0 auto;
-        }
+    main {
+      flex: 1 0 auto;
+      padding-bottom: 20px;
+    }
 
-        .footer {
-            flex-shrink: 0;
-            background: #212529;
-            color: white;
-            width: 100%;
-            margin-top: auto;
-        }
+    .footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: var(--footer-height);
+      background: #212529;
+      color: white;
+      z-index: 1020;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+    }
 
-        /* Стили футера */
-        .footer-content {
-            padding: 0.75rem 0;
-        }
+    .footer .container {
+      height: 100%;
+      display: flex;
+      align-items: center;
+    }
 
-        .footer-quote {
-            font-size: 0.9rem;
-            font-style: italic;
-            color: #adb5bd;
-            text-align: center;
-            margin: 0.25rem 0;
-            line-height: 1.3;
-        }
+    .footer-content {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
 
-        .footer-logo {
-            font-size: 1.1rem;
-            margin-bottom: 0.25rem;
-        }
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+    }
 
-        .footer-description {
-            font-size: 0.8rem;
-            color: #adb5bd;
-            margin: 0;
-        }
+    .footer-logo {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
 
-        .footer-copyright {
-            font-size: 0.8rem;
-            color: #adb5bd;
-            margin: 0;
-        }
+    .footer-description {
+      font-size: 0.85rem;
+      opacity: 0.8;
+      margin: 0;
+      line-height: 1.3;
+      display: none;
+    }
 
-        /* НАВБАР */
-        .navbar {
-            height: 70px;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1030;
-            background: white !important;
-            border-bottom: 1px solid var(--border-color);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-            display: flex;
-            align-items: center;
-        }
+    .footer-copyright {
+      font-size: 0.9rem;
+      margin: 0;
+      opacity: 0.8;
+      text-align: right;
+      flex-shrink: 0;
+    }
 
-        .navbar-brand {
-            font-weight: 700;
-            font-size: 1.4rem;
-            color: var(--primary-color) !important;
-            margin-right: 2rem;
-        }
+    .navbar {
+      height: 70px;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1030;
+      background: white !important;
+      border-bottom: 1px solid var(--border-color);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      display: flex;
+      align-items: center;
+    }
 
-        .navbar-brand i {
-            margin-right: 8px;
-        }
+    .navbar-brand {
+      font-weight: 700;
+      font-size: 1.4rem;
+      color: var(--primary-color) !important;
+      margin-right: 2rem;
+    }
 
-        /* ПОИСК С КЛИКАБЕЛЬНОЙ ИКОНКОЙ */
-        .navbar-search {
-            flex: 1;
-            max-width: 400px;
-            margin: 0 auto;
-        }
+    .navbar-brand i {
+      margin-right: 8px;
+    }
 
-        .navbar-search .search-wrapper {
-            position: relative;
-            display: flex;
-            align-items: center;
-            width: 100%;
-        }
+    .navbar-search {
+      flex: 1;
+      max-width: 400px;
+      margin: 0 auto;
+    }
 
-        .navbar-search .form-control {
-            width: 100%;
-            padding: 10px 50px 10px 16px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 0.95rem;
-            background: #f8f9fa;
-            transition: all 0.2s ease;
-        }
+    .navbar-search .search-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      width: 100%;
+    }
 
-        .navbar-search .form-control:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            background: white;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        }
+    .navbar-search .form-control {
+      width: 100%;
+      padding: 10px 50px 10px 16px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      background: #f8f9fa;
+      transition: all 0.2s ease;
+    }
 
-        .navbar-search .form-control::placeholder {
-            color: #6c757d;
-            opacity: 0.7;
-        }
+    .navbar-search .form-control:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      background: white;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
 
-        /* Кликабельная иконка поиска справа */
-        .navbar-search .search-button {
-            position: absolute;
-            right: 12px;
-            background: none;
-            border: none;
-            color: var(--primary-color);
-            padding: 0;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 24px;
-            height: 24px;
-            transition: all 0.2s ease;
-            z-index: 10;
-        }
+    .navbar-search .search-button {
+      position: absolute;
+      right: 12px;
+      background: none;
+      border: none;
+      color: var(--primary-color);
+      cursor: pointer;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
 
-        .navbar-search .search-button:hover {
-            color: #1d4ed8;
-            transform: scale(1.1);
-        }
+    .nav-link {
+      font-weight: 500;
+      color: var(--secondary-color);
+      padding: 0.5rem 1rem !important;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      cursor: pointer;
+    }
 
-        .navbar-search .search-button:active {
-            transform: scale(0.95);
-        }
+    .nav-link.active {
+      color: var(--primary-color);
+      background: rgba(37, 99, 235, 0.1);
+    }
 
-        /* Навигация */
-        .nav-link {
-            font-weight: 500;
-            color: var(--secondary-color);
-            padding: 0.5rem 1rem !important;
-            border-radius: 6px;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            height: 100%;
-            text-decoration: none;
-            cursor: pointer;
-        }
+    .nav-link:not(.active):hover {
+      color: var(--primary-color);
+      background: var(--light-bg);
+    }
 
-        /* АКТИВНЫЕ ССЫЛКИ - разный стиль для разных типов */
-        .nav-link.active {
-            color: var(--primary-color);
-            background: rgba(37, 99, 235, 0.1);
-        }
+    .navbar-nav {
+      display: flex;
+      align-items: center;
+      height: 100%;
+      gap: 5px;
+    }
 
-        /* Обычные ссылки блокируются когда активны */
-        .nav-link.active:not(.dropdown-toggle) {
-            cursor: default;
-            pointer-events: none;
-            opacity: 0.9;
-        }
+    .nav-item {
+      display: flex;
+      align-items: center;
+    }
 
-        /* Dropdown ссылки остаются кликабельными */
-        .nav-link.dropdown-toggle.active {
-            cursor: pointer;
-            pointer-events: auto;
-        }
+    .dropdown-menu {
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      margin-top: 8px;
+    }
 
-        .nav-link:not(.active):hover {
-            color: var(--primary-color);
-            background: var(--light-bg);
-        }
+    .dropdown-item {
+      padding: 0.5rem 1rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
 
-        /* Исправляем выравнивание для иконок */
-        .navbar-nav {
-            display: flex;
-            align-items: center;
-            height: 100%;
-        }
+    .dropdown-item:hover {
+      background: var(--light-bg);
+      color: var(--primary-color);
+    }
 
-        .nav-item {
-            display: flex;
-            align-items: center;
-        }
+    .badge-notification {
+      position: relative;
+      top: -10px;
+      right: -2px;
+      font-size: 0.6rem;
+      padding: 0.2em 0.4em;
+      min-width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
 
-        /* Dropdown */
-        .dropdown-menu {
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            margin-top: 8px;
-        }
+    body.map-page {
+      overflow: hidden;
+      padding-bottom: 0;
+    }
 
-        .dropdown-item {
-            padding: 0.5rem 1rem;
-            font-size: 0.9rem;
-            cursor: pointer;
-        }
+    body.map-page .page-wrapper {
+      padding: 0;
+      min-height: calc(100vh - 70px);
+      height: calc(100vh - 70px);
+    }
 
-        .dropdown-item:hover {
-            background: var(--light-bg);
-            color: var(--primary-color);
-        }
+    body.map-page main {
+      height: 100%;
+      padding-bottom: 0;
+    }
 
-        /* Уведомления */
-        .notifications-container {
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            z-index: 1060;
-            max-width: 350px;
-            width: 100%;
-        }
+    body.map-page .footer {
+      display: none;
+    }
 
-        .notification {
-            background: white;
-            border-radius: 10px;
-            padding: 12px 16px;
-            margin-bottom: 10px;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-            border-left: 4px solid;
-            transform: translateX(400px);
-            opacity: 0;
-            transition: all 0.3s ease;
-        }
+    body.map-page #map {
+      height: 100%;
+      width: 100%;
+    }
 
-        .notification.show {
-            transform: translateX(0);
-            opacity: 1;
-        }
+    .nav-item.dropdown {
+      position: relative;
+    }
 
-        .notification.hide {
-            transform: translateX(400px);
-            opacity: 0;
-        }
+    .custom-dropdown-menu {
+      display: none;
+      position: absolute;
+      top: 100%;
+      min-width: 280px;
+      background: white;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      z-index: 1000;
+      margin-top: 5px;
+    }
 
-        /* Баджи для уведомлений */
-        .badge-notification {
-            position: relative;
-            top: -10px;
-            right: -2px;
-            font-size: 0.6rem;
-            padding: 0.2em 0.4em;
-            min-width: 16px;
-            height: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+    #friendsMenu,
+    #profileMenu {
+      right: 0;
+      transform: translateX(0);
+    }
 
-        /* Страница с картой */
-        body.map-page {
-            overflow: hidden;
-        }
+    .custom-dropdown-menu.show {
+      display: block;
+    }
 
-        body.map-page .page-wrapper {
-            padding: 0;
-            min-height: calc(100vh - 70px);
-            height: calc(100vh - 70px);
-        }
+    .dropdown-item .btn-group {
+      flex-shrink: 0;
+    }
 
-        body.map-page main {
-            height: 100%;
-        }
+    .dropdown-item .btn-group .btn-sm {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+    }
 
-        body.map-page .footer {
-            display: none;
-        }
+    .dropdown-item strong {
+      font-size: 0.9rem;
+    }
 
-        body.map-page #map {
-            height: 100%;
-            width: 100%;
-        }
+    .dropdown-item .text-muted {
+      font-size: 0.8rem;
+    }
 
-        /* Адаптивность */
-        @media (max-width: 992px) {
-            .navbar {
-                height: auto;
-                padding: 0.75rem 0;
-            }
+    .dropdown-header {
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 0.5rem 1rem;
+      color: #495057;
+    }
 
-            .navbar-search {
-                margin: 0.75rem 0;
-                max-width: 100%;
-                order: 3;
-                width: 100%;
-            }
+    .notifications-container {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      z-index: 1060;
+    }
 
-            .page-wrapper {
-                padding-top: 120px;
-                min-height: calc(100vh - 120px);
-            }
+    .notification {
+      background: white;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      border-left: 4px solid var(--primary-color);
+      max-width: 350px;
+      animation: slideIn 0.3s ease;
+    }
 
-            .nav-link {
-                padding: 0.4rem 0.75rem !important;
-                font-size: 0.9rem;
-            }
+    .notification-info { border-left-color: #17a2b8; }
+    .notification-success { border-left-color: #28a745; }
+    .notification-warning { border-left-color: #ffc107; }
+    .notification-error { border-left-color: #dc3545; }
 
-            .footer-content {
-                padding: 0.5rem 0;
-            }
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
 
-            /* В мобильном виде все элементы в столбик */
-            .navbar-collapse {
-                display: flex;
-                flex-direction: column;
-                align-items: stretch;
-            }
-        }
+    @media (max-width: 992px) {
+      .navbar {
+        height: auto;
+        padding: 0.75rem 0;
+      }
+      .navbar-search {
+        margin: 0.75rem 0;
+        max-width: 100%;
+        order: 3;
+      }
+      .page-wrapper {
+        padding-top: 120px;
+        min-height: calc(100vh - 120px - var(--footer-height));
+      }
+      .navbar-collapse {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .custom-dropdown-menu {
+        position: static;
+        width: 100%;
+        min-width: auto;
+      }
+      .nav-link.dropdown-toggle i.fa-users {
+        margin-left: auto;
+      }
+    }
 
-        @media (max-width: 768px) {
-            .navbar-search .form-control {
-                font-size: 0.85rem;
-                padding-left: 36px;
-                padding-right: 40px;
-            }
+    @media (min-width: 768px) and (max-width: 992px) {
+      .footer-description {
+        display: inline;
+        margin-left: 15px;
+      }
+      .footer-content {
+        justify-content: space-between;
+      }
+    }
 
-            .navbar-search .search-button {
-                right: 10px;
-            }
+    @media (min-width: 992px) {
+      .footer-description {
+        display: inline;
+        margin-left: 15px;
+      }
+      .footer-content {
+        justify-content: space-between;
+      }
+    }
 
-            .notifications-container {
-                right: 10px;
-                left: 10px;
-                max-width: none;
-            }
+    @media (max-width: 768px) {
+      .navbar-search .form-control {
+        padding-left: 36px;
+        padding-right: 40px;
+        font-size: 0.85rem;
+      }
+      .navbar-search .search-button {
+        right: 10px;
+      }
+      .footer {
+        height: 60px;
+      }
+      .footer-content {
+        justify-content: space-between;
+        flex-wrap: nowrap;
+      }
+      .footer-brand {
+        flex-shrink: 0;
+      }
+      .footer-logo {
+        font-size: 1rem;
+      }
+      .footer-description {
+        display: none !important;
+      }
+      .footer-copyright {
+        font-size: 0.8rem;
+        white-space: nowrap;
+      }
+    }
 
-            .footer-quote {
-                font-size: 0.85rem;
-                margin: 0.2rem 0;
-            }
+    @media (max-width: 576px) {
+      .footer {
+        padding: 0 10px;
+        height: 55px;
+      }
+      .footer-logo {
+        font-size: 0.95rem;
+      }
+      .footer-copyright {
+        font-size: 0.75rem;
+      }
+      .custom-dropdown-menu {
+        min-width: 200px;
+      }
+      .dropdown-item .d-flex {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .dropdown-item .btn-group {
+        margin-top: 5px;
+        align-self: flex-end;
+      }
+    }
 
-            .footer-logo {
-                font-size: 1rem;
-            }
+    @media (max-width: 380px) {
+      .footer-logo i {
+        display: none;
+      }
+      .footer-logo span {
+        font-size: 0.9rem;
+      }
+      .footer-copyright {
+        font-size: 0.7rem;
+      }
+    }
 
-            .footer-description {
-                font-size: 0.75rem;
-            }
+    .navbar .container {
+      display: flex;
+      align-items: center;
+      height: 100%;
+    }
 
-            .footer-copyright {
-                font-size: 0.75rem;
-            }
-            
-            /* Мобильный футер - всегда в столбик */
-            .footer-content .row {
-                flex-direction: column;
-                text-align: center !important;
-            }
-            
-            .footer-content .col-md-6 {
-                width: 100%;
-                text-align: center !important;
-                margin-bottom: 0.5rem;
-            }
-            
-            .footer-content .text-md-end {
-                text-align: center !important;
-                margin-top: 0;
-            }
-            
-            .footer-content .row .col-md-6:last-child {
-                margin-bottom: 0;
-            }
-        }
+    .navbar-collapse {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
 
-        /* Дополнительные гарантии для выравнивания */
-        .navbar .container {
-            display: flex;
-            align-items: center;
-            height: 100%;
-        }
+    .nav-link {
+      min-height: 40px;
+    }
 
-        .navbar-collapse {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            width: 100%;
-        }
+    .nav-link.dropdown-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.5rem !important;
+    }
 
-        /* Фиксируем высоту всех нав-линков для выравнивания */
-        .nav-link i {
-            font-size: 1.1rem;
-        }
+    .nav-link.dropdown-toggle i.fa-users {
+      font-size: 1.1rem;
+    }
+  </style>
 
-        /* Гарантируем что все иконки одинакового размера */
-        .nav-link {
-            min-height: 40px;
-        }
-    </style>
-
-    {% block extra_css %}{% endblock %}
+  {% block extra_css %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
-    {% csrf_token %}
+  {% csrf_token %}
 
-    <!-- НАВБАР -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-white">
-        <div class="container">
-            <!-- Лого -->
-            <a class="navbar-brand" href="{% url 'home' %}">
-                <i class="fas fa-route"></i> Waylines
-            </a>
+  <nav class="navbar navbar-expand-lg navbar-light bg-white">
+    <div class="container">
+      <a class="navbar-brand" href="{% url 'home' %}">
+        <i class="fas fa-route"></i> Waylines
+      </a>
 
-            <!-- Кнопка мобильного меню -->
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <form class="navbar-search" method="get" action="{% url 'search' %}" id="searchForm">
+          <div class="search-wrapper">
+            <input type="text" name="q" class="form-control"
+              placeholder="{% trans 'Search routes' %}"
+              value="{{ request.GET.q }}"
+              id="searchInput"
+              autocomplete="off">
+            <button type="submit" class="search-button" aria-label="{% trans 'Search' %}">
+              <i class="fas fa-search"></i>
             </button>
+          </div>
+        </form>
 
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <!-- Поиск с кликабельной иконкой -->
-                <form class="navbar-search" method="get" action="{% url 'search' %}" id="searchForm">
-                    <div class="search-wrapper">
-                        <input type="text" name="q" class="form-control" 
-                               placeholder="Поиск маршрутов" 
-                               value="{{ request.GET.q }}"
-                               id="searchInput"
-                               autocomplete="off">
-                        <button type="submit" class="search-button" aria-label="Выполнить поиск">
-                            <i class="fas fa-search"></i>
-                        </button>
-                    </div>
-                </form>
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a class="nav-link{% if request.resolver_match.url_name == 'all_routes' or request.resolver_match.url_name == 'home' %} active{% endif %}"
+            href="{% url 'all_routes' %}">
+              <i class="fas fa-globe"></i> {% trans "All routes" %}
+            </a>
+          </li>
 
-                <!-- Навигация -->
-                <ul class="navbar-nav ms-auto">
-                    <!-- Основные ссылки -->
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'all_routes' %}active{% endif %}" 
-                           href="{% url 'all_routes' %}">
-                            <i class="fas fa-globe"></i> Все маршруты
-                        </a>
-                    </li>
+          {% if user.is_authenticated %}
+          <li class="nav-item">
+            <a class="nav-link{% if request.resolver_match.url_name == 'shared_routes' %} active{% endif %}"
+            href="{% url 'shared_routes' %}">
+              <i class="fas fa-share-alt"></i> {% trans "Shared with me" %}
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link{% if request.resolver_match.url_name == 'my_routes' %} active{% endif %}"
+            href="{% url 'my_routes' %}">
+              <i class="fas fa-user"></i> {% trans "My routes" %}
+            </a>
+          </li>
+          {% endif %}
 
-                    {% if user.is_authenticated %}
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'shared_routes' %}active{% endif %}" 
-                           href="{% url 'shared_routes' %}">
-                            <i class="fas fa-share-alt"></i> Доступные мне
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'my_routes' %}active{% endif %}" 
-                           href="{% url 'my_routes' %}">
-                            <i class="fas fa-user"></i> Мои маршруты
-                        </a>
-                    </li>
-                    {% endif %}
+          <li class="nav-item">
+            <a class="nav-link{% if 'chat' in request.resolver_match.namespaces or 'chat' in request.resolver_match.url_name %} active{% endif %}"
+            href="{% url 'chat:chat_dashboard' %}">
+              <i class="fas fa-comments"></i> {% trans "Chats" %}
+              {% if user.is_authenticated %}
+              <span class="badge bg-danger badge-notification" id="global-unread-count" style="display: none;">0</span>
+              {% endif %}
+            </a>
+          </li>
 
-                    <!-- Карта -->
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.path == '/map/' or request.path == '/map' %}active{% endif %}" 
-                           href="{% url 'map_view' %}">
-                            <i class="fas fa-map"></i> Карта
-                        </a>
-                    </li>
-
-                    <!-- Чаты -->
-                    <li class="nav-item">
-                        <a class="nav-link {% if 'chat' in request.path %}active{% endif %}" 
-                           href="{% url 'chat:chat_dashboard' %}">
-                            <i class="fas fa-comments"></i> Чаты
-                            {% if user.is_authenticated %}
-                            <span class="badge bg-danger badge-notification" id="global-unread-count" style="display: none;">0</span>
-                            {% endif %}
-                        </a>
-                    </li>
-
-                    <!-- Для авторизованных -->
-                    {% if user.is_authenticated %}
-                    <!-- Друзья -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle {% if 'friends' in request.path or 'friend' in request.path %}active{% endif %}" 
-                           href="#" id="friendsDropdown" role="button" data-bs-toggle="dropdown"
-                           aria-label="Друзья">
-                            <i class="fas fa-users"></i>
-                            {% if pending_requests_count %}
-                            <span class="badge bg-danger badge-notification">{{ pending_requests_count }}</span>
-                            {% endif %}
-                        </a>
-                        <div class="dropdown-menu dropdown-menu-end">
-                            <h6 class="dropdown-header">Запросы в друзья</h6>
-                            {% for request in pending_friend_requests %}
-                            <div class="dropdown-item">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <strong>{{ request.from_user.username }}</strong>
-                                        <small class="text-muted d-block">{{ request.created_at|timesince }} назад</small>
-                                    </div>
-                                    <div class="btn-group btn-group-sm">
-                                        <a href="{% url 'accept_friend_request' request.id %}" 
-                                           class="btn btn-success"><i class="fas fa-check"></i></a>
-                                        <a href="{% url 'reject_friend_request' request.id %}" 
-                                           class="btn btn-danger"><i class="fas fa-times"></i></a>
-                                    </div>
-                                </div>
-                            </div>
-                            {% empty %}
-                            <div class="dropdown-item text-muted">Нет новых запросов</div>
-                            {% endfor %}
-                            <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="{% url 'friends' %}">
-                                <i class="fas fa-list"></i> Все друзья
-                            </a>
-                            <a class="dropdown-item" href="{% url 'find_friends' %}">
-                                <i class="fas fa-user-plus"></i> Найти друзей
-                            </a>
-                        </div>
-                    </li>
-
-                    <!-- Профиль -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle {% if 'profile' in request.path or 'saved' in request.path or 'create' in request.path %}active{% endif %}" 
-                           href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-user"></i> {{ user.username|truncatechars:12 }}
-                        </a>
-                        <div class="dropdown-menu dropdown-menu-end">
-                            <a class="dropdown-item" href="{% url 'profile' %}">
-                                <i class="fas fa-user-circle"></i> Профиль
-                            </a>
-                            <a class="dropdown-item" href="{% url 'saved_places' %}">
-                                <i class="fas fa-bookmark"></i> Сохраненные места
-                            </a>
-                            <a class="dropdown-item" href="{% url 'create_route' %}">
-                                <i class="fas fa-plus"></i> Создать маршрут
-                            </a>
-                            <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="{% url 'logout' %}">
-                                <i class="fas fa-sign-out-alt"></i> Выйти
-                            </a>
-                        </div>
-                    </li>
-                    {% else %}
-                    <!-- Для гостей -->
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'login' %}active{% endif %}" 
-                           href="{% url 'login' %}">
-                            <i class="fas fa-sign-in-alt"></i> Войти
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.resolver_match.url_name == 'register' %}active{% endif %}" 
-                           href="{% url 'register' %}">
-                            <i class="fas fa-user-plus"></i> Регистрация
-                        </a>
-                    </li>
-                    {% endif %}
-                </ul>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Уведомления -->
-    <div id="notifications" class="notifications-container"></div>
-
-    <!-- ОСНОВНОЙ КОНТЕНТ -->
-    <div class="page-wrapper">
-        <main>
-            <div class="page-content {% block content_class %}min-content-height{% endblock %}">
-                {% if messages %}
-                <div class="container mt-3">
-                    {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                    {% endfor %}
+          {% if user.is_authenticated %}
+          <li class="nav-item dropdown" id="friendsDropdown" style="margin-left: 10px;">
+            <a class="nav-link dropdown-toggle"
+            href="#"
+            onclick="toggleDropdown('friendsMenu'); return false;">
+              <i class="fas fa-users"></i>
+              {% if pending_requests_count %}
+              <span class="badge bg-danger badge-notification">{{ pending_requests_count }}</span>
+              {% endif %}
+            </a>
+            <div class="custom-dropdown-menu" id="friendsMenu">
+              <h6 class="dropdown-header">{% trans "Friend requests" %}</h6>
+              {% for request in pending_friend_requests %}
+              <div class="dropdown-item">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <strong>{{ request.from_user.username }}</strong>
+                    <small class="text-muted d-block">{% blocktrans with time=request.created_at|timesince %}{{ time }} ago{% endblocktrans %}</small>
+                  </div>
+                  <div class="btn-group btn-group-sm">
+                    <form method="post" action="{% url 'accept_friend_request' request.id %}" style="display: inline;">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-check"></i></button>
+                    </form>
+                    <form method="post" action="{% url 'reject_friend_request' request.id %}" style="display: inline;">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-times"></i></button>
+                    </form>
+                  </div>
                 </div>
-                {% endif %}
-
-                {% block content %}
-                {% endblock %}
+              </div>
+              {% empty %}
+              <div class="dropdown-item text-muted">{% trans "No new requests" %}</div>
+              {% endfor %}
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" href="{% url 'friends' %}"><i class="fas fa-list"></i> {% trans "All friends" %}</a>
+              <a class="dropdown-item" href="{% url 'find_friends' %}"><i class="fas fa-user-plus"></i> {% trans "Find friends" %}</a>
             </div>
-        </main>
+          </li>
 
-        <!-- ФУТЕР -->
-        {% block footer %}
-        <footer class="footer py-2">
-            <div class="container">
-                <div class="footer-content">
-                    <!-- Фраза по центру -->
-                    <div class="text-center mb-1">
-                        <p class="footer-quote mb-0">
-                            Путешествуйте. Оно того стоит
-                        </p>
-                    </div>
-                    
-                    <div class="row align-items-center">
-                        <div class="col-md-6">
-                            <h5 class="footer-logo mb-1"><i class="fas fa-route"></i> Waylines</h5>
-                            <p class="footer-description mb-0">Платформа для создания и обмена маршрутами</p>
-                        </div>
-                        <div class="col-md-6 text-md-end">
-                            <p class="footer-copyright mb-0">&copy; 2025 Waylines</p>
-                        </div>
-                    </div>
-                </div>
+          <li class="nav-item dropdown" id="profileDropdown">
+            <a class="nav-link dropdown-toggle"
+            href="#"
+            onclick="toggleDropdown('profileMenu'); return false;">
+              <i class="fas fa-user"></i> {{ user.username|truncatechars:12 }}
+            </a>
+            <div class="custom-dropdown-menu" id="profileMenu">
+              <a class="dropdown-item" href="{% url 'profile' %}"><i class="fas fa-user-circle"></i> {% trans "Profile" %}</a>
+              <a class="dropdown-item" href="{% url 'create_route' %}"><i class="fas fa-plus"></i> {% trans "Create route" %}</a>
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" href="{% url 'logout' %}"><i class="fas fa-sign-out-alt"></i> {% trans "Log out" %}</a>
             </div>
-        </footer>
-        {% endblock %}
+          </li>
+          {% else %}
+          <li class="nav-item">
+            <a class="nav-link{% if request.resolver_match.url_name == 'login' %} active{% endif %}" href="{% url 'login' %}">
+              <i class="fas fa-sign-in-alt"></i> {% trans "Log in" %}
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link{% if request.resolver_match.url_name == 'register' %} active{% endif %}" href="{% url 'register' %}">
+              <i class="fas fa-user-plus"></i> {% trans "Register" %}
+            </a>
+          </li>
+          {% endif %}
+        </ul>
+      </div>
     </div>
+  </nav>
 
-    <!-- SCRIPTS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <div id="notifications" class="notifications-container"></div>
 
-    <!-- Firebase -->
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyDwAp4Qe5kIlOSewu7FLMj7IHDi4ofQI7E",
-            authDomain: "project-e123e.firebaseapp.com",
-            databaseURL: "https://project-e123e-default-rtdb.firebaseio.com",
-            projectId: "project-e123e",
-            storageBucket: "project-e123e.firebasestorage.app",
-            messagingSenderId: "849440145534",
-            appId: "1:849440145534:web:9873b2bc94bf0db959982f",
-            measurementId: "G-WG5K1M2D1V"
-        };
-        firebase.initializeApp(firebaseConfig);
-        console.log('✅ Firebase инициализирован!');
-    </script>
+  <div class="page-wrapper">
+    <main>
+      <div class="page-content">
+        {% if messages %}
+        <div class="container mt-3">
+          {% for message in messages %}
+          <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
 
-    <!-- Утилиты -->
-    <script>
-        window.WAYLINES = {
-            currentUserId: {{ request.user.id|default:0 }},
-            currentUsername: "{{ request.user.username|default:'Anonymous'|escapejs }}",
-            csrfToken: "{{ csrf_token }}",
-            currentPath: window.location.pathname
-        };
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+  </div>
 
-        // Уведомления
-        function showNotification(message, type = 'info') {
-            const notifications = document.getElementById('notifications');
-            const notificationId = 'notification-' + Date.now();
-            const notification = document.createElement('div');
-            notification.id = notificationId;
-            notification.className = `notification notification-${type}`;
-            notification.innerHTML = `
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-info-circle me-2"></i>
-                    <div class="flex-grow-1">${message}</div>
-                    <button type="button" class="btn-close btn-sm" onclick="closeNotification('${notificationId}')"></button>
-                </div>
-            `;
-            notifications.appendChild(notification);
-            setTimeout(() => notification.classList.add('show'), 10);
-            setTimeout(() => closeNotification(notificationId), 4000);
-        }
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-brand">
+          <h5 class="footer-logo">
+            <i class="fas fa-route"></i>
+            <span>Waylines</span>
+          </h5>
+          <p class="footer-description">{% trans "Platform for creating and sharing routes" %}</p>
+        </div>
+        <div class="footer-copyright">
+          &copy; 2025 Waylines
+        </div>
+      </div>
+    </div>
+  </footer>
 
-        function closeNotification(notificationId) {
-            const notification = document.getElementById(notificationId);
-            if (notification) {
-                notification.classList.remove('show');
-                notification.classList.add('hide');
-                setTimeout(() => notification.remove(), 300);
-            }
-        }
+  <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+  <script src="{% static 'js/leaflet.js' %}"></script>
 
-        function showError(message) { showNotification(message, 'error'); }
-        function showSuccess(message) { showNotification(message, 'success'); }
-        
-        // Работа поиска
-        document.addEventListener('DOMContentLoaded', function() {
-            const searchForm = document.getElementById('searchForm');
-            const searchInput = document.getElementById('searchInput');
-            const searchButton = searchForm ? searchForm.querySelector('.search-button') : null;
-            
-            // Обработчик клика на кнопку поиска
-            if (searchButton) {
-                searchButton.addEventListener('click', function(e) {
-                    if (!searchForm) return;
-                    
-                    if (searchInput.value.trim() === '') {
-                        e.preventDefault();
-                        showNotification('Введите запрос для поиска', 'info');
-                        searchInput.focus();
-                        return false;
-                    }
-                    
-                    // Добавляем небольшую анимацию
-                    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                    setTimeout(() => {
-                        this.innerHTML = '<i class="fas fa-search"></i>';
-                    }, 300);
-                });
-            }
-            
-            // Обработчик отправки формы
-            if (searchForm) {
-                searchForm.addEventListener('submit', function(e) {
-                    if (searchInput.value.trim() === '') {
-                        e.preventDefault();
-                        showNotification('Введите запрос для поиска', 'info');
-                        searchInput.focus();
-                        return false;
-                    }
-                });
-            }
-            
-            // Автофокус на поиск при нажатии Ctrl+K или /
-            document.addEventListener('keydown', function(e) {
-                if ((e.ctrlKey && e.key === 'k') || e.key === '/') {
-                    e.preventDefault();
-                    if (searchInput) {
-                        searchInput.focus();
-                        searchInput.select();
-                    }
-                }
-                
-                // ESC очищает поле
-                if (e.key === 'Escape' && document.activeElement === searchInput) {
-                    if (searchInput.value.trim() !== '') {
-                        searchInput.value = '';
-                        showNotification('Поиск очищен', 'info');
-                    }
-                }
-            });
-            
-            // Отправка формы при Enter
-            if (searchInput) {
-                searchInput.addEventListener('keypress', function(e) {
-                    if (e.key === 'Enter') {
-                        // Форма отправится автоматически благодаря submit кнопке
-                        if (this.value.trim() === '') {
-                            e.preventDefault();
-                            showNotification('Введите запрос для поиска', 'info');
-                        } else {
-                            // Анимация кнопки
-                            if (searchButton) {
-                                searchButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                                setTimeout(() => {
-                                    searchButton.innerHTML = '<i class="fas fa-search"></i>';
-                                }, 300);
-                            }
-                        }
-                    }
-                });
-            }
-            
-            // Обработчик для обычных навигационных ссылок
-            function setupRegularNavLinks() {
-                // Находим все обычные ссылки (не dropdown)
-                const regularNavLinks = document.querySelectorAll('.nav-link:not(.dropdown-toggle)');
-                
-                regularNavLinks.forEach(link => {
-                    link.addEventListener('click', function(e) {
-                        // Проверяем, активна ли ссылка
-                        if (this.classList.contains('active')) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            showNotification('Вы уже находитесь на этой странице', 'info');
-                            return false;
-                        }
-                    });
-                });
-            }
-            
-            // Подсветка активной страницы
-            function highlightActiveNav() {
-                const currentPath = window.location.pathname;
-                
-                // Обычные ссылки
-                const regularNavLinks = document.querySelectorAll('.nav-link:not(.dropdown-toggle)');
-                regularNavLinks.forEach(link => {
-                    const linkPath = link.getAttribute('href');
-                    if (linkPath && linkPath.startsWith('/')) {
-                        const cleanLinkPath = linkPath.replace(/^\/|\/$/g, '');
-                        const cleanCurrentPath = currentPath.replace(/^\/|\/$/g, '');
-                        
-                        if (cleanCurrentPath === cleanLinkPath || 
-                            (cleanLinkPath && cleanCurrentPath.startsWith(cleanLinkPath))) {
-                            link.classList.add('active');
-                        } else {
-                            link.classList.remove('active');
-                        }
-                    }
-                });
-                
-                // Dropdown элементы
-                const dropdowns = document.querySelectorAll('.dropdown-toggle');
-                dropdowns.forEach(dropdown => {
-                    // Для друзей
-                    if (dropdown.id === 'friendsDropdown') {
-                        const friendPaths = ['/friends/', '/find_friends/'];
-                        const isActive = friendPaths.some(path => currentPath.includes(path));
-                        if (isActive) {
-                            dropdown.classList.add('active');
-                        } else {
-                            dropdown.classList.remove('active');
-                        }
-                    }
-                    
-                    // Для профиля
-                    if (dropdown.id === 'profileDropdown') {
-                        const profilePaths = ['/profile/', '/saved_places/', '/create_route/'];
-                        const isActive = profilePaths.some(path => currentPath.includes(path));
-                        if (isActive) {
-                            dropdown.classList.add('active');
-                        } else {
-                            dropdown.classList.remove('active');
-                        }
-                    }
-                });
-            }
-            
-            // Исправляем выравнивание после загрузки
-            function fixNavAlignment() {
-                const navItems = document.querySelectorAll('.nav-item');
-                navItems.forEach(item => {
-                    const link = item.querySelector('.nav-link');
-                    if (link) {
-                        // Гарантируем одинаковую высоту
-                        link.style.display = 'flex';
-                        link.style.alignItems = 'center';
-                        link.style.minHeight = '40px';
-                    }
-                });
-            }
-            
-            // Инициализация
-            highlightActiveNav();
-            fixNavAlignment();
-            setupRegularNavLinks();
-            
-            // Фиксим при ресайзе
-            window.addEventListener('resize', fixNavAlignment);
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDwAp4Qe5kIlOSewu7FLMj7IHDi4ofQI7E",
+      authDomain: "project-e123e.firebaseapp.com",
+      databaseURL: "https://project-e123e-default-rtdb.firebaseio.com",
+      projectId: "project-e123e",
+      storageBucket: "project-e123e.firebasestorage.app",
+      messagingSenderId: "849440145534",
+      appId: "1:849440145534:web:9873b2bc94bf0db959982f",
+      measurementId: "G-WG5K1M2D1V"
+    };
+    firebase.initializeApp(firebaseConfig);
+    console.log('✅ Firebase initialized!');
+  </script>
+
+  <script>
+    window.WAYLINES = {
+      currentUserId: {{ request.user.id|default:0 }},
+      currentUsername: "{{ request.user.username|default:'Anonymous'|escapejs }}",
+      csrfToken: "{{ csrf_token }}",
+    };
+
+    function toggleDropdown(menuId) {
+      const menu = document.getElementById(menuId);
+      document.querySelectorAll('.custom-dropdown-menu').forEach(m => {
+        if (m.id !== menuId) m.classList.remove('show');
+      });
+      menu.classList.toggle('show');
+    }
+
+    document.addEventListener('click', function(e) {
+      const clickedInside = Array.from(document.querySelectorAll('.nav-link.dropdown-toggle, .custom-dropdown-menu'))
+        .some(el => el.contains(e.target));
+      if (!clickedInside) {
+        document.querySelectorAll('.custom-dropdown-menu').forEach(m => m.classList.remove('show'));
+      }
+    });
+
+    function showNotification(message, type = 'info') {
+      const container = document.getElementById('notifications');
+      if (!container) return;
+      const id = 'notif-' + Date.now();
+      const el = document.createElement('div');
+      el.id = id;
+      el.className = `notification notification-${type}`;
+      el.innerHTML = `
+        <div class="d-flex align-items-center">
+          <i class="fas fa-info-circle me-2"></i>
+          <div>${message}</div>
+          <button type="button" class="btn-close btn-sm ms-2" onclick="document.getElementById('${id}').remove()"></button>
+        </div>
+      `;
+      container.appendChild(el);
+      setTimeout(() => el.classList.add('show'), 10);
+      setTimeout(() => {
+        el.classList.remove('show');
+        setTimeout(() => el.remove(), 300);
+      }, 4000);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      const searchInput = document.getElementById('searchInput');
+      const searchForm = document.getElementById('searchForm');
+
+      if (searchForm) {
+        searchForm.addEventListener('submit', function(e) {
+          if (!searchInput.value.trim()) {
+            e.preventDefault();
+            showNotification("{% trans 'Enter a search query' %}");
+            searchInput.focus();
+          }
         });
-    </script>
+      }
 
-    {% block extra_js %}{% endblock %}
+      document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey && e.key === 'k') || e.key === '/') {
+          e.preventDefault();
+          if (searchInput) {
+            searchInput.focus();
+            searchInput.select();
+          }
+        }
+      });
+    });
+  </script>
+
+  {% block extra_js %}{% endblock %}
 </body>
 </html>
