@@ -1,6 +1,6 @@
 # Project: Waylines: a platform for author routes
 
-[![Lint • Tests](https://gitlab.crja72.ru/django/2025/autumn/course/projects/team-2/badges/master/pipeline.svg?key_text=Lint%20%7C%20Tests&key_width=160)](https://gitlab.crja72.ru/django/2025/autumn/course/projects/team-2/pipelines)
+[![Lint • Tests](https://gitlab.crja72.ru/django/2025/autumn/course/projects/team-2/badges/master/pipeline.svg?key_text=Lint%20%7C%20Tests&key_width=110)](https://gitlab.crja72.ru/django/2025/autumn/course/projects/team-2/pipelines)
 
 
 ## Development Mode Installation

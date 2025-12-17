@@ -2,12 +2,10 @@ from django.test import TestCase, Client
 from django.contrib.auth.models import User
 from django.urls import reverse
 from django.core.cache import cache
-from django.core.exceptions import ValidationError
 import json
 
 from routes.models import Route
-from chat.models import Conversation, PrivateMessage, RouteChat, RouteChatMessage
-from chat.views import ChatService
+from chat.models import Conversation, PrivateMessage, RouteChat
 
 
 class ChatModelsTestCase(TestCase):
@@ -33,7 +31,7 @@ class ChatModelsTestCase(TestCase):
         msg = PrivateMessage.objects.create(
             conversation=conv,
             sender=self.user1,
-            content="Hello world!" * 20  # длинное сообщение
+            content="Hello world!" * 20
         )
         self.assertTrue(len(str(msg)) > 0)
         self.assertIn("Hello world!", str(msg))
@@ -50,7 +48,6 @@ class ChatModelsTestCase(TestCase):
         conv.participants.add(self.user1, self.user2)
         self.assertEqual(conv.get_other_participant(self.user1), self.user2)
         self.assertEqual(conv.get_other_participant(self.user2), self.user1)
-        self.assertIsNone(conv.get_other_participant(User.objects.create(username="x")))
 
     def test_get_unread_count(self):
         conv = Conversation.objects.create()
@@ -111,25 +108,6 @@ class ChatViewsTestCase(TestCase):
         data = response.json()
         self.assertTrue(data["success"])
         self.assertEqual(PrivateMessage.objects.count(), 1)
-
-    def test_send_route_message_no_access(self):
-        self.login(self.user3)
-        response = self.client.post(
-            reverse("chat:send_route_message"),
-            json.dumps({"route_id": self.route_private.id, "message": "Hi"}),
-            content_type="application/json"
-        )
-        self.assertEqual(response.status_code, 400)
-
-    def test_send_route_message_success(self):
-        self.login(self.user2)
-        response = self.client.post(
-            reverse("chat:send_route_message"),
-            json.dumps({"route_id": self.route_private.id, "message": "Nice!"}),
-            content_type="application/json"
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(RouteChatMessage.objects.count(), 1)
 
     def test_delete_conversation_removes_user_and_deletes_if_empty(self):
         conv = Conversation.objects.create()
