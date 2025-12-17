@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User
 from django.db import models
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from routes.models import Route
@@ -48,8 +49,12 @@ class Rating(models.Model):
     score = models.PositiveIntegerField(
         choices=[(i, str(i)) for i in range(1, 6)], verbose_name=_("Score")
     )
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Created at"))
-    updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Updated at"))
+    created_at = models.DateTimeField(
+        auto_now_add=True, verbose_name=_("Created at")
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True, verbose_name=_("Updated at")
+    )
 
     class Meta:
         unique_together = ("user", "route")
@@ -74,8 +79,12 @@ class Comment(models.Model):
         verbose_name=_("Route"),
     )
     text = models.TextField(verbose_name=_("Comment text"))
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Created at"))
-    updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Updated at"))
+    created_at = models.DateTimeField(
+        auto_now_add=True, verbose_name=_("Created at")
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True, verbose_name=_("Updated at")
+    )
 
     class Meta:
         verbose_name = _("Comment")
@@ -90,51 +99,44 @@ class RouteShare(models.Model):
     sender = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='sent_route_shares',
-        verbose_name=_("Sender")
+        related_name="sent_route_shares",
+        verbose_name=_("Sender"),
     )
     recipient = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='received_route_shares',
-        verbose_name=_("Recipient")
+        related_name="received_route_shares",
+        verbose_name=_("Recipient"),
     )
     route = models.ForeignKey(
         Route,
         on_delete=models.CASCADE,
-        related_name='shares',
-        verbose_name=_("Route")
+        related_name="shares",
+        verbose_name=_("Route"),
     )
     message = models.TextField(
         _("Message"),
         blank=True,
         null=True,
-        help_text=_("Optional message for recipient")
+        help_text=_("Optional message for recipient"),
     )
-    sent_at = models.DateTimeField(
-        _("Sent at"),
-        auto_now_add=True
-    )
-    is_read = models.BooleanField(
-        _("Is read"),
-        default=False
-    )
-    read_at = models.DateTimeField(
-        _("Read at"),
-        null=True,
-        blank=True
-    )
+    sent_at = models.DateTimeField(_("Sent at"), auto_now_add=True)
+    is_read = models.BooleanField(_("Is read"), default=False)
+    read_at = models.DateTimeField(_("Read at"), null=True, blank=True)
 
     class Meta:
         verbose_name = _("Route share")
         verbose_name_plural = _("Route shares")
-        ordering = ['-sent_at']
-        unique_together = ['sender', 'recipient', 'route']
+        ordering = ["-sent_at"]
+        unique_together = ["sender", "recipient", "route"]
 
     def __str__(self):
-        return f"{self.sender.username} → {self.recipient.username}: {self.route.name}"
+        return (
+            f"{self.sender.username} →"
+            f" {self.recipient.username}: {self.route.name}"
+        )
 
     def mark_as_read(self):
         self.is_read = True
         self.read_at = timezone.now()
-        self.save(update_fields=['is_read', 'read_at'])
+        self.save(update_fields=["is_read", "read_at"])

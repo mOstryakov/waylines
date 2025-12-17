@@ -1,9 +1,9 @@
-__all__ = ()
-
-import json
-import os
-from django.core.files.base import ContentFile
 import base64
+import json
+from pathlib import Path
+import os
+
+from django.core.files.base import ContentFile
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
@@ -17,8 +17,6 @@ from django.utils import timezone
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
-from pathlib import Path
-from django.core.files.base import ContentFile
 
 from routes.models import (
     Route,
@@ -26,6 +24,10 @@ from routes.models import (
     RoutePhoto,
     PointPhoto,
     User,
+    RouteRating,
+    RouteFavorite,
+    RouteComment,
+    PointComment,
 )
 from users.models import Friendship
 from interactions.models import Favorite, Rating, Comment
@@ -41,14 +43,24 @@ def home(request):
         .distinct()
         .count()
     )
-    walking_count = Route.objects.filter(route_type="walking", is_active=True).count()
-    driving_count = Route.objects.filter(route_type="driving", is_active=True).count()
-    cycling_count = Route.objects.filter(route_type="cycling", is_active=True).count()
-    popular_routes = Route.objects.filter(is_active=True).order_by("-created_at")[:6]
+    walking_count = Route.objects.filter(
+        route_type="walking", is_active=True
+    ).count()
+    driving_count = Route.objects.filter(
+        route_type="driving", is_active=True
+    ).count()
+    cycling_count = Route.objects.filter(
+        route_type="cycling", is_active=True
+    ).count()
+    popular_routes = Route.objects.filter(is_active=True).order_by(
+        "-created_at"
+    )[:6]
 
     user_favorites_ids = []
     if request.user.is_authenticated:
-        user_favorites_ids = Favorite.objects.filter(user=request.user).values_list("route_id", flat=True)
+        user_favorites_ids = Favorite.objects.filter(
+            user=request.user
+        ).values_list("route_id", flat=True)
 
     context = {
         "popular_routes": popular_routes,
@@ -68,7 +80,9 @@ def all_routes(request):
     search_query = request.GET.get("q", "")
     sort_by = request.GET.get("sort", "newest")
 
-    routes = Route.objects.filter(privacy="public", is_active=True).prefetch_related('photos')
+    routes = Route.objects.filter(
+        privacy="public", is_active=True
+    ).prefetch_related("photos")
 
     if route_type:
         routes = routes.filter(route_type=route_type)
@@ -84,7 +98,7 @@ def all_routes(request):
     routes = routes.annotate(
         avg_rating=Avg("ratings__rating"),
         rating_count=Count("ratings"),
-        favorites_count=Count("favorites")
+        favorites_count=Count("favorites"),
     )
 
     if sort_by == "popular":
@@ -100,7 +114,9 @@ def all_routes(request):
 
     user_favorites_ids = []
     if request.user.is_authenticated:
-        user_favorites_ids = Favorite.objects.filter(user=request.user).values_list("route_id", flat=True)
+        user_favorites_ids = Favorite.objects.filter(
+            user=request.user
+        ).values_list("route_id", flat=True)
 
     context = {
         "page_obj": page_obj,
@@ -109,11 +125,7 @@ def all_routes(request):
         "search_query": search_query,
         "selected_type": route_type,
         "user_favorites_ids": list(user_favorites_ids),
-        "get_params": {
-            "q": search_query,
-            "type": route_type,
-            "sort": sort_by
-        }
+        "get_params": {"q": search_query, "type": route_type, "sort": sort_by},
     }
 
     if request.user.is_authenticated:
@@ -129,10 +141,11 @@ def all_routes(request):
 
 @login_required
 def my_routes(request):
-    user_routes = Route.objects.filter(author=request.user).prefetch_related('photos')
+    user_routes = Route.objects.filter(author=request.user).prefetch_related(
+        "photos"
+    )
     user_routes = user_routes.annotate(
-        rating=Avg("ratings__rating"),
-        rating_count=Count("ratings")
+        rating=Avg("ratings__rating"), rating_count=Count("ratings")
     ).order_by("-created_at")
 
     active_routes = user_routes.filter(is_active=True)
@@ -141,17 +154,24 @@ def my_routes(request):
     user_favorites_ids = []
     favorite_routes_list = []
     if request.user.is_authenticated:
-        user_favorites_ids = Favorite.objects.filter(user=request.user).values_list("route_id", flat=True)
-        favorites = Favorite.objects.filter(user=request.user).select_related('route').order_by('-created_at')
+        user_favorites_ids = Favorite.objects.filter(
+            user=request.user
+        ).values_list("route_id", flat=True)
+        favorites = (
+            Favorite.objects.filter(user=request.user)
+            .select_related("route")
+            .order_by("-created_at")
+        )
         for fav in favorites:
             if fav.route.is_active:
                 favorite_routes_list.append(fav.route)
 
-        favorite_routes = Route.objects.filter(
-            id__in=[r.id for r in favorite_routes_list]
-        ).prefetch_related('photos').annotate(
-            rating=Avg("ratings__rating"),
-            rating_count=Count("ratings")
+        favorite_routes = (
+            Route.objects.filter(id__in=[r.id for r in favorite_routes_list])
+            .prefetch_related("photos")
+            .annotate(
+                rating=Avg("ratings__rating"), rating_count=Count("ratings")
+            )
         )
     else:
         favorite_routes = []
@@ -176,31 +196,40 @@ def my_routes(request):
             to_user=request.user, status="pending"
         ).count()
 
-    return render(request, 'routes/my_routes.html', context)
+    return render(request, "routes/my_routes.html", context)
 
 
 @login_required
 def shared_routes(request):
-    routes = Route.objects.filter(
-        Q(shared_with=request.user) | Q(privacy="link"),
-        is_active=True
-    ).exclude(author=request.user).prefetch_related('photos').distinct()
+    routes = (
+        Route.objects.filter(
+            Q(shared_with=request.user) | Q(privacy="link"), is_active=True
+        )
+        .exclude(author=request.user)
+        .prefetch_related("photos")
+        .distinct()
+    )
 
     user_favorites_ids = []
     if request.user.is_authenticated:
-        user_favorites_ids = Favorite.objects.filter(user=request.user).values_list("route_id", flat=True)
+        user_favorites_ids = Favorite.objects.filter(
+            user=request.user
+        ).values_list("route_id", flat=True)
 
     routes = routes.annotate(
-        rating=Avg("ratings__rating"),
-        rating_count=Count("ratings")
+        rating=Avg("ratings__rating"), rating_count=Count("ratings")
     ).order_by("-created_at")
 
-    shared_count = Route.objects.filter(
-        shared_with=request.user, is_active=True
-    ).exclude(author=request.user).count()
-    link_count = Route.objects.filter(
-        privacy="link", is_active=True
-    ).exclude(author=request.user).count()
+    shared_count = (
+        Route.objects.filter(shared_with=request.user, is_active=True)
+        .exclude(author=request.user)
+        .count()
+    )
+    link_count = (
+        Route.objects.filter(privacy="link", is_active=True)
+        .exclude(author=request.user)
+        .count()
+    )
 
     context = {
         "routes": routes,
@@ -222,23 +251,34 @@ def shared_routes(request):
 
 def route_detail(request, route_id):
     route = get_object_or_404(
-        Route.objects.select_related('author').prefetch_related('photos', 'shared_with'),
-        id=route_id
+        Route.objects.select_related("author").prefetch_related(
+            "photos", "shared_with"
+        ),
+        id=route_id,
     )
 
     if not can_view_route(request.user, route):
         messages.error(request, _("You do not have access to this route."))
         return redirect("home")
 
-    points = RoutePoint.objects.filter(route=route).prefetch_related('photos').order_by('order')
+    points = (
+        RoutePoint.objects.filter(route=route)
+        .prefetch_related("photos")
+        .order_by("order")
+    )
     route_photos = route.photos.all().order_by("order")
-    comments = Comment.objects.filter(route=route).select_related('user').order_by('-created_at')[:10]
+    comments = (
+        Comment.objects.filter(route=route)
+        .select_related("user")
+        .order_by("-created_at")[:10]
+    )
     ratings = Rating.objects.filter(route=route)
 
     full_audio_guide = None
     points_with_audio = []
     try:
         from ai_audio.models import RouteAudioGuide
+
         full_audio_guide = RouteAudioGuide.objects.filter(route=route).first()
         for point in points:
             if point.audio_guide:
@@ -257,13 +297,17 @@ def route_detail(request, route_id):
     user_favorites_ids = []
     is_favorite = False
     if request.user.is_authenticated:
-        user_favorites_ids = Favorite.objects.filter(user=request.user).values_list("route_id", flat=True)
+        user_favorites_ids = Favorite.objects.filter(
+            user=request.user
+        ).values_list("route_id", flat=True)
         is_favorite = route.id in user_favorites_ids
 
     user_rating = None
     if request.user.is_authenticated:
         try:
-            user_rating = Rating.objects.get(user=request.user, route=route).score
+            user_rating = Rating.objects.get(
+                user=request.user, route=route
+            ).score
         except Rating.DoesNotExist:
             pass
 
@@ -287,7 +331,9 @@ def route_detail(request, route_id):
     }
 
     if request.user.is_authenticated:
-        pending_friend_requests = Friendship.objects.filter(to_user=request.user, status="pending")
+        pending_friend_requests = Friendship.objects.filter(
+            to_user=request.user, status="pending"
+        )
         context["pending_friend_requests"] = pending_friend_requests[:5]
         context["pending_requests_count"] = pending_friend_requests.count()
 
@@ -299,39 +345,50 @@ def route_detail(request, route_id):
 def send_to_friend(request, route_id):
     route = get_object_or_404(Route, id=route_id)
     if route.author != request.user and not request.user.is_staff:
-        return JsonResponse({
-            "success": False,
-            "error": _("You do not have permission to send this route.")
-        })
+        return JsonResponse(
+            {
+                "success": False,
+                "error": _("You do not have permission to send this route."),
+            }
+        )
 
     try:
         data = json.loads(request.body)
         friend_id = data.get("friend_id")
-        message = data.get("message", "")
         if not friend_id:
-            return JsonResponse({"success": False, "error": _("Friend not selected.")})
+            return JsonResponse(
+                {"success": False, "error": _("Friend not selected.")}
+            )
 
         try:
             friend = User.objects.get(id=friend_id)
             friendship = Friendship.objects.filter(
-                (Q(from_user=request.user, to_user=friend) | Q(from_user=friend, to_user=request.user)),
+                (
+                    Q(from_user=request.user, to_user=friend)
+                    | Q(from_user=friend, to_user=request.user)
+                ),
                 status="accepted",
             ).first()
             if not friendship:
-                return JsonResponse({
-                    "success": False,
-                    "error": _("The user is not your friend.")
-                })
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "error": _("The user is not your friend."),
+                    }
+                )
 
             route.shared_with.add(friend)
             route.save()
 
             try:
                 from notifications.models import Notification
+
                 Notification.objects.create(
                     user=friend,
                     title=_("A route has been shared with you"),
-                    message=_('{} has shared the route "{}" with you.').format(request.user.username, route.name),
+                    message=_('{} has shared the route "{}" with you.').format(
+                        request.user.username, route.name
+                    ),
                     notification_type="route_shared",
                     related_object_id=route.id,
                     related_object_type="route",
@@ -340,16 +397,26 @@ def send_to_friend(request, route_id):
                 pass
 
             friend_name = friend.first_name or friend.username
-            return JsonResponse({
-                "success": True,
-                "message": _('Route "{}" has been sent to friend {}').format(route.name, friend_name)
-            })
+            return JsonResponse(
+                {
+                    "success": True,
+                    "message": _(
+                        'Route "{}" has been sent to friend {}'
+                    ).format(route.name, friend_name),
+                }
+            )
         except User.DoesNotExist:
-            return JsonResponse({"success": False, "error": _("Friend not found.")})
+            return JsonResponse(
+                {"success": False, "error": _("Friend not found.")}
+            )
     except json.JSONDecodeError:
-        return JsonResponse({"success": False, "error": _("Invalid data format.")})
+        return JsonResponse(
+            {"success": False, "error": _("Invalid data format.")}
+        )
     except Exception as e:
-        return JsonResponse({"success": False, "error": f"Error sending: {str(e)}"})
+        return JsonResponse(
+            {"success": False, "error": f"Error sending: {str(e)}"}
+        )
 
 
 @login_required
@@ -358,9 +425,16 @@ def create_route(request):
         try:
             data = json.loads(request.body)
             if not data.get("name"):
-                return JsonResponse({"success": False, "error": _("Route name is required.")})
+                return JsonResponse(
+                    {"success": False, "error": _("Route name is required.")}
+                )
             if not data.get("waypoints"):
-                return JsonResponse({"success": False, "error": _("Add at least one route point.")})
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "error": _("Add at least one route point."),
+                    }
+                )
 
             route = Route.objects.create(
                 author=request.user,
@@ -380,17 +454,25 @@ def create_route(request):
                 if not photo_data:
                     continue
                 if isinstance(photo_data, dict):
-                    url = photo_data.get('url', '')
-                    caption = photo_data.get('caption', '')
-                    if url.startswith('data:'):
-                        save_base64_photo(url, route, RoutePhoto, order=i, caption=caption)
-                    elif url.startswith(('/uploads/', '/media/')):
-                        copy_existing_photo(url, route, RoutePhoto, order=i, caption=caption)
+                    url = photo_data.get("url", "")
+                    caption = photo_data.get("caption", "")
+                    if url.startswith("data:"):
+                        save_base64_photo(
+                            url, route, RoutePhoto, order=i, caption=caption
+                        )
+                    elif url.startswith(("/uploads/", "/media/")):
+                        copy_existing_photo(
+                            url, route, RoutePhoto, order=i, caption=caption
+                        )
                 elif isinstance(photo_data, str):
-                    if photo_data.startswith('data:'):
-                        save_base64_photo(photo_data, route, RoutePhoto, order=i)
-                    elif photo_data.startswith(('/uploads/', '/media/')):
-                        copy_existing_photo(photo_data, route, RoutePhoto, order=i)
+                    if photo_data.startswith("data:"):
+                        save_base64_photo(
+                            photo_data, route, RoutePhoto, order=i
+                        )
+                    elif photo_data.startswith(("/uploads/", "/media/")):
+                        copy_existing_photo(
+                            photo_data, route, RoutePhoto, order=i
+                        )
 
             points_data = data.get("waypoints", [])
             for i, point_data in enumerate(points_data):
@@ -410,27 +492,51 @@ def create_route(request):
                     if not photo_data:
                         continue
                     if isinstance(photo_data, dict):
-                        url = photo_data.get('url', '')
-                        caption = photo_data.get('caption', '')
-                        if url.startswith('data:'):
-                            save_base64_photo(url, point, PointPhoto, order=j, caption=caption)
-                        elif url.startswith(('/uploads/', '/media/')):
-                            copy_existing_photo(url, point, PointPhoto, order=j, caption=caption)
+                        url = photo_data.get("url", "")
+                        caption = photo_data.get("caption", "")
+                        if url.startswith("data:"):
+                            save_base64_photo(
+                                url,
+                                point,
+                                PointPhoto,
+                                order=j,
+                                caption=caption,
+                            )
+                        elif url.startswith(("/uploads/", "/media/")):
+                            copy_existing_photo(
+                                url,
+                                point,
+                                PointPhoto,
+                                order=j,
+                                caption=caption,
+                            )
                     elif isinstance(photo_data, str):
-                        if photo_data.startswith('data:'):
-                            save_base64_photo(photo_data, point, PointPhoto, order=j)
-                        elif photo_data.startswith(('/uploads/', '/media/')):
-                            copy_existing_photo(photo_data, point, PointPhoto, order=j)
+                        if photo_data.startswith("data:"):
+                            save_base64_photo(
+                                photo_data, point, PointPhoto, order=j
+                            )
+                        elif photo_data.startswith(("/uploads/", "/media/")):
+                            copy_existing_photo(
+                                photo_data, point, PointPhoto, order=j
+                            )
 
             return JsonResponse({"success": True, "route_id": route.id})
         except json.JSONDecodeError:
-            return JsonResponse({"success": False, "error": _("Invalid JSON format.")})
+            return JsonResponse(
+                {"success": False, "error": _("Invalid JSON format.")}
+            )
         except Exception as e:
-            return JsonResponse({"success": False, "error": f"Server error: {str(e)}"})
+            return JsonResponse(
+                {"success": False, "error": f"Server error: {str(e)}"}
+            )
 
     context = {
-        "pending_friend_requests": Friendship.objects.filter(to_user=request.user, status="pending")[:5],
-        "pending_requests_count": Friendship.objects.filter(to_user=request.user, status="pending").count(),
+        "pending_friend_requests": Friendship.objects.filter(
+            to_user=request.user, status="pending"
+        )[:5],
+        "pending_requests_count": Friendship.objects.filter(
+            to_user=request.user, status="pending"
+        ).count(),
     }
     return render(request, "routes/route_editor.html", context)
 
@@ -442,15 +548,27 @@ def edit_route(request, route_id):
             data = json.loads(request.body)
             route.name = data.get("name", route.name)
             route.description = data.get("description", route.description)
-            route.short_description = data.get("short_description", route.short_description)
+            route.short_description = data.get(
+                "short_description", route.short_description
+            )
             route.privacy = data.get("privacy", route.privacy)
             route.route_type = data.get("route_type", route.route_type)
-            route.duration_minutes = data.get("duration_minutes", route.duration_minutes)
-            route.total_distance = data.get("total_distance", route.total_distance)
-            route.has_audio_guide = data.get("has_audio_guide", route.has_audio_guide)
-            route.is_elderly_friendly = data.get("is_elderly_friendly", route.is_elderly_friendly)
+            route.duration_minutes = data.get(
+                "duration_minutes", route.duration_minutes
+            )
+            route.total_distance = data.get(
+                "total_distance", route.total_distance
+            )
+            route.has_audio_guide = data.get(
+                "has_audio_guide", route.has_audio_guide
+            )
+            route.is_elderly_friendly = data.get(
+                "is_elderly_friendly", route.is_elderly_friendly
+            )
             route.is_active = data.get("is_active", route.is_active)
-            route.duration_display = data.get("duration_display", route.duration_display)
+            route.duration_display = data.get(
+                "duration_display", route.duration_display
+            )
             route.save()
 
             removed_photo_ids = data.get("removed_photo_ids", [])
@@ -467,12 +585,16 @@ def edit_route(request, route_id):
                 point_id = point_data.get("id")
                 if point_id:
                     try:
-                        point = RoutePoint.objects.get(id=point_id, route=route)
+                        point = RoutePoint.objects.get(
+                            id=point_id, route=route
+                        )
                         point.name = point_data.get("name", f"Point {i+1}")
                         point.description = point_data.get("description", "")
                         point.address = point_data.get("address", "")
                         point.latitude = point_data.get("lat", point.latitude)
-                        point.longitude = point_data.get("lng", point.longitude)
+                        point.longitude = point_data.get(
+                            "lng", point.longitude
+                        )
                         point.category = point_data.get("category", "")
                         point.order = i
                         point.save()
@@ -502,7 +624,9 @@ def edit_route(request, route_id):
                     )
                     incoming_point_ids.append(point.id)
 
-            RoutePoint.objects.filter(route=route).exclude(id__in=incoming_point_ids).delete()
+            RoutePoint.objects.filter(route=route).exclude(
+                id__in=incoming_point_ids
+            ).delete()
 
             for point_data in points_data:
                 point_id = point_data.get("id")
@@ -514,17 +638,31 @@ def edit_route(request, route_id):
                     continue
 
                 point_photos_data = point_data.get("photos")
-                if point_photos_data is not None and isinstance(point_photos_data, list):
-                    existing_photos = {p.image.url: p for p in point.photos.all() if p.image}
+                if point_photos_data is not None and isinstance(
+                    point_photos_data, list
+                ):
+                    existing_photos = {
+                        p.image.url: p for p in point.photos.all() if p.image
+                    }
                     incoming_photo_urls = set()
                     for photo_data in point_photos_data:
-                        url = photo_data.get('url', '') if isinstance(photo_data, dict) else str(photo_data)
-                        if url.startswith(('/media/', '/uploads/')):
+                        url = (
+                            photo_data.get("url", "")
+                            if isinstance(photo_data, dict)
+                            else str(photo_data)
+                        )
+                        if url.startswith(("/media/", "/uploads/")):
                             incoming_photo_urls.add(url)
 
-                    photos_to_delete = [p.id for url, p in existing_photos.items() if url not in incoming_photo_urls]
+                    photos_to_delete = [
+                        p.id
+                        for url, p in existing_photos.items()
+                        if url not in incoming_photo_urls
+                    ]
                     if photos_to_delete:
-                        PointPhoto.objects.filter(id__in=photos_to_delete).delete()
+                        PointPhoto.objects.filter(
+                            id__in=photos_to_delete
+                        ).delete()
 
                     for j, photo_data in enumerate(point_photos_data):
                         if not photo_data:
@@ -537,11 +675,25 @@ def edit_route(request, route_id):
                             caption = ""
 
                         if photo_url.startswith("data:"):
-                            save_base64_photo(photo_url, point, PointPhoto, order=j, caption=caption)
+                            save_base64_photo(
+                                photo_url,
+                                point,
+                                PointPhoto,
+                                order=j,
+                                caption=caption,
+                            )
                         elif photo_url.startswith(("/media/", "/uploads/")):
-                            existing = point.photos.filter(image__url=photo_url).first()
+                            existing = point.photos.filter(
+                                image__url=photo_url
+                            ).first()
                             if not existing:
-                                copy_existing_photo(photo_url, point, PointPhoto, order=j, caption=caption)
+                                copy_existing_photo(
+                                    photo_url,
+                                    point,
+                                    PointPhoto,
+                                    order=j,
+                                    caption=caption,
+                                )
                             else:
                                 existing.order = j
                                 if caption:
@@ -568,18 +720,22 @@ def edit_route(request, route_id):
         "is_active": route.is_active,
         "duration_display": route.duration_display,
         "route_photos": [],
-        "points": []
+        "points": [],
     }
 
     for photo in route.photos.all().order_by("order"):
-        route_data["route_photos"].append({
-            "id": photo.id,
-            "url": photo.image.url if photo.image else "",
-            "caption": photo.caption or "",
-            "order": photo.order
-        })
+        route_data["route_photos"].append(
+            {
+                "id": photo.id,
+                "url": photo.image.url if photo.image else "",
+                "caption": photo.caption or "",
+                "order": photo.order,
+            }
+        )
 
-    for point in route.points.prefetch_related('photos').all().order_by("order"):
+    for point in (
+        route.points.prefetch_related("photos").all().order_by("order")
+    ):
         point_data = {
             "id": point.id,
             "name": point.name,
@@ -588,29 +744,41 @@ def edit_route(request, route_id):
             "lat": float(point.latitude) if point.latitude else 0,
             "lng": float(point.longitude) if point.longitude else 0,
             "category": point.category or "",
-            "photos": []
+            "photos": [],
         }
         for photo in point.photos.all().order_by("order"):
-            point_data["photos"].append({
-                "id": photo.id,
-                "url": photo.image.url if photo.image else "",
-                "caption": photo.caption or "",
-                "order": photo.order
-            })
+            point_data["photos"].append(
+                {
+                    "id": photo.id,
+                    "url": photo.image.url if photo.image else "",
+                    "caption": photo.caption or "",
+                    "order": photo.order,
+                }
+            )
         route_data["points"].append(point_data)
 
     context = {
         "route": route,
         "route_data_json": json.dumps(route_data),
-        "pending_friend_requests": Friendship.objects.filter(to_user=request.user, status="pending")[:5],
-        "pending_requests_count": Friendship.objects.filter(to_user=request.user, status="pending").count(),
+        "pending_friend_requests": Friendship.objects.filter(
+            to_user=request.user, status="pending"
+        )[:5],
+        "pending_requests_count": Friendship.objects.filter(
+            to_user=request.user, status="pending"
+        ).count(),
     }
     return render(request, "routes/route_editor.html", context)
 
 
-def save_base64_photo(photo_data, parent_obj, photo_model, order=0, caption=""):
+def save_base64_photo(
+    photo_data, parent_obj, photo_model, order=0, caption=""
+):
     try:
-        if not isinstance(photo_data, str) or not photo_data.startswith("data:") or ";base64," not in photo_data:
+        if (
+            not isinstance(photo_data, str)
+            or not photo_data.startswith("data:")
+            or ";base64," not in photo_data
+        ):
             return None
 
         header, data = photo_data.split(";base64,", 1)
@@ -629,12 +797,18 @@ def save_base64_photo(photo_data, parent_obj, photo_model, order=0, caption=""):
         timestamp = int(timezone.now().timestamp())
         parent_type = parent_obj.__class__.__name__.lower()
         prefix = "route" if photo_model == RoutePhoto else "point"
-        filename = f"{prefix}_{parent_type}_{parent_obj.id}_{timestamp}_{order}{ext}"
+        filename = (
+            f"{prefix}_{parent_type}_{parent_obj.id}_{timestamp}_{order}{ext}"
+        )
 
         if photo_model == RoutePhoto:
-            photo = RoutePhoto.objects.create(route=parent_obj, order=order, caption=caption, is_main=False)
+            photo = RoutePhoto.objects.create(
+                route=parent_obj, order=order, caption=caption, is_main=False
+            )
         elif photo_model == PointPhoto:
-            photo = PointPhoto.objects.create(point=parent_obj, order=order, caption=caption)
+            photo = PointPhoto.objects.create(
+                point=parent_obj, order=order, caption=caption
+            )
         else:
             return None
 
@@ -644,10 +818,19 @@ def save_base64_photo(photo_data, parent_obj, photo_model, order=0, caption=""):
         return None
 
 
-def copy_existing_photo(photo_url, parent_obj, photo_model, order=0, caption=""):
+def copy_existing_photo(
+    photo_url, parent_obj, photo_model, order=0, caption=""
+):
     try:
-        media_path = photo_url.replace("/media/", "", 1) if photo_url.startswith("/media/") else \
-                     photo_url.replace("/uploads/", "", 1) if photo_url.startswith("/uploads/") else None
+        media_path = (
+            photo_url.replace("/media/", "", 1)
+            if photo_url.startswith("/media/")
+            else (
+                photo_url.replace("/uploads/", "", 1)
+                if photo_url.startswith("/uploads/")
+                else None
+            )
+        )
         if not media_path:
             return None
 
@@ -659,17 +842,25 @@ def copy_existing_photo(photo_url, parent_obj, photo_model, order=0, caption="")
             file_data = f.read()
 
         import uuid
+
         timestamp = int(timezone.now().timestamp())
         random_str = str(uuid.uuid4())[:8]
         ext = full_path.suffix or ".jpg"
         parent_type = parent_obj.__class__.__name__.lower()
         prefix = "point" if photo_model == PointPhoto else "route"
-        filename = f"{prefix}_{parent_type}_{parent_obj.id}_{timestamp}_{random_str}{ext}"
+        filename = (
+            f"{prefix}_{parent_type}_{parent_obj.id}"
+            f"_{timestamp}_{random_str}{ext}"
+        )
 
         if photo_model == RoutePhoto:
-            photo = RoutePhoto.objects.create(route=parent_obj, order=order, caption=caption, is_main=False)
+            photo = RoutePhoto.objects.create(
+                route=parent_obj, order=order, caption=caption, is_main=False
+            )
         elif photo_model == PointPhoto:
-            photo = PointPhoto.objects.create(point=parent_obj, order=order, caption=caption)
+            photo = PointPhoto.objects.create(
+                point=parent_obj, order=order, caption=caption
+            )
         else:
             return None
 
@@ -684,49 +875,62 @@ def delete_route(request, route_id):
     try:
         route = get_object_or_404(Route, id=route_id, author=request.user)
         data = json.loads(request.body)
-        delete_all_data = data.get('delete_all_data', True)
-        clear_cache = data.get('clear_cache', True)
+        delete_all_data = data.get("delete_all_data", True)
+        clear_cache = data.get("clear_cache", True)
 
         if delete_all_data:
             for photo in route.photos.all():
                 if photo.image and photo.image.name:
-                    photo_path = os.path.join(settings.MEDIA_ROOT, photo.image.name)
+                    photo_path = os.path.join(
+                        settings.MEDIA_ROOT, photo.image.name
+                    )
                     if os.path.exists(photo_path):
                         os.remove(photo_path)
 
             for point in route.points.all():
                 for photo in point.photos.all():
                     if photo.image and photo.image.name:
-                        photo_path = os.path.join(settings.MEDIA_ROOT, photo.image.name)
+                        photo_path = os.path.join(
+                            settings.MEDIA_ROOT, photo.image.name
+                        )
                         if os.path.exists(photo_path):
                             os.remove(photo_path)
 
-            if hasattr(route, 'audio_guides'):
+            if hasattr(route, "audio_guides"):
                 for audio in route.audio_guides.all():
-                    if delete_all_data and audio.audio_file and audio.audio_file.name:
-                        audio_path = os.path.join(settings.MEDIA_ROOT, audio.audio_file.name)
+                    if (
+                        delete_all_data
+                        and audio.audio_file
+                        and audio.audio_file.name
+                    ):
+                        audio_path = os.path.join(
+                            settings.MEDIA_ROOT, audio.audio_file.name
+                        )
                         if os.path.exists(audio_path):
                             os.remove(audio_path)
 
         if clear_cache:
             from django.core.cache import cache
+
             cache_keys = [
-                f'route_{route_id}',
-                f'route_{route_id}_points',
-                f'route_{route_id}_photos',
-                f'route_{route_id}_audio',
+                f"route_{route_id}",
+                f"route_{route_id}_points",
+                f"route_{route_id}_photos",
+                f"route_{route_id}_audio",
             ]
             for key in cache_keys:
                 cache.delete(key)
             try:
-                cache.delete_pattern(f'*route_{route_id}*')
+                cache.delete_pattern(f"*route_{route_id}*")
             except AttributeError:
                 pass
 
         route.delete()
-        return JsonResponse({'success': True, 'message': _('Route deleted successfully.')})
+        return JsonResponse(
+            {"success": True, "message": _("Route deleted successfully.")}
+        )
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
 
 
 @login_required
@@ -737,7 +941,9 @@ def toggle_route_active(request, route_id):
     route.save()
     messages.success(
         request,
-        _("Route has been {}.").format(_("activated") if route.is_active else _("deactivated"))
+        _("Route has been {}.").format(
+            _("activated") if route.is_active else _("deactivated")
+        ),
     )
     return redirect("route_detail", route_id=route_id)
 
@@ -750,7 +956,12 @@ def rate_route(request, route_id):
         data = json.loads(request.body)
         rating_value = data.get("rating")
         if not (1 <= rating_value <= 5):
-            return JsonResponse({"success": False, "error": _("Rating must be between 1 and 5.")})
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": _("Rating must be between 1 and 5."),
+                }
+            )
 
         rating, created = RouteRating.objects.get_or_create(
             route=route, user=request.user, defaults={"rating": rating_value}
@@ -759,7 +970,9 @@ def rate_route(request, route_id):
             rating.rating = rating_value
             rating.save()
 
-        return JsonResponse({"success": True, "average_rating": route.get_average_rating()})
+        return JsonResponse(
+            {"success": True, "average_rating": route.get_average_rating()}
+        )
     return JsonResponse({"success": False, "error": _("Only POST allowed.")})
 
 
@@ -768,7 +981,9 @@ def rate_route(request, route_id):
 def toggle_favorite(request, route_id):
     route = get_object_or_404(Route, id=route_id)
     if request.method == "POST":
-        favorite, created = RouteFavorite.objects.get_or_create(route=route, user=request.user)
+        favorite, created = RouteFavorite.objects.get_or_create(
+            route=route, user=request.user
+        )
         if not created:
             favorite.delete()
             return JsonResponse({"success": True, "is_favorite": False})
@@ -782,7 +997,9 @@ def add_route_comment(request, route_id):
     if request.method == "POST":
         text = request.POST.get("text")
         if text:
-            RouteComment.objects.create(route=route, user=request.user, text=text)
+            RouteComment.objects.create(
+                route=route, user=request.user, text=text
+            )
             messages.success(request, _("Comment added."))
     return redirect("route_detail", route_id=route_id)
 
@@ -793,7 +1010,9 @@ def add_point_comment(request, point_id):
     if request.method == "POST":
         text = request.POST.get("text")
         if text:
-            PointComment.objects.create(point=point, user=request.user, text=text)
+            PointComment.objects.create(
+                point=point, user=request.user, text=text
+            )
             messages.success(request, _("Comment added."))
     return redirect("route_detail", route_id=point.route.id)
 
@@ -834,7 +1053,11 @@ def map_view(request):
         routes_data.append(route_data)
 
     routes_json = json.dumps(routes_data, ensure_ascii=False)
-    return render(request, "map/map_view.html", {"routes_json": routes_json, "routes": routes})
+    return render(
+        request,
+        "map/map_view.html",
+        {"routes_json": routes_json, "routes": routes},
+    )
 
 
 def can_view_route(user, route):
@@ -844,7 +1067,9 @@ def can_view_route(user, route):
         return False
     if route.privacy == "private" and route.author == user:
         return True
-    if route.privacy == "personal" and (route.author == user or user in route.shared_with.all()):
+    if route.privacy == "personal" and (
+        route.author == user or user in route.shared_with.all()
+    ):
         return True
     if route.privacy == "link":
         return True
@@ -857,32 +1082,58 @@ def share_route(request, route_id):
     try:
         route = Route.objects.get(id=route_id, author=request.user)
     except Route.DoesNotExist:
-        return JsonResponse({"success": False, "error": _("Route not found or you are not the author.")}, status=403)
+        return JsonResponse(
+            {
+                "success": False,
+                "error": _("Route not found or you are not the author."),
+            },
+            status=403,
+        )
 
     try:
         data = json.loads(request.body)
         email = data.get("email", "").strip()
     except (json.JSONDecodeError, ValueError):
-        return JsonResponse({"success": False, "error": _("Invalid data format.")}, status=400)
+        return JsonResponse(
+            {"success": False, "error": _("Invalid data format.")}, status=400
+        )
 
     if not email:
-        return JsonResponse({"success": False, "error": _("Email not provided.")}, status=400)
+        return JsonResponse(
+            {"success": False, "error": _("Email not provided.")}, status=400
+        )
 
     try:
         target_user = User.objects.get(email=email)
     except User.DoesNotExist:
-        return JsonResponse({"success": False, "error": _("No user registered with this email.")}, status=404)
+        return JsonResponse(
+            {
+                "success": False,
+                "error": _("No user registered with this email."),
+            },
+            status=404,
+        )
 
     if target_user == request.user:
-        return JsonResponse({"success": False, "error": _("You cannot share access with yourself.")}, status=400)
+        return JsonResponse(
+            {
+                "success": False,
+                "error": _("You cannot share access with yourself."),
+            },
+            status=400,
+        )
 
     route.privacy = "personal"
     route.shared_with.add(target_user)
     route.save()
-    return JsonResponse({
-        "success": True,
-        "message": _('Access to route “{}” has been granted to user {}').format(route.name, email),
-    })
+    return JsonResponse(
+        {
+            "success": True,
+            "message": _(
+                "Access to route “{}” has been granted to user {}"
+            ).format(route.name, email),
+        }
+    )
 
 
 def get_user_rating(user, route):
@@ -896,7 +1147,9 @@ def get_user_rating(user, route):
 
 
 def walking_routes(request):
-    routes = Route.objects.filter(route_type="walking", is_active=True).prefetch_related('photos')
+    routes = Route.objects.filter(
+        route_type="walking", is_active=True
+    ).prefetch_related("photos")
     context = {
         "routes": routes,
         "page_title": _("Walking Routes"),
@@ -907,10 +1160,14 @@ def walking_routes(request):
 
 
 def driving_routes(request):
-    routes = Route.objects.filter(route_type="driving", is_active=True).prefetch_related('photos')
+    routes = Route.objects.filter(
+        route_type="driving", is_active=True
+    ).prefetch_related("photos")
     user_favorites_ids = []
     if request.user.is_authenticated:
-        user_favorites_ids = Favorite.objects.filter(user=request.user).values_list("route_id", flat=True)
+        user_favorites_ids = Favorite.objects.filter(
+            user=request.user
+        ).values_list("route_id", flat=True)
     context = {
         "routes": routes,
         "page_title": _("Driving Routes"),
@@ -922,10 +1179,14 @@ def driving_routes(request):
 
 
 def cycling_routes(request):
-    routes = Route.objects.filter(route_type="cycling", is_active=True).prefetch_related('photos')
+    routes = Route.objects.filter(
+        route_type="cycling", is_active=True
+    ).prefetch_related("photos")
     user_favorites_ids = []
     if request.user.is_authenticated:
-        user_favorites_ids = Favorite.objects.filter(user=request.user).values_list("route_id", flat=True)
+        user_favorites_ids = Favorite.objects.filter(
+            user=request.user
+        ).values_list("route_id", flat=True)
     context = {
         "routes": routes,
         "page_title": _("Cycling Routes"),
@@ -937,10 +1198,12 @@ def cycling_routes(request):
 
 
 def adventure_routes(request):
-    routes = Route.objects.filter(is_active=True).prefetch_related('photos')
+    routes = Route.objects.filter(is_active=True).prefetch_related("photos")
     user_favorites_ids = []
     if request.user.is_authenticated:
-        user_favorites_ids = Favorite.objects.filter(user=request.user).values_list("route_id", flat=True)
+        user_favorites_ids = Favorite.objects.filter(
+            user=request.user
+        ).values_list("route_id", flat=True)
     context = {
         "routes": routes,
         "page_title": _("Adventure Routes"),
@@ -965,7 +1228,9 @@ def search_routes(request):
 
     user_favorites_ids = []
     if request.user.is_authenticated:
-        user_favorites_ids = Favorite.objects.filter(user=request.user).values_list("route_id", flat=True)
+        user_favorites_ids = Favorite.objects.filter(
+            user=request.user
+        ).values_list("route_id", flat=True)
 
     context = {
         "routes": routes,
@@ -980,19 +1245,26 @@ def search_routes(request):
 class RouteCreateView(LoginRequiredMixin, View):
     def post(self, request):
         try:
-            content_type = request.META.get('CONTENT_TYPE', '')
-            if 'application/json' in content_type:
+            content_type = request.META.get("CONTENT_TYPE", "")
+            if "application/json" in content_type:
                 data = json.loads(request.body)
                 point_photo_files = {}
             else:
-                route_data_str = request.POST.get('route_data', '{}')
+                route_data_str = request.POST.get("route_data", "{}")
                 data = json.loads(route_data_str)
                 point_photo_files = {k: v for k, v in request.FILES.items()}
 
             if not data.get("name"):
-                return JsonResponse({"success": False, "error": _("Route name is required.")})
+                return JsonResponse(
+                    {"success": False, "error": _("Route name is required.")}
+                )
             if not data.get("waypoints") or len(data.get("waypoints", [])) < 2:
-                return JsonResponse({"success": False, "error": _("Add at least two route points.")})
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "error": _("Add at least two route points."),
+                    }
+                )
 
             route = Route.objects.create(
                 author=request.user,
@@ -1032,73 +1304,119 @@ class RouteCreateView(LoginRequiredMixin, View):
 
                 main_photo_key = f"point_{i}_main_photo"
                 if main_photo_key in point_photo_files:
-                    save_base64_photo(point_photo_files[main_photo_key], point, PointPhoto, order=0)
+                    save_base64_photo(
+                        point_photo_files[main_photo_key],
+                        point,
+                        PointPhoto,
+                        order=0,
+                    )
 
                 additional_counter = 0
                 while True:
-                    additional_key = f"point_{i}_additional_{additional_counter}"
+                    additional_key = (
+                        f"point_{i}_additional_{additional_counter}"
+                    )
                     if additional_key not in point_photo_files:
                         break
-                    save_base64_photo(point_photo_files[additional_key], point, PointPhoto, order=additional_counter + 1)
+                    save_base64_photo(
+                        point_photo_files[additional_key],
+                        point,
+                        PointPhoto,
+                        order=additional_counter + 1,
+                    )
                     additional_counter += 1
 
                 point_photos = point_data.get("photos", [])
                 for j, photo_data in enumerate(point_photos):
                     if not photo_data:
                         continue
-                    if isinstance(photo_data, str) and photo_data.startswith("data:"):
-                        save_base64_photo(photo_data, point, PointPhoto, order=j + additional_counter)
-                    elif isinstance(photo_data, str) and photo_data.startswith(("/uploads/", "/media/")):
-                        copy_existing_photo(photo_data, point, PointPhoto, order=j + additional_counter)
+                    if isinstance(photo_data, str) and photo_data.startswith(
+                        "data:"
+                    ):
+                        save_base64_photo(
+                            photo_data,
+                            point,
+                            PointPhoto,
+                            order=j + additional_counter,
+                        )
+                    elif isinstance(photo_data, str) and photo_data.startswith(
+                        ("/uploads/", "/media/")
+                    ):
+                        copy_existing_photo(
+                            photo_data,
+                            point,
+                            PointPhoto,
+                            order=j + additional_counter,
+                        )
 
-            return JsonResponse({"success": True, "route_id": route.id, "id": route.id})
+            return JsonResponse(
+                {"success": True, "route_id": route.id, "id": route.id}
+            )
         except json.JSONDecodeError:
-            return JsonResponse({"success": False, "error": _("Invalid JSON format.")})
+            return JsonResponse(
+                {"success": False, "error": _("Invalid JSON format.")}
+            )
         except Exception as e:
-            return JsonResponse({"success": False, "error": f"Server error: {str(e)}"})
+            return JsonResponse(
+                {"success": False, "error": f"Server error: {str(e)}"}
+            )
 
 
 class RouteUpdateView(LoginRequiredMixin, View):
     def put(self, request, pk):
         try:
             route = get_object_or_404(Route, id=pk, author=request.user)
-            content_type = request.content_type or ''
-            if 'application/json' in content_type:
+            content_type = request.content_type or ""
+            if "application/json" in content_type:
                 data = json.loads(request.body)
             else:
                 data = request.POST.dict()
                 for key in request.FILES:
                     data[key] = request.FILES[key]
-                if 'photos_data' in data:
+                if "photos_data" in data:
                     try:
-                        data['photos_data'] = json.loads(data['photos_data'])
+                        data["photos_data"] = json.loads(data["photos_data"])
                     except (json.JSONDecodeError, TypeError):
                         pass
-                if 'removed_photo_ids' in data:
+                if "removed_photo_ids" in data:
                     try:
-                        data['removed_photo_ids'] = json.loads(data['removed_photo_ids'])
+                        data["removed_photo_ids"] = json.loads(
+                            data["removed_photo_ids"]
+                        )
                     except (json.JSONDecodeError, TypeError):
                         pass
-                if 'route_data' in data:
+                if "route_data" in data:
                     try:
-                        data['route_data'] = json.loads(data['route_data'])
+                        data["route_data"] = json.loads(data["route_data"])
                     except (json.JSONDecodeError, TypeError):
                         pass
 
             route.name = data.get("name", route.name)
             route.description = data.get("description", route.description)
-            route.short_description = data.get("short_description", route.short_description)
+            route.short_description = data.get(
+                "short_description", route.short_description
+            )
             route.privacy = data.get("privacy", route.privacy)
             route.route_type = data.get("route_type", route.route_type)
-            route.duration_minutes = data.get("duration_minutes", route.duration_minutes)
-            route.total_distance = data.get("total_distance", route.total_distance)
-            route.has_audio_guide = data.get("has_audio_guide", route.has_audio_guide)
-            route.is_elderly_friendly = data.get("is_elderly_friendly", route.is_elderly_friendly)
+            route.duration_minutes = data.get(
+                "duration_minutes", route.duration_minutes
+            )
+            route.total_distance = data.get(
+                "total_distance", route.total_distance
+            )
+            route.has_audio_guide = data.get(
+                "has_audio_guide", route.has_audio_guide
+            )
+            route.is_elderly_friendly = data.get(
+                "is_elderly_friendly", route.is_elderly_friendly
+            )
             route.is_active = data.get("is_active", route.is_active)
-            route.duration_display = data.get("duration_display", route.duration_display)
+            route.duration_display = data.get(
+                "duration_display", route.duration_display
+            )
             route.save()
 
-            removed_photo_ids = data.get('removed_photo_ids', [])
+            removed_photo_ids = data.get("removed_photo_ids", [])
             for photo_id in removed_photo_ids:
                 try:
                     photo = RoutePhoto.objects.get(id=photo_id, route=route)
@@ -1107,19 +1425,29 @@ class RouteUpdateView(LoginRequiredMixin, View):
                     pass
 
             main_photo_id = data.get("main_photo_id")
-            if 'photos_data' in data and isinstance(data['photos_data'], dict):
-                main_photo_id = data['photos_data'].get("main_photo_id", main_photo_id)
+            if "photos_data" in data and isinstance(data["photos_data"], dict):
+                main_photo_id = data["photos_data"].get(
+                    "main_photo_id", main_photo_id
+                )
 
             if main_photo_id:
                 try:
                     main_photo_id = int(main_photo_id)
-                    main_photo = RoutePhoto.objects.filter(id=main_photo_id, route=route).first()
+                    main_photo = RoutePhoto.objects.filter(
+                        id=main_photo_id, route=route
+                    ).first()
                     if main_photo:
-                        RoutePhoto.objects.filter(route=route).update(is_main=False)
+                        RoutePhoto.objects.filter(route=route).update(
+                            is_main=False
+                        )
                         main_photo.is_main = True
                         main_photo.order = 0
                         main_photo.save()
-                        other_photos = RoutePhoto.objects.filter(route=route).exclude(id=main_photo_id).order_by('id')
+                        other_photos = (
+                            RoutePhoto.objects.filter(route=route)
+                            .exclude(id=main_photo_id)
+                            .order_by("id")
+                        )
                         for idx, photo in enumerate(other_photos, start=1):
                             photo.order = idx
                             photo.save()
@@ -1138,7 +1466,7 @@ class RouteUpdateView(LoginRequiredMixin, View):
             waypoints_data = data.get("waypoints", [])
             incoming_ids = []
             for pd in waypoints_data:
-                pid = pd.get('id')
+                pid = pd.get("id")
                 if pid:
                     try:
                         incoming_ids.append(int(pid))
@@ -1151,7 +1479,7 @@ class RouteUpdateView(LoginRequiredMixin, View):
             old_points = {p.id: p for p in route.points.all()}
             for i, point_data in enumerate(waypoints_data):
                 point_name = point_data.get("name", f"Point {i+1}")
-                incoming_id = point_data.get('id')
+                incoming_id = point_data.get("id")
                 incoming_id_key = None
                 if incoming_id is not None:
                     try:
@@ -1162,56 +1490,92 @@ class RouteUpdateView(LoginRequiredMixin, View):
                 if incoming_id_key and incoming_id_key in old_points:
                     point = old_points[incoming_id_key]
                     point.name = point_name
-                    point.description = point_data.get('description', '')
-                    point.address = point_data.get('address', '')
-                    point.latitude = point_data.get('lat', point.latitude)
-                    point.longitude = point_data.get('lng', point.longitude)
-                    point.category = point_data.get('category', point.category)
+                    point.description = point_data.get("description", "")
+                    point.address = point_data.get("address", "")
+                    point.latitude = point_data.get("lat", point.latitude)
+                    point.longitude = point_data.get("lng", point.longitude)
+                    point.category = point_data.get("category", point.category)
                     point.order = i
                     point.save()
                 else:
                     point = RoutePoint.objects.create(
                         route=route,
                         name=point_name,
-                        description=point_data.get('description', ''),
-                        address=point_data.get('address', ''),
-                        latitude=point_data.get('lat', point_data.get('latitude', 0)),
-                        longitude=point_data.get('lng', point_data.get('longitude', 0)),
-                        category=point_data.get('category', ''),
+                        description=point_data.get("description", ""),
+                        address=point_data.get("address", ""),
+                        latitude=point_data.get(
+                            "lat", point_data.get("latitude", 0)
+                        ),
+                        longitude=point_data.get(
+                            "lng", point_data.get("longitude", 0)
+                        ),
+                        category=point_data.get("category", ""),
                         order=i,
                     )
 
-                removed_point_photo_ids = data.get('removed_point_photo_ids', [])
+                removed_point_photo_ids = data.get(
+                    "removed_point_photo_ids", []
+                )
                 if isinstance(removed_point_photo_ids, list):
                     for photo_id in removed_point_photo_ids:
                         try:
-                            photo = PointPhoto.objects.get(id=photo_id, point=point)
+                            photo = PointPhoto.objects.get(
+                                id=photo_id, point=point
+                            )
                             photo.delete()
                         except PointPhoto.DoesNotExist:
                             pass
 
-                point_photos = point_data.get('photos', None)
+                point_photos = point_data.get("photos", None)
                 if isinstance(point_photos, list):
                     for j, photo_data in enumerate(point_photos):
                         if not photo_data:
                             continue
-                        if isinstance(photo_data, str) and photo_data.startswith('data:'):
-                            save_base64_photo(photo_data, point, PointPhoto, order=j)
-                        elif isinstance(photo_data, str) and photo_data.startswith(('/uploads/', '/media/')):
-                            copy_existing_photo(photo_data, point, PointPhoto, order=j)
+                        if isinstance(
+                            photo_data, str
+                        ) and photo_data.startswith("data:"):
+                            save_base64_photo(
+                                photo_data, point, PointPhoto, order=j
+                            )
+                        elif isinstance(
+                            photo_data, str
+                        ) and photo_data.startswith(("/uploads/", "/media/")):
+                            copy_existing_photo(
+                                photo_data, point, PointPhoto, order=j
+                            )
                         elif isinstance(photo_data, dict):
-                            photo_url = photo_data.get('url', '')
-                            caption = photo_data.get('caption', '')
-                            if photo_url.startswith('data:'):
-                                save_base64_photo(photo_url, point, PointPhoto, order=j, caption=caption)
-                            elif photo_url.startswith('/uploads/') or photo_url.startswith('/media/'):
-                                copy_existing_photo(photo_url, point, PointPhoto, order=j, caption=caption)
+                            photo_url = photo_data.get("url", "")
+                            caption = photo_data.get("caption", "")
+                            if photo_url.startswith("data:"):
+                                save_base64_photo(
+                                    photo_url,
+                                    point,
+                                    PointPhoto,
+                                    order=j,
+                                    caption=caption,
+                                )
+                            elif photo_url.startswith(
+                                "/uploads/"
+                            ) or photo_url.startswith("/media/"):
+                                copy_existing_photo(
+                                    photo_url,
+                                    point,
+                                    PointPhoto,
+                                    order=j,
+                                    caption=caption,
+                                )
 
-            return JsonResponse({"success": True, "route_id": route.id, "id": route.id})
+            return JsonResponse(
+                {"success": True, "route_id": route.id, "id": route.id}
+            )
         except json.JSONDecodeError:
-            return JsonResponse({"success": False, "error": _("Invalid JSON format.")})
+            return JsonResponse(
+                {"success": False, "error": _("Invalid JSON format.")}
+            )
         except Exception as e:
-            return JsonResponse({"success": False, "error": f"Server error: {str(e)}"})
+            return JsonResponse(
+                {"success": False, "error": f"Server error: {str(e)}"}
+            )
 
     def post(self, request, pk):
         return self.put(request, pk)
@@ -1222,20 +1586,31 @@ class RouteUpdateView(LoginRequiredMixin, View):
 def generate_qr_code(request, route_id):
     route = get_object_or_404(Route, id=route_id)
     if route.author != request.user and not request.user.is_staff:
-        return JsonResponse({
-            "success": False,
-            "error": _("You do not have permission to generate a QR code for this route.")
-        })
+        return JsonResponse(
+            {
+                "success": False,
+                "error": _(
+                    "You do not have permission to"
+                    " generate a QR code for this route."
+                ),
+            }
+        )
 
     try:
         qr_url = route.generate_qr_code(request)
-        return JsonResponse({
-            "success": True,
-            "qr_url": qr_url,
-            "route_url": request.build_absolute_uri(route.get_absolute_url()),
-        })
+        return JsonResponse(
+            {
+                "success": True,
+                "qr_url": qr_url,
+                "route_url": request.build_absolute_uri(
+                    route.get_absolute_url()
+                ),
+            }
+        )
     except Exception as e:
-        return JsonResponse({"success": False, "error": f"QR code generation error: {str(e)}"})
+        return JsonResponse(
+            {"success": False, "error": f"QR code generation error: {str(e)}"}
+        )
 
 
 def route_qr_code(request, route_id):
@@ -1271,40 +1646,56 @@ def route_qr_code(request, route_id):
 def share_route_access(request, route_id):
     route = get_object_or_404(Route, id=route_id)
     if route.author != request.user and not request.user.is_staff:
-        return JsonResponse({
-            "success": False,
-            "error": _("You do not have permission to share access to this route.")
-        })
+        return JsonResponse(
+            {
+                "success": False,
+                "error": _(
+                    "You do not have permission to share access to this route."
+                ),
+            }
+        )
 
     try:
         data = json.loads(request.body)
         email = data.get("email", "").strip()
         if not email:
-            return JsonResponse({"success": False, "error": _("Email not provided.")})
+            return JsonResponse(
+                {"success": False, "error": _("Email not provided.")}
+            )
 
         try:
             target_user = User.objects.get(email=email)
         except User.DoesNotExist:
-            return JsonResponse({
-                "success": False,
-                "error": _("No user registered with this email.")
-            })
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": _("No user registered with this email."),
+                }
+            )
 
         if target_user == request.user:
-            return JsonResponse({
-                "success": False,
-                "error": _("You cannot share access with yourself.")
-            })
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": _("You cannot share access with yourself."),
+                }
+            )
 
         route.privacy = "personal"
         route.shared_with.add(target_user)
         route.save()
-        return JsonResponse({
-            "success": True,
-            "message": _('Access to route “{}” has been granted to user {}').format(route.name, email),
-        })
+        return JsonResponse(
+            {
+                "success": True,
+                "message": _(
+                    "Access to route “{}” has been granted to user {}"
+                ).format(route.name, email),
+            }
+        )
     except json.JSONDecodeError:
-        return JsonResponse({"success": False, "error": _("Invalid data format.")})
+        return JsonResponse(
+            {"success": False, "error": _("Invalid data format.")}
+        )
     except Exception as e:
         return JsonResponse({"success": False, "error": f"Error: {str(e)}"})
 
@@ -1320,14 +1711,20 @@ def get_friends_list(request):
 
         friends_list = []
         for friendship in friends:
-            friend = friendship.to_user if friendship.from_user == request.user else friendship.from_user
-            friends_list.append({
-                "id": friend.id,
-                "username": friend.username,
-                "first_name": friend.first_name,
-                "last_name": friend.last_name,
-                "email": friend.email,
-            })
+            friend = (
+                friendship.to_user
+                if friendship.from_user == request.user
+                else friendship.from_user
+            )
+            friends_list.append(
+                {
+                    "id": friend.id,
+                    "username": friend.username,
+                    "first_name": friend.first_name,
+                    "last_name": friend.last_name,
+                    "email": friend.email,
+                }
+            )
         return JsonResponse({"success": True, "friends": friends_list})
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)})

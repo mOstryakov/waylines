@@ -2,6 +2,7 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.utils.translation import gettext_lazy as _
+
 from .models import UserProfile
 
 
@@ -12,7 +13,14 @@ class UserRegistrationForm(UserCreationForm):
 
     class Meta:
         model = User
-        fields = ["username", "email", "first_name", "last_name", "password1", "password2"]
+        fields = [
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "password1",
+            "password2",
+        ]
         labels = {
             "username": _("Имя пользователя"),
             "password1": _("Пароль"),
@@ -33,7 +41,9 @@ class UserProfileForm(forms.ModelForm):
     email = forms.EmailField(required=True, label=_("Email"))
     first_name = forms.CharField(required=False, label=_("Имя"))
     last_name = forms.CharField(required=False, label=_("Фамилия"))
-    remove_avatar = forms.BooleanField(required=False, label=_("Удалить аватар"))
+    remove_avatar = forms.BooleanField(
+        required=False, label=_("Удалить аватар")
+    )
 
     class Meta:
         model = UserProfile

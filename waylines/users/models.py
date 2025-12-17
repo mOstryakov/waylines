@@ -15,19 +15,19 @@ class Friendship(models.Model):
         User,
         related_name="friendship_requests_sent",
         on_delete=models.CASCADE,
-        verbose_name=_("From user")
+        verbose_name=_("From user"),
     )
     to_user = models.ForeignKey(
         User,
         related_name="friendship_requests_received",
         on_delete=models.CASCADE,
-        verbose_name=_("To user")
+        verbose_name=_("To user"),
     )
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
         default="pending",
-        verbose_name=_("Status")
+        verbose_name=_("Status"),
     )
     created_at = models.DateTimeField(_("Created at"), auto_now_add=True)
     updated_at = models.DateTimeField(_("Updated at"), auto_now=True)
@@ -46,7 +46,7 @@ class UserProfile(models.Model):
         User,
         on_delete=models.CASCADE,
         related_name="profile",
-        verbose_name=_("User")
+        verbose_name=_("User"),
     )
     bio = models.TextField(_("Bio"), blank=True)
     avatar = models.ImageField(_("Avatar"), upload_to="avatars/", blank=True)
@@ -56,7 +56,7 @@ class UserProfile(models.Model):
         _("Last username change"),
         null=True,
         blank=True,
-        help_text=_("Date when username was last changed")
+        help_text=_("Date when username was last changed"),
     )
     created_at = models.DateTimeField(_("Created at"), auto_now_add=True)
     updated_at = models.DateTimeField(_("Updated at"), auto_now=True)

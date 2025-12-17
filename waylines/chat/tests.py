@@ -1,8 +1,9 @@
+import json
+
 from django.test import TestCase, Client
 from django.contrib.auth.models import User
 from django.urls import reverse
 from django.core.cache import cache
-import json
 
 from routes.models import Route
 from chat.models import Conversation, PrivateMessage, RouteChat
@@ -10,13 +11,17 @@ from chat.models import Conversation, PrivateMessage, RouteChat
 
 class ChatModelsTestCase(TestCase):
     def setUp(self):
-        self.user1 = User.objects.create_user(username="alice", password="pass123")
-        self.user2 = User.objects.create_user(username="bob", password="pass123")
+        self.user1 = User.objects.create_user(
+            username="alice", password="pass123"
+        )
+        self.user2 = User.objects.create_user(
+            username="bob", password="pass123"
+        )
         self.route = Route.objects.create(
             name="Test Route",
             author=self.user1,
             privacy="public",
-            is_active=True
+            is_active=True,
         )
 
     def test_conversation_str(self):
@@ -29,9 +34,7 @@ class ChatModelsTestCase(TestCase):
         conv = Conversation.objects.create()
         conv.participants.add(self.user1, self.user2)
         msg = PrivateMessage.objects.create(
-            conversation=conv,
-            sender=self.user1,
-            content="Hello world!" * 20
+            conversation=conv, sender=self.user1, content="Hello world!" * 20
         )
         self.assertTrue(len(str(msg)) > 0)
         self.assertIn("Hello world!", str(msg))
@@ -52,28 +55,36 @@ class ChatModelsTestCase(TestCase):
     def test_get_unread_count(self):
         conv = Conversation.objects.create()
         conv.participants.add(self.user1, self.user2)
-        PrivateMessage.objects.create(conversation=conv, sender=self.user1, content="Hi")
+        PrivateMessage.objects.create(
+            conversation=conv, sender=self.user1, content="Hi"
+        )
         self.assertEqual(conv.get_unread_count(self.user2), 1)
         self.assertEqual(conv.get_unread_count(self.user1), 0)
 
 
 class ChatViewsTestCase(TestCase):
     def setUp(self):
-        self.user1 = User.objects.create_user(username="alice", password="pass123")
-        self.user2 = User.objects.create_user(username="bob", password="pass123")
-        self.user3 = User.objects.create_user(username="charlie", password="pass123")
+        self.user1 = User.objects.create_user(
+            username="alice", password="pass123"
+        )
+        self.user2 = User.objects.create_user(
+            username="bob", password="pass123"
+        )
+        self.user3 = User.objects.create_user(
+            username="charlie", password="pass123"
+        )
 
         self.route_public = Route.objects.create(
             name="Public Route",
             author=self.user1,
             privacy="public",
-            is_active=True
+            is_active=True,
         )
         self.route_private = Route.objects.create(
             name="Private Route",
             author=self.user1,
             privacy="private",
-            is_active=True
+            is_active=True,
         )
         self.route_private.shared_with.add(self.user2)
 
@@ -91,7 +102,7 @@ class ChatViewsTestCase(TestCase):
         response = self.client.post(
             reverse("chat:send_private_message"),
             json.dumps({"user_id": self.user1.id, "message": "Hi"}),
-            content_type="application/json"
+            content_type="application/json",
         )
         self.assertEqual(response.status_code, 400)
         data = response.json()
@@ -102,7 +113,7 @@ class ChatViewsTestCase(TestCase):
         response = self.client.post(
             reverse("chat:send_private_message"),
             json.dumps({"user_id": self.user2.id, "message": "Hello Bob!"}),
-            content_type="application/json"
+            content_type="application/json",
         )
         self.assertEqual(response.status_code, 200)
         data = response.json()
@@ -132,6 +143,6 @@ class ChatViewsTestCase(TestCase):
         self.client.post(
             reverse("chat:send_private_message"),
             json.dumps({"user_id": self.user2.id, "message": "Test"}),
-            content_type="application/json"
+            content_type="application/json",
         )
         self.assertIsNone(cache.get(cache_key))

@@ -1,4 +1,3 @@
-from importlib.metadata import FastPath
 from pathlib import Path
 import os
 
@@ -27,7 +26,6 @@ INSTALLED_APPS = [
     "interactions.apps.InteractionsConfig",
     "users.apps.UsersConfig",
     "ai_audio.apps.AiAudioConfig",
-    
 ]
 
 MIDDLEWARE = [
@@ -74,19 +72,19 @@ YANDEX_FOLDER_ID = "b1gqv1ek8siro4365epf"
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth."
-                "password_validation.UserAttributeSimilarityValidator",
+        "password_validation.UserAttributeSimilarityValidator",
     },
     {
         "NAME": "django.contrib.auth."
-                "password_validation.MinimumLengthValidator",
+        "password_validation.MinimumLengthValidator",
     },
     {
         "NAME": "django.contrib.auth."
-                "password_validation.CommonPasswordValidator",
+        "password_validation.CommonPasswordValidator",
     },
     {
         "NAME": "django.contrib.auth."
-                "password_validation.NumericPasswordValidator",
+        "password_validation.NumericPasswordValidator",
     },
 ]
 
@@ -136,7 +134,9 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 DOMAIN = "http://localhost:8000"
 OPENAI_API_KEY = os.getenv(
     "OPENAI_API_KEY",
-    "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",
+    "sk-proj-1gob6GQWo4AlIGITCSRjAT2g-pepLniMflkljayooyZv03WVPZdV71lno4JFbakX"
+    "26yWaTp--KT3BlbkFJasRcOUq0c2rv9M6676yXlf1AivV_toIq5tSiyjEr"
+    "uX1MnN5gN2l0lWF6UCN11NdujRqnJsvA4A",
 )
 YANDEX_TTS_API_KEY = os.getenv("YANDEX_TTS_API_KEY", "your-yandex-key-here")
 GOOGLE_APPLICATION_CREDENTIALS = os.getenv(

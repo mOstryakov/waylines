@@ -1,11 +1,11 @@
 __all__ = ()
+from io import BytesIO
 
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 import qrcode
-from io import BytesIO
 from django.core.files import File
 from django.urls import reverse
 from django.conf import settings
@@ -41,20 +41,27 @@ class Route(models.Model):
         _("Privacy"), max_length=20, choices=PRIVACY_CHOICES, default="public"
     )
     route_type = models.CharField(
-        _("Route type"), max_length=20, choices=ROUTE_TYPE_CHOICES, default="walking"
+        _("Route type"),
+        max_length=20,
+        choices=ROUTE_TYPE_CHOICES,
+        default="walking",
     )
     duration_minutes = models.IntegerField(_("Duration (minutes)"), default=0)
     duration_display = models.CharField(
         _("Display duration"),
         max_length=100,
         blank=True,
-        help_text=_("e.g. 2-3 hours, 1 day, 30 minutes")
+        help_text=_("e.g. 2-3 hours, 1 day, 30 minutes"),
     )
-    country = models.CharField(_("Country"), max_length=100, blank=True, null=True)
+    country = models.CharField(
+        _("Country"), max_length=100, blank=True, null=True
+    )
     total_distance = models.FloatField(_("Total distance (km)"), default=0)
     is_active = models.BooleanField(_("Active"), default=True)
     has_audio_guide = models.BooleanField(_("Has audio guide"), default=False)
-    is_elderly_friendly = models.BooleanField(_("Elderly-friendly"), default=False)
+    is_elderly_friendly = models.BooleanField(
+        _("Elderly-friendly"), default=False
+    )
     shared_with = models.ManyToManyField(
         User,
         related_name="shared_routes",
@@ -63,8 +70,12 @@ class Route(models.Model):
     )
     created_at = models.DateTimeField(_("Created"), auto_now_add=True)
     updated_at = models.DateTimeField(_("Updated"), auto_now=True)
-    last_status_update = models.DateTimeField(_("Last status update"), auto_now=True)
-    qr_code = models.ImageField(_("QR code"), upload_to="qr_codes/", blank=True, null=True)
+    last_status_update = models.DateTimeField(
+        _("Last status update"), auto_now=True
+    )
+    qr_code = models.ImageField(
+        _("QR code"), upload_to="qr_codes/", blank=True, null=True
+    )
 
     class Meta:
         verbose_name = _("Route")
@@ -112,26 +123,33 @@ class Route(models.Model):
     def get_average_rating(self):
         from django.db.models import Avg
         from interactions.models import Rating
-        result = Rating.objects.filter(route=self).aggregate(average=Avg('score'))
-        return result['average'] or 0
+
+        result = Rating.objects.filter(route=self).aggregate(
+            average=Avg("score")
+        )
+        return result["average"] or 0
 
     def get_ratings_count(self):
         from interactions.models import Rating
+
         return Rating.objects.filter(route=self).count()
 
     @property
     def interaction_comments(self):
         from interactions.models import Comment
+
         return Comment.objects.filter(route=self)
 
     @property
     def interaction_ratings(self):
         from interactions.models import Rating
+
         return Rating.objects.filter(route=self)
 
     @property
     def favorites_by(self):
         from interactions.models import Favorite
+
         return Favorite.objects.filter(route=self)
 
 
@@ -164,7 +182,9 @@ class RouteRating(models.Model):
         related_name="ratings",
         verbose_name=_("Route"),
     )
-    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name=_("User"))
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, verbose_name=_("User")
+    )
     rating = models.IntegerField(
         _("Rating"), validators=[MinValueValidator(1), MaxValueValidator(5)]
     )
@@ -187,7 +207,9 @@ class RouteFavorite(models.Model):
         related_name="favorites",
         verbose_name=_("Route"),
     )
-    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name=_("User"))
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, verbose_name=_("User")
+    )
     created_at = models.DateTimeField(_("Added"), auto_now_add=True)
 
     class Meta:
@@ -233,12 +255,18 @@ class RoutePoint(models.Model):
         validators=[MinValueValidator(-180.0), MaxValueValidator(180.0)],
     )
     elevation = models.FloatField(_("Elevation"), null=True, blank=True)
-    category = models.CharField(_("Category"), max_length=20, choices=CATEGORY_CHOICES, blank=True)
-    hint_author = models.CharField(_("Hint author"), max_length=100, blank=True)
+    category = models.CharField(
+        _("Category"), max_length=20, choices=CATEGORY_CHOICES, blank=True
+    )
+    hint_author = models.CharField(
+        _("Hint author"), max_length=100, blank=True
+    )
     tags = models.JSONField(_("Tags"), default=list, blank=True)
     order = models.PositiveIntegerField(_("Order"), default=0)
     has_panorama = models.BooleanField(_("Has panorama"), default=False)
-    audio_guide = models.FileField(_("Audio guide"), upload_to="point_audio/", blank=True, null=True)
+    audio_guide = models.FileField(
+        _("Audio guide"), upload_to="point_audio/", blank=True, null=True
+    )
     created_at = models.DateTimeField(_("Created"), auto_now_add=True)
 
     class Meta:
@@ -278,7 +306,9 @@ class PointComment(models.Model):
         related_name="comments",
         verbose_name=_("Point"),
     )
-    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name=_("User"))
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, verbose_name=_("User")
+    )
     text = models.TextField(_("Comment text"))
     created_at = models.DateTimeField(_("Created"), auto_now_add=True)
     updated_at = models.DateTimeField(_("Updated"), auto_now=True)
@@ -299,7 +329,9 @@ class RouteComment(models.Model):
         related_name="comments",
         verbose_name=_("Route"),
     )
-    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name=_("User"))
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, verbose_name=_("User")
+    )
     text = models.TextField(_("Comment text"))
     created_at = models.DateTimeField(_("Created"), auto_now_add=True)
     updated_at = models.DateTimeField(_("Updated"), auto_now=True)
@@ -320,7 +352,9 @@ class UserVisitedPoint(models.Model):
         related_name="visited_points",
         verbose_name=_("User"),
     )
-    point = models.ForeignKey(RoutePoint, on_delete=models.CASCADE, verbose_name=_("Point"))
+    point = models.ForeignKey(
+        RoutePoint, on_delete=models.CASCADE, verbose_name=_("Point")
+    )
     visited_at = models.DateTimeField(_("Visited at"), auto_now_add=True)
 
     class Meta:

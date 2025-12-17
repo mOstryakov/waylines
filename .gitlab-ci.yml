@@ -18,3 +18,11 @@ black:
   script:
     - black --check --diff .
   allow_failure: false
+
+testing:
+  stage: test
+  script:
+    - pip install -r requirements/test.txt
+    - cd waylines
+    - python manage.py test
+  allow_failure: false

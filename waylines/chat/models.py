@@ -28,8 +28,18 @@ class Conversation(models.Model):
 
 
 class PrivateMessage(models.Model):
-    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name="messages", verbose_name=_("Conversation"))
-    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sent_messages", verbose_name=_("Sender"))
+    conversation = models.ForeignKey(
+        Conversation,
+        on_delete=models.CASCADE,
+        related_name="messages",
+        verbose_name=_("Conversation"),
+    )
+    sender = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="sent_messages",
+        verbose_name=_("Sender"),
+    )
     content = models.TextField(_("Message"), max_length=1000)
     is_read = models.BooleanField(_("Read"), default=False)
     created_at = models.DateTimeField(_("Created"), auto_now_add=True)
@@ -44,7 +54,12 @@ class PrivateMessage(models.Model):
 
 
 class RouteChat(models.Model):
-    route = models.OneToOneField(Route, on_delete=models.CASCADE, related_name="chat", verbose_name=_("Route"))
+    route = models.OneToOneField(
+        Route,
+        on_delete=models.CASCADE,
+        related_name="chat",
+        verbose_name=_("Route"),
+    )
     is_active = models.BooleanField(_("Active"), default=True)
     created_at = models.DateTimeField(_("Created"), auto_now_add=True)
     updated_at = models.DateTimeField(_("Updated"), auto_now=True)
@@ -59,8 +74,15 @@ class RouteChat(models.Model):
 
 
 class RouteChatMessage(models.Model):
-    route_chat = models.ForeignKey(RouteChat, on_delete=models.CASCADE, related_name="messages", verbose_name=_("Route chat"))
-    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name=_("User"))
+    route_chat = models.ForeignKey(
+        RouteChat,
+        on_delete=models.CASCADE,
+        related_name="messages",
+        verbose_name=_("Route chat"),
+    )
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, verbose_name=_("User")
+    )
     message = models.TextField(_("Message"), max_length=1000)
     timestamp = models.DateTimeField(_("Time"), auto_now_add=True)
     is_read = models.BooleanField(_("Read"), default=False)
@@ -71,7 +93,10 @@ class RouteChatMessage(models.Model):
         ordering = ["timestamp"]
 
     def __str__(self):
-        return f"{self.user.username} in {self.route_chat.route.name}: {self.message[:50]}"
+        return (
+            f"{self.user.username} in"
+            f" {self.route_chat.route.name}: {self.message[:50]}"
+        )
 
 
 @receiver(post_save, sender=Route)
