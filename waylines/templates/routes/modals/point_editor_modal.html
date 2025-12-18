@@ -1766,7 +1766,6 @@ window.pointEditor = {
     collectPointFormData: function() {
       const formData = new FormData();
       
-      // Базовые поля
       const fields = {
           name: document.getElementById('point-name').value || 'Untitled',
           category: document.getElementById('point-category').value || '',
@@ -1781,7 +1780,6 @@ window.pointEditor = {
           formData.append(key, value);
       });
       
-      // Теги
       const tags = document.getElementById('point-tags').value
           .split(',')
           .map(tag => tag.trim())
@@ -1790,7 +1788,6 @@ window.pointEditor = {
           formData.append('tags', JSON.stringify(tags));
       }
       
-      // Фото: только новые файлы
       const newPhotos = this.pointPhotos.filter(photo => photo.file);
       console.log('New photos to upload:', newPhotos.length);
       newPhotos.forEach((photo, index) => {
@@ -1798,7 +1795,6 @@ window.pointEditor = {
           console.log(`Added photo ${index}:`, photo.file.name, photo.file.size);
       });
       
-      // Для существующих фото отправляем их URL
       const existingPhotos = this.pointPhotos.filter(photo => !photo.file && photo.preview && 
           (photo.preview.startsWith('http') || photo.preview.startsWith('/')));
       if (existingPhotos.length > 0) {
@@ -1807,22 +1803,17 @@ window.pointEditor = {
           console.log('Existing photos URLs:', photoUrls);
       }
       
-      // Аудио
       if (this.pointAudio) {
           if (this.pointAudio.file) {
-              // Новый аудиофайл
               formData.append('audio', this.pointAudio.file);
               console.log('Added audio file:', this.pointAudio.file.name);
           } else if (this.pointAudio.url && this.pointAudio.url !== '#demo-audio') {
-              // Существующая ссылка на аудио (кроме демо)
               formData.append('audio_url', this.pointAudio.url);
               formData.append('audio_filename', this.pointAudio.filename || 'audio');
               formData.append('ai_audio_generated', this.pointAudio.is_ai_generated || false);
               console.log('Added audio URL:', this.pointAudio.url);
           }
       }
-      
-      // NOTE: route_id будет добавлен в savePoint()
       
       return formData;
   },
@@ -1846,118 +1837,74 @@ window.pointEditor = {
     },
     
     savePoint: async function() {
-      if (!this.validatePointForm()) {
-          return;
-      }
-      
       const routeId = window.routeEditor?.currentRouteId;
       if (!routeId) {
           this.showToast('No active route selected', 'warning');
           return;
       }
-      
-      const saveBtn = document.getElementById('save-point-btn');
-      const originalBtnText = saveBtn.innerHTML;
-      saveBtn.disabled = true;
-      saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
-      
+
+      const method = this.currentPointId ? 'PUT' : 'POST';
+      const url = this.currentPointId
+          ? `/routes/api/points/${this.currentPointId}/`
+          : `/routes/api/points/`;
+
+      const tagsInput = document.getElementById('point-tags');
+      const tags = tagsInput
+          ? tagsInput.value.split(',').map(tag => tag.trim()).filter(tag => tag)
+          : [];
+
+      const formData = new FormData();
+      formData.append('route_id', routeId);
+      formData.append('name', document.getElementById('point-name').value.trim());
+      formData.append('address', document.getElementById('point-address').value);
+      formData.append('lat', document.getElementById('point-lat').value);
+      formData.append('lng', document.getElementById('point-lng').value);
+      formData.append('description', document.getElementById('point-description').value);
+      formData.append('category', document.getElementById('point-category').value);
+      formData.append('hint_author', document.getElementById('point-hint-author').value);
+      formData.append('tags', JSON.stringify(tags));
+
+      // --- Сохраняем СУЩЕСТВУЮЩИЕ фото как JSON ---
+      const existingPhotos = this.pointPhotos
+          .filter(p => !p.file && p.preview?.startsWith('/media/'))
+          .map(p => ({ url: p.preview }));
+      formData.append('existing_photos_json', JSON.stringify(existingPhotos));
+
+      // --- Добавляем НОВЫЕ фото как файлы ---
+      let fileIndex = 0;
+      this.pointPhotos.forEach(photo => {
+          if (photo.file) {
+              formData.append('photos', photo.file); // ← одинаковый ключ для всех
+              fileIndex++;
+          }
+      });
+
+      // CSRF
+      const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+      const headers = new Headers();
+      headers.append('X-CSRFToken', csrfToken);
+
       try {
-          const formData = new FormData();
-          
-          formData.append('route_id', routeId);
-          formData.append('name', document.getElementById('point-name').value.trim());
-          formData.append('address', document.getElementById('point-address').value || '');
-          formData.append('lat', document.getElementById('point-lat').value || '0');
-          formData.append('lng', document.getElementById('point-lng').value || '0');
-          formData.append('description', document.getElementById('point-description').value || '');
-          formData.append('category', document.getElementById('point-category').value || '');
-          formData.append('hint_author', document.getElementById('point-hint-author').value || '');
-          
-          const tagsInput = document.getElementById('point-tags').value;
-          const tags = tagsInput.split(',')
-              .map(tag => tag.trim())
-              .filter(tag => tag.length > 0);
-          formData.append('tags', JSON.stringify(tags));
-          
-          this.pointPhotos.forEach((photo, index) => {
-              if (photo.file) {
-                  formData.append(`photo_${index}`, photo.file);
-              } else if (photo.preview && photo.preview.startsWith('/media/')) {
-                  formData.append(`existing_photo_${index}`, photo.preview);
-              }
-          });
-          
-          if (this.pointAudio?.file) {
-              formData.append('audio_file', this.pointAudio.file);
-          } else if (this.pointAudio?.url && this.pointAudio.url !== '#demo-audio') {
-              formData.append('audio_url', this.pointAudio.url);
-              formData.append('audio_filename', this.pointAudio.filename || 'audio.mp3');
-              formData.append('ai_audio_generated', this.pointAudio.is_ai_generated || false);
-          }
-          
-          const csrfToken = this.getCookie('csrftoken');
-          let url, method;
-          
-          if (this.currentPointId && this.currentPointId > 0) {
-              url = `/routes/api/points/${this.currentPointId}/`;
-              method = 'PUT';
-          } else {
-              url = '/routes/api/points/';
-              method = 'POST';
-          }
-          
           const response = await fetch(url, {
               method: method,
-              headers: {
-                  'X-CSRFToken': csrfToken
-              },
+              headers: headers,
               body: formData
           });
-          
-          const result = await response.json();
-          
-          if (result.success) {
-              this.currentPointId = result.id;
-              
-              const savedPoint = {
-                  id: result.id,
-                  name: result.name,
-                  address: result.address,
-                  lat: result.lat,
-                  lng: result.lng,
-                  description: result.description,
-                  category: result.category,
-                  tags: result.tags || [],
-                  photos: result.photos || [],
-                  route_id: routeId
-              };
-              
-              if (result.audio_url) {
-                  savedPoint.audio_url = result.audio_url;
-                  savedPoint.audio_filename = result.audio_filename;
-                  savedPoint.ai_audio_generated = result.ai_audio_generated;
+
+          if (response.ok) {
+              this.showToast('Point saved successfully!', 'success');
+              this.hide();
+              if (window.routeEditor && typeof window.routeEditor.loadRoute === 'function') {
+                  window.routeEditor.loadRoute(routeId);
               }
-              
-              if (window.routeEditor && typeof window.routeEditor.updatePoint === 'function') {
-                  window.routeEditor.updatePoint(this.currentPointIndex, savedPoint);
-              }
-              
-              const modal = bootstrap.Modal.getInstance(document.getElementById('point-editor-modal'));
-              if (modal) {
-                  modal.hide();
-              }
-              
-              this.showToast('Point saved successfully', 'success');
           } else {
-              throw new Error(result.error || 'Save failed');
+              const errorText = await response.text();
+              console.error('Save error:', errorText);
+              this.showToast('Failed to save point', 'error');
           }
-          
       } catch (error) {
-          console.error('Error saving point:', error);
-          this.showToast(`Error: ${error.message}`, 'danger');
-      } finally {
-          saveBtn.disabled = false;
-          saveBtn.innerHTML = originalBtnText;
+          console.error('Fetch error:', error);
+          this.showToast('Network error', 'error');
       }
   },
     

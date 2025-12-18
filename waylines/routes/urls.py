@@ -17,8 +17,8 @@ urlpatterns = [
         views.share_route,
         name="share_route",
     ),
-    path('api/points/', views.save_point, name='save_point'),
-    path('api/points/<int:point_id>/', views.save_point, name='update_point'),
+    path("api/points/", views.save_point, name="save_point"),
+    path("api/points/<int:point_id>/", views.save_point, name="update_point"),
     path("all/", views.all_routes, name="all_routes"),
     path("my/", views.my_routes, name="my_routes"),
     path("shared/", views.shared_routes, name="shared_routes"),
@@ -73,9 +73,13 @@ urlpatterns = [
         views.delete_route,
         name="delete_route",
     ),
-    path('<int:route_id>/export/gpx/', views.export_gpx, name='export_gpx'),
-    path('<int:route_id>/export/kml/', views.export_kml, name='export_kml'),
-    path('<int:route_id>/export/geojson/', views.export_geojson, name='export_geojson'),
+    path("<int:route_id>/export/gpx/", views.export_gpx, name="export_gpx"),
+    path("<int:route_id>/export/kml/", views.export_kml, name="export_kml"),
+    path(
+        "<int:route_id>/export/geojson/",
+        views.export_geojson,
+        name="export_geojson",
+    ),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

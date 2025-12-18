@@ -1,13 +1,15 @@
 import base64
-from datetime import datetime
 import json
 from pathlib import Path
 import os
-import gpxpy
-import gpxpy.gpx
+
+import requests
+from gpxpy import gpx
 
 from django.core.files.base import ContentFile
+from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.contrib import messages
+from django.db import models
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -1733,16 +1735,10 @@ def get_friends_list(request):
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)})
 
-import json
-import requests
-from django.http import HttpResponse
-from django.shortcuts import get_object_or_404
-from gpxpy import gpx
-
 
 def export_gpx(request, route_id):
     route = get_object_or_404(Route, id=route_id)
-    points = route.points.all().order_by('order')
+    points = route.points.all().order_by("order")
 
     gpx_instance = gpx.GPX()
     gpx_instance.name = route.name
@@ -1751,8 +1747,10 @@ def export_gpx(request, route_id):
     elif route.short_description:
         gpx_instance.description = route.short_description
 
-    gpx_instance.author_name = str(route.author.username) if route.author else "Waylines"
-    gpx_instance.link = request.build_absolute_uri(f'/routes/{route_id}/')
+    gpx_instance.author_name = (
+        str(route.author.username) if route.author else "Waylines"
+    )
+    gpx_instance.link = request.build_absolute_uri(f"/routes/{route_id}/")
 
     gpx_track = gpx.GPXTrack()
     gpx_track.name = route.name
@@ -1760,10 +1758,13 @@ def export_gpx(request, route_id):
 
     try:
         from django.conf import settings
+
         api_key = settings.OPENROUTESERVICE_API_KEY
 
         if api_key and len(points) >= 2:
-            coordinates = [[float(p.longitude), float(p.latitude)] for p in points]
+            coordinates = [
+                [float(p.longitude), float(p.latitude)] for p in points
+            ]
             profile_map = {
                 "walking": "foot-walking",
                 "cycling": "cycling-regular",
@@ -1772,38 +1773,40 @@ def export_gpx(request, route_id):
             profile = profile_map.get(route.route_type, "foot-walking")
 
             headers = {
-                'Authorization': api_key,
-                'Content-Type': 'application/json'
+                "Authorization": api_key,
+                "Content-Type": "application/json",
             }
             body = {
                 "coordinates": coordinates,
                 "elevation": True,
                 "instructions": False,
-                "format": "geojson"
+                "format": "geojson",
             }
 
             response = requests.post(
-                f'https://api.openrouteservice.org/v2/directions/{profile}/geojson',
+                "https://api.openrouteservice.org"
+                f"/v2/directions/{profile}/geojson",
                 headers=headers,
                 data=json.dumps(body),
-                timeout=30
+                timeout=30,
             )
 
             if response.status_code == 200:
                 route_data = response.json()
-                if 'features' in route_data and route_data['features']:
-                    geometry = route_data['features'][0]['geometry']['coordinates']
+                if "features" in route_data and route_data["features"]:
+                    geometry = route_data["features"][0]["geometry"][
+                        "coordinates"
+                    ]
                     for coord in geometry:
                         if len(coord) >= 3:
                             track_point = gpx.GPXTrackPoint(
                                 latitude=coord[1],
                                 longitude=coord[0],
-                                elevation=coord[2]
+                                elevation=coord[2],
                             )
                         else:
                             track_point = gpx.GPXTrackPoint(
-                                latitude=coord[1],
-                                longitude=coord[0]
+                                latitude=coord[1], longitude=coord[0]
                             )
                         gpx_segment.points.append(track_point)
             else:
@@ -1811,7 +1814,7 @@ def export_gpx(request, route_id):
                     gpx_segment.points.append(
                         gpx.GPXTrackPoint(
                             latitude=float(point.latitude),
-                            longitude=float(point.longitude)
+                            longitude=float(point.longitude),
                         )
                     )
         else:
@@ -1819,7 +1822,7 @@ def export_gpx(request, route_id):
                 gpx_segment.points.append(
                     gpx.GPXTrackPoint(
                         latitude=float(point.latitude),
-                        longitude=float(point.longitude)
+                        longitude=float(point.longitude),
                     )
                 )
     except Exception:
@@ -1827,7 +1830,7 @@ def export_gpx(request, route_id):
             gpx_segment.points.append(
                 gpx.GPXTrackPoint(
                     latitude=float(point.latitude),
-                    longitude=float(point.longitude)
+                    longitude=float(point.longitude),
                 )
             )
 
@@ -1838,7 +1841,11 @@ def export_gpx(request, route_id):
         waypoint = gpx.GPXWaypoint(
             latitude=float(point.latitude),
             longitude=float(point.longitude),
-            name=f"{idx + 1}. {point.name}" if point.name else f"Point {idx + 1}"
+            name=(
+                f"{idx + 1}. {point.name}"
+                if point.name
+                else f"Point {idx + 1}"
+            ),
         )
         description_parts = []
         if point.description:
@@ -1851,22 +1858,29 @@ def export_gpx(request, route_id):
             waypoint.description = "\n".join(description_parts)[:500]
         gpx_instance.waypoints.append(waypoint)
 
-    response = HttpResponse(gpx_instance.to_xml(), content_type='application/gpx+xml')
-    response['Content-Disposition'] = f'attachment; filename="route_{route_id}.gpx"'
+    response = HttpResponse(
+        gpx_instance.to_xml(), content_type="application/gpx+xml"
+    )
+    response["Content-Disposition"] = (
+        f'attachment; filename="route_{route_id}.gpx"'
+    )
     return response
 
 
 def export_kml(request, route_id):
     route = get_object_or_404(Route, id=route_id)
-    points = route.points.all().order_by('order')
+    points = route.points.all().order_by("order")
 
     route_coordinates = []
     try:
         from django.conf import settings
-        api_key = getattr(settings, 'OPENROUTESERVICE_API_KEY', None)
+
+        api_key = getattr(settings, "OPENROUTESERVICE_API_KEY", None)
 
         if api_key and len(points) >= 2:
-            coordinates = [[float(p.longitude), float(p.latitude)] for p in points]
+            coordinates = [
+                [float(p.longitude), float(p.latitude)] for p in points
+            ]
             profile_map = {
                 "walking": "foot-walking",
                 "cycling": "cycling-regular",
@@ -1875,46 +1889,59 @@ def export_kml(request, route_id):
             profile = profile_map.get(route.route_type, "foot-walking")
 
             headers = {
-                'Authorization': api_key,
-                'Content-Type': 'application/json'
+                "Authorization": api_key,
+                "Content-Type": "application/json",
             }
             body = {
                 "coordinates": coordinates,
                 "elevation": False,
                 "instructions": False,
-                "format": "geojson"
+                "format": "geojson",
             }
 
             response = requests.post(
-                f'https://api.openrouteservice.org/v2/directions/{profile}/geojson',
+                "https://api.openrouteservice.org"
+                f"/v2/directions/{profile}/geojson",
                 headers=headers,
                 data=json.dumps(body),
-                timeout=30
+                timeout=30,
             )
 
             if response.status_code == 200:
                 route_data = response.json()
-                if 'features' in route_data and route_data['features']:
-                    geometry = route_data['features'][0]['geometry']['coordinates']
-                    route_coordinates = [f"{coord[0]},{coord[1]},0" for coord in geometry]
+                if "features" in route_data and route_data["features"]:
+                    geometry = route_data["features"][0]["geometry"][
+                        "coordinates"
+                    ]
+                    route_coordinates = [
+                        f"{coord[0]},{coord[1]},0" for coord in geometry
+                    ]
     except Exception:
         pass
 
     if not route_coordinates:
-        route_coordinates = [f"{point.longitude},{point.latitude},0" for point in points]
+        route_coordinates = [
+            f"{point.longitude},{point.latitude},0" for point in points
+        ]
 
-    coordinates_xml = "\n".join(f"          {coord}" for coord in route_coordinates)
+    coordinates_xml = "\n".join(
+        f"          {coord}" for coord in route_coordinates
+    )
 
     placemarks_xml = ""
     for idx, point in enumerate(points):
         description_parts = []
         if point.description:
-            description_parts.append(f"<b>Description:</b> {point.description}")
+            description_parts.append(
+                f"<b>Description:</b> {point.description}"
+            )
         if point.address:
             description_parts.append(f"<b>Address:</b> {point.address}")
         if point.category:
             description_parts.append(f"<b>Category:</b> {point.category}")
-        description = "<br/>".join(description_parts) if description_parts else ""
+        description = (
+            "<br/>".join(description_parts) if description_parts else ""
+        )
         placemarks_xml += f"""
     <Placemark>
       <name>{idx + 1}. {point.name}</name>
@@ -1924,19 +1951,20 @@ def export_kml(request, route_id):
       </Point>
     </Placemark>"""
 
+    route_desc = route.description or route.short_description or ""
     kml_template = f"""<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
     <name>{route.name}</name>
-    <description><![CDATA[{route.description or route.short_description or ""}]]></description>
-    
+    <description><![CDATA[{route_desc}]]></description>
+
     <Style id="routeStyle">
       <LineStyle>
         <color>ff0000ff</color>
         <width>4</width>
       </LineStyle>
     </Style>
-    
+
     <Placemark>
       <name>Route</name>
       <styleUrl>#routeStyle</styleUrl>
@@ -1946,28 +1974,35 @@ def export_kml(request, route_id):
 {coordinates_xml}        </coordinates>
       </LineString>
     </Placemark>
-    
+
     {placemarks_xml}
-    
+
   </Document>
 </kml>"""
 
-    response = HttpResponse(kml_template, content_type='application/vnd.google-earth.kml+xml')
-    response['Content-Disposition'] = f'attachment; filename="route_{route_id}.kml"'
+    response = HttpResponse(
+        kml_template, content_type="application/vnd.google-earth.kml+xml"
+    )
+    response["Content-Disposition"] = (
+        f'attachment; filename="route_{route_id}.kml"'
+    )
     return response
 
 
 def export_geojson(request, route_id):
     route = get_object_or_404(Route, id=route_id)
-    points = route.points.all().order_by('order')
+    points = route.points.all().order_by("order")
 
     route_coordinates = []
     try:
         from django.conf import settings
-        api_key = getattr(settings, 'OPENROUTESERVICE_API_KEY', None)
+
+        api_key = getattr(settings, "OPENROUTESERVICE_API_KEY", None)
 
         if api_key and len(points) >= 2:
-            coordinates = [[float(p.longitude), float(p.latitude)] for p in points]
+            coordinates = [
+                [float(p.longitude), float(p.latitude)] for p in points
+            ]
             profile_map = {
                 "walking": "foot-walking",
                 "cycling": "cycling-regular",
@@ -1976,29 +2011,36 @@ def export_geojson(request, route_id):
             profile = profile_map.get(route.route_type, "foot-walking")
 
             headers = {
-                'Authorization': api_key,
-                'Content-Type': 'application/json'
+                "Authorization": api_key,
+                "Content-Type": "application/json",
             }
             body = {
                 "coordinates": coordinates,
                 "elevation": True,
                 "instructions": False,
-                "format": "geojson"
+                "format": "geojson",
             }
 
             response = requests.post(
-                f'https://api.openrouteservice.org/v2/directions/{profile}/geojson',
+                "https://api.openrouteservice.org"
+                f"/v2/directions/{profile}/geojson",
                 headers=headers,
                 data=json.dumps(body),
-                timeout=30
+                timeout=30,
             )
 
             if response.status_code == 200:
                 route_data = response.json()
-                if 'features' in route_data and route_data['features']:
-                    geometry = route_data['features'][0]['geometry']['coordinates']
+                if "features" in route_data and route_data["features"]:
+                    geometry = route_data["features"][0]["geometry"][
+                        "coordinates"
+                    ]
                     route_coordinates = [
-                        [float(coord[0]), float(coord[1]), float(coord[2]) if len(coord) > 2 else 0]
+                        [
+                            float(coord[0]),
+                            float(coord[1]),
+                            float(coord[2]) if len(coord) > 2 else 0,
+                        ]
                         for coord in geometry
                     ]
     except Exception:
@@ -2006,7 +2048,8 @@ def export_geojson(request, route_id):
 
     if not route_coordinates:
         route_coordinates = [
-            [float(point.longitude), float(point.latitude), 0] for point in points
+            [float(point.longitude), float(point.latitude), 0]
+            for point in points
         ]
 
     geojson_data = {
@@ -2016,19 +2059,27 @@ def export_geojson(request, route_id):
                 "type": "Feature",
                 "properties": {
                     "name": route.name,
-                    "description": route.description or route.short_description,
+                    "description": route.description
+                    or route.short_description,
                     "type": "route",
                     "route_type": route.route_type,
-                    "distance": float(route.total_distance) if route.total_distance else 0,
-                    "duration": route.duration_display or route.duration_minutes,
-                    "source": "OpenRouteService" if route_coordinates else "Waylines"
+                    "distance": (
+                        float(route.total_distance)
+                        if route.total_distance
+                        else 0
+                    ),
+                    "duration": route.duration_display
+                    or route.duration_minutes,
+                    "source": (
+                        "OpenRouteService" if route_coordinates else "Waylines"
+                    ),
                 },
                 "geometry": {
                     "type": "LineString",
-                    "coordinates": route_coordinates
-                }
+                    "coordinates": route_coordinates,
+                },
             }
-        ]
+        ],
     }
 
     for idx, point in enumerate(points):
@@ -2038,107 +2089,112 @@ def export_geojson(request, route_id):
             "address": point.address or "",
             "category": point.category or "",
             "type": "waypoint",
-            "order": idx + 1
+            "order": idx + 1,
         }
-        geojson_data["features"].append({
-            "type": "Feature",
-            "properties": point_properties,
-            "geometry": {
-                "type": "Point",
-                "coordinates": [float(point.longitude), float(point.latitude), 0]
+        geojson_data["features"].append(
+            {
+                "type": "Feature",
+                "properties": point_properties,
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [
+                        float(point.longitude),
+                        float(point.latitude),
+                        0,
+                    ],
+                },
             }
-        })
+        )
 
     response = HttpResponse(
         json.dumps(geojson_data, ensure_ascii=False, indent=2),
-        content_type='application/json'
+        content_type="application/json",
     )
-    response['Content-Disposition'] = f'attachment; filename="route_{route_id}.geojson"'
+    response["Content-Disposition"] = (
+        f'attachment; filename="route_{route_id}.geojson"'
+    )
     return response
 
 
-@csrf_exempt
-@login_required
+@require_http_methods(["POST", "PUT"])
 def save_point(request, point_id=None):
-    if request.method in ['POST', 'PUT']:
+    try:
+        route_id = request.POST.get("route_id")
+        if not route_id:
+            return JsonResponse({"error": "Route ID is required"}, status=400)
+        route = Route.objects.get(id=route_id)
+
+        if point_id:
+            point = RoutePoint.objects.get(id=point_id, route=route)
+        else:
+            point = RoutePoint(route=route)
+
+        point.name = request.POST.get("name", "")[:255]
+        point.address = request.POST.get("address", "")[:255]
+        point.lat = request.POST.get("lat")
+        point.lng = request.POST.get("lng")
+        point.description = request.POST.get("description", "")
+        point.category = request.POST.get("category", "")[:100]
+        point.hint_author = request.POST.get("hint_author", "")[:255]
+
+        tags_raw = request.POST.get("tags", "[]")
         try:
-            route_id = request.POST.get('route_id')
-            if not route_id:
-                return JsonResponse({'success': False, 'error': 'Route ID is required'}, status=400)
-            
-            route = get_object_or_404(Route, id=route_id, author=request.user)
-            
-            point_data = {
-                'name': request.POST.get('name', 'Untitled'),
-                'address': request.POST.get('address', ''),
-                'latitude': float(request.POST.get('lat', 0)),
-                'longitude': float(request.POST.get('lng', 0)),
-                'description': request.POST.get('description', ''),
-                'category': request.POST.get('category', ''),
-                'hint_author': request.POST.get('hint_author', ''),
-                'route': route
+            tags = json.loads(tags_raw)
+            point.tags = [tag[:50] for tag in tags if isinstance(tag, str)]
+        except Exception:
+            point.tags = []
+
+        point.save()
+
+        existing_photos_json = request.POST.get("existing_photos_json", "[]")
+        try:
+            existing_data = json.loads(existing_photos_json)
+            current_photos = {
+                p.image.url: p for p in point.photos.all() if p.image
             }
-            
-            tags_str = request.POST.get('tags', '[]')
-            try:
-                tags = json.loads(tags_str)
-            except:
-                tags = []
-            
-            if point_id:
-                point = get_object_or_404(RoutePoint, id=point_id, route=route)
-                
-                for key, value in point_data.items():
-                    if key != 'route':
-                        setattr(point, key, value)
-                
-                point.tags = tags
-                point.save()
-                
-                point.photos.all().delete()
-            else:
-                point_data['order'] = route.points.count()
-                point = RoutePoint.objects.create(**point_data)
-                point.tags = tags
-                point.save()
-            
-            photo_count = 0
-            
-            files = request.FILES.getlist('photos')
-            for file in files:
-                photo = PointPhoto.objects.create(point=point, order=photo_count)
-                photo.image.save(file.name, ContentFile(file.read()), save=True)
-                photo_count += 1
-            
-            photos_data = []
-            for photo in point.photos.all().order_by('order'):
-                photos_data.append({
-                    'url': photo.image.url if photo.image else '',
-                    'caption': photo.caption or ''
-                })
-            
-            result = {
-                'success': True,
-                'id': point.id,
-                'name': point.name,
-                'address': point.address,
-                'lat': point.latitude,
-                'lng': point.longitude,
-                'description': point.description,
-                'category': point.category,
-                'tags': point.tags,
-                'photos': photos_data,
-                'route_id': route.id
-            }
-            
-            if 'audio_file' in request.FILES:
-                audio_file = request.FILES['audio_file']
-                point.audio_guide.save(audio_file.name, ContentFile(audio_file.read()), save=True)
-                result['audio_url'] = point.audio_guide.url
-            
-            return JsonResponse(result)
-            
+            incoming_urls = set()
+
+            for idx, photo_data in enumerate(existing_data):
+                if isinstance(photo_data, dict) and "url" in photo_data:
+                    url = photo_data["url"]
+                    if isinstance(url, str) and url.startswith("/media/"):
+                        incoming_urls.add(url)
+                        if url not in current_photos:
+                            new_photo = PointPhoto(point=point, order=idx)
+                            new_photo.image.name = url.replace(
+                                "/media/", "", 1
+                            )
+                            new_photo.save()
+
+            for url, photo in current_photos.items():
+                if url not in incoming_urls:
+                    photo.delete()
+
         except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)}, status=400)
-    
-    return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+            print("Error syncing existing photos:", e)
+
+        new_photos = request.FILES.getlist("photos")
+        last_order = (
+            point.photos.aggregate(max_order=models.Max("order"))["max_order"]
+            or -1
+        )
+        for file in new_photos:
+            if isinstance(file, InMemoryUploadedFile):
+                last_order += 1
+                photo = PointPhoto(point=point, order=last_order)
+                photo.image.save(
+                    file.name, ContentFile(file.read()), save=True
+                )
+
+        return JsonResponse({"success": True, "point_id": point.id})
+
+    except Route.DoesNotExist:
+        return JsonResponse({"error": "Route not found"}, status=404)
+    except RoutePoint.DoesNotExist:
+        return JsonResponse({"error": "Point not found"}, status=404)
+    except Exception as e:
+        print("Save point error:", e)
+        import traceback
+
+        traceback.print_exc()
+        return JsonResponse({"error": "Internal error"}, status=500)

@@ -32,6 +32,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -68,7 +69,11 @@ DATABASES = {
 
 YANDEX_API_KEY = "AQVN3h5QwSX2b3vUHfW8x_9hO7iEYdLBUEIswTwk"
 YANDEX_FOLDER_ID = "b1gqv1ek8siro4365epf"
-OPENROUTESERVICE_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjYyMzA1OTQzOTI2NzQ1MDBiMTUwOGUxYmVhZTUwMGM4IiwiaCI6Im11cm11cjY0In0="
+OPENROUTESERVICE_API_KEY = (
+    "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6Ij"
+    "YyMzA1OTQzOTI2NzQ1MDBiMTUwOGUxYmVhZTUwMGM4IiwiaCI6Im11"
+    "cm11cjY0In0="
+)
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -102,8 +107,11 @@ LOCALE_PATHS = [
 ]
 
 LANGUAGES = [
-    ("ru-ru", "Русский"),
-    ("en-us", "English"),
+    ("en", "English"),
+    ("es", "Spanish"),
+    ("de", "German"),
+    ("fr", "French"),
+    ("ru", "Russian"),
 ]
 
 

@@ -568,20 +568,20 @@ class RouteEditor {
 
     getCategoryName(category) {
         const names = {
-            'attraction': 'Достопримечательность',
-            'nature': 'Природа',
-            'forest': 'Лес',
-            'bus_stop': 'Автобусная остановка',
-            'viewpoint': 'Смотровая площадка',
-            'restaurant': 'Ресторан',
-            'hotel': 'Отель',
-            'museum': 'Музей',
-            'park': 'Парк',
-            'monument': 'Памятник',
-            'church': 'Храм',
-            'beach': 'Пляж'
+            'attraction': 'Attraction',
+            'nature': 'Nature',
+            'forest': 'Forest',
+            'bus_stop': 'Bus Stop',
+            'viewpoint': 'Viewpoint',
+            'restaurant': 'Restaurant',
+            'hotel': 'Hotel',
+            'museum': 'Museum',
+            'park': 'Park',
+            'monument': 'Monument',
+            'church': 'Church',
+            'beach': 'Beach'
         };
-        return names[category] || 'Точка';
+        return names[category] || 'Point';
     }
 
     getCategoryFAIcon(category) {
@@ -769,36 +769,19 @@ class RouteEditor {
     }
 
     editPoint(index) {
-        this.currentEditIndex = index;
         const point = this.points[index];
-        document.getElementById('edit-point-index').value = index;
-        document.getElementById('point-name').value = point.name;
-        document.getElementById('point-address').value = point.address;
-        document.getElementById('point-description').value = point.description;
-        document.getElementById('point-category').value = point.category;
-        document.getElementById('point-tags').value = Array.isArray(point.tags) ? point.tags.join(', ') : (point.tags || '');
-        document.getElementById('point-hint-author').value = point.hint_author;
-        document.getElementById('point-lat').value = point.lat.toFixed(6);
-        document.getElementById('point-lng').value = point.lng.toFixed(6);
-        
-        // Загрузка фото
-        this.loadPointPhotosToModal(point);
-        this.loadAudioData(point);
-        
-        if (window.audioGenerationManager) {
-            if (point.id) {
-                window.audioGenerationManager.showAudioForPoint(point.id, point);
-            } else {
-                window.audioGenerationManager.showNoAudio();
-                const btn = document.querySelector('#point-editor-modal .generate-audio-btn');
-                if (btn) btn.disabled = true;
-            }
+        if (window.pointEditor && typeof window.pointEditor.show === 'function') {
+            window.pointEditor.show(index, point);
+        } else {
+            this.showToast('The point editor is not available', 'warning');
         }
-        
-        const modalElement = document.getElementById('point-editor-modal');
-        if (modalElement) {
-            const modal = new bootstrap.Modal(modalElement);
-            modal.show();
+    }
+
+    updatePoint(index, updatedPoint) {
+        if (index >= 0 && index < this.points.length) {
+            this.points[index] = { ...this.points[index], ...updatedPoint };
+            this.updateMap();
+            this.showToast('The point has been updated', 'success');
         }
     }
 
@@ -1605,7 +1588,6 @@ class RouteEditor {
                         category: point.category || '',
                         hint_author: point.hint_author || '',
                         tags: point.tags || [],
-                        photos: processedPhotos,
                         has_audio: point.has_audio || false
                     };
                 })
@@ -1933,22 +1915,22 @@ class RouteEditor {
             },
             (error) => {
                 if (routeLoading) routeLoading.style.display = 'none';
-                let errorMessage = 'Не удалось определить ваше местоположение. ';
+                let errorMessage = 'Failed to determine your location. ';
                 switch (error.code) {
                     case error.PERMISSION_DENIED:
-                        errorMessage += 'Разрешение на доступ к геолокации отклонено. ';
+                        errorMessage += 'Permission to access geolocation denied. ';
                         break;
                     case error.POSITION_UNAVAILABLE:
-                        errorMessage += 'Информация о местоположении недоступна. ';
+                        errorMessage += 'Location information unavailable. ';
                         break;
                     case error.TIMEOUT:
-                        errorMessage += 'Время ожидания определения местоположения истекло. ';
+                        errorMessage += 'Location determination timeout. ';
                         break;
                     default:
-                        errorMessage += 'Произошла неизвестная ошибка. ';
+                        errorMessage += 'An unknown error occurred. ';
                         break;
                 }
-                errorMessage += 'Карта центрирована на Москве.';
+                errorMessage += 'Map centered on Moscow.';
                 this.map.setView(this.defaultCenter, 10);
                 this.showToast(errorMessage, 'info', 5000);
             },
@@ -2191,7 +2173,7 @@ class RouteEditor {
 
     openAudioSettings() {
         if (!window.audioGenerationManager) {
-            this.showToast('AI аудио сервис недоступен', 'warning');
+            this.showToast('AI audio service unavailable', 'warning');
             return;
         }
         window.audioGenerationManager.openAudioSettings();
@@ -2199,18 +2181,18 @@ class RouteEditor {
 
     async generateAIAudio() {
         if (!window.audioGenerationManager || this.currentEditIndex === null) {
-            this.showToast('Не выбрана точка для генерации аудио', 'warning');
+            this.showToast('No point selected for audio generation', 'warning');
             return;
         }
         const pointId = this.points[this.currentEditIndex].id;
         if (!pointId) {
-            this.showToast('Точка не сохранена. Сначала сохраните точку.', 'warning');
+            this.showToast('Point not saved. Save the point first.', 'warning');
             return;
         }
         try {
             await window.audioGenerationManager.generateAudio();
         } catch (error) {
-            this.showToast('Ошибка генерации аудио: ' + error.message, 'danger');
+            this.showToast('Audio generation error: ' + error.message, 'danger');
         }
     }
 
@@ -2220,7 +2202,7 @@ class RouteEditor {
         }
         const pointId = this.points[this.currentEditIndex].id;
         if (!pointId) {
-            this.showToast('Точка не сохранена', 'warning');
+            this.showToast('Point not saved', 'warning');
             return;
         }
         try {
@@ -2229,7 +2211,7 @@ class RouteEditor {
             this.points[this.currentEditIndex].audio_guide = null;
             this.updatePointsList();
         } catch (error) {
-            this.showToast('Ошибка удаления аудио', 'danger');
+            this.showToast('Audio deletion error', 'danger');
         }
     }
 
@@ -2251,10 +2233,10 @@ class RouteEditor {
             if (audioIndicator) {
                 if (point.audio_guide) {
                     audioIndicator.innerHTML = '<i class="fas fa-headphones text-success"></i>';
-                    audioIndicator.title = 'Есть аудиогид';
+                    audioIndicator.title = 'Has audio guide';
                 } else {
                     audioIndicator.innerHTML = '<i class="fas fa-headphones text-muted"></i>';
-                    audioIndicator.title = 'Нет аудиогида';
+                    audioIndicator.title = 'No audio guide';
                 }
             }
         }
@@ -2283,7 +2265,7 @@ document.addEventListener('DOMContentLoaded', function () {
             z-index: 10000;
             font-weight: bold;
         `;
-        errorMessage.textContent = 'Ошибка загрузки редактора маршрутов. Пожалуйста, обновите страницу.';
+        errorMessage.textContent = 'Error loading route editor. Please refresh the page.';
         document.body.appendChild(errorMessage);
     }
 });

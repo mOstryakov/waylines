@@ -21,7 +21,7 @@ class TTSConfig:
         speed: float = 1.0,
         pitch: int = 0,
         audio_format: str = "mp3",
-        sample_rate: int = 48000
+        sample_rate: int = 48000,
     ):
         self.text = text
         self.language = language
@@ -43,7 +43,8 @@ class TTSService:
         if not self.api_key or self.api_key == "your-yandex-key-here":
             raise ImproperlyConfigured(
                 "YANDEX_API_KEY is not configured. "
-                "Add to settings.py: YANDEX_API_KEY = 'your_yandex_cloud_api_key'"
+                "Add to settings.py: "
+                "YANDEX_API_KEY = 'your_yandex_cloud_api_key'"
             )
 
         self.lang_voice_map = {
@@ -95,13 +96,15 @@ class TTSService:
             "nova": "jane",
         }
 
-    def generate_audio_with_config(self, config: TTSConfig) -> tuple[bytes, float]:
+    def generate_audio_with_config(
+        self, config: TTSConfig
+    ) -> tuple[bytes, float]:
         lang_info = self.lang_voice_map.get(
             config.language, self.lang_voice_map["ru"]
         )
-        
+
         voice = config.voice or self.voice_type_map.get(config.voice_type)
-        
+
         if voice and voice in self.voice_mapping:
             final_voice = self.voice_mapping[voice]
         else:
@@ -147,12 +150,14 @@ class TTSService:
             speed=speed,
             pitch=pitch,
             audio_format=audio_format,
-            sample_rate=sample_rate
+            sample_rate=sample_rate,
         )
-        
+
         return self.generate_audio_with_config(config)
 
-    def _make_tts_request(self, data: Dict[str, Any], lang: str, voice: str) -> tuple[bytes, float]:
+    def _make_tts_request(
+        self, data: Dict[str, Any], lang: str, voice: str
+    ) -> tuple[bytes, float]:
         try:
             start_time = time.time()
             response = requests.post(
@@ -164,13 +169,15 @@ class TTSService:
 
             if response.status_code != 200:
                 raise Exception(
-                    f"Yandex TTS error ({response.status_code}): {response.text[:200]}"
+                    f"Yandex TTS error ({response.status_code}): "
+                    f"{response.text[:500]}"
                 )
 
             audio_content = response.content
             processing_time = time.time() - start_time
             logger.info(
-                f"Yandex TTS: generated in {processing_time:.2f}s, lang={lang}, voice={voice}"
+                f"Yandex TTS: generated in {processing_time:.2f}s, "
+                f"lang={lang}, voice={voice}"
             )
             return audio_content, processing_time
 

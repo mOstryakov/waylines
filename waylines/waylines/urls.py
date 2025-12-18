@@ -14,6 +14,7 @@ urlpatterns = [
     path("interactions/", include("interactions.urls")),
     path("users/", include("users.urls")),
     path("api/ai-audio/", include("ai_audio.urls")),
+    path("i18n/", include("django.conf.urls.i18n")),
 ]
 
 if settings.DEBUG:

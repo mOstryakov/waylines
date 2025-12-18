@@ -490,6 +490,25 @@
     .nav-link.dropdown-toggle i.fa-users {
       font-size: 1.1rem;
     }
+
+    .flag-icon {
+      width: 16px;
+      text-align: center;
+    }
+
+    @media (max-width: 768px) {
+      #languageDropdown .nav-link span {
+        display: none !important;
+      }
+    }
+
+    #languageMenu {
+      min-width: 180px !important;
+    }
+
+    .dropdown-item .fa-check {
+      font-size: 0.9rem;
+    }
   </style>
 
   {% block extra_css %}{% endblock %}
@@ -619,6 +638,48 @@
             </a>
           </li>
           {% endif %}
+
+          <li class="nav-item dropdown" id="languageDropdown">
+            <a class="nav-link dropdown-toggle" href="#" onclick="toggleDropdown('languageMenu'); return false;">
+              <i class="fas fa-globe"></i>
+              <span class="d-none d-md-inline">
+                {% get_current_language as LANGUAGE_CODE %}
+                {% if LANGUAGE_CODE == 'en' %}English
+                {% elif LANGUAGE_CODE == 'es' %}Español
+                {% elif LANGUAGE_CODE == 'de' %}Deutsch
+                {% elif LANGUAGE_CODE == 'fr' %}Français
+                {% elif LANGUAGE_CODE == 'ru' %}Русский
+                {% else %}English{% endif %}
+              </span>
+            </a>
+            <div class="custom-dropdown-menu" id="languageMenu">
+              <form action="{% url 'set_language' %}" method="post" id="languageForm">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.path }}">
+                <a class="dropdown-item" href="#" onclick="setLanguage('en')">
+                  <i class="flag-icon {% if LANGUAGE_CODE == 'en' %}fas fa-check text-primary{% else %}far fa-circle{% endif %} me-2"></i>
+                  English
+                </a>
+                <a class="dropdown-item" href="#" onclick="setLanguage('es')">
+                  <i class="flag-icon {% if LANGUAGE_CODE == 'es' %}fas fa-check text-primary{% else %}far fa-circle{% endif %} me-2"></i>
+                  Español
+                </a>
+                <a class="dropdown-item" href="#" onclick="setLanguage('de')">
+                  <i class="flag-icon {% if LANGUAGE_CODE == 'de' %}fas fa-check text-primary{% else %}far fa-circle{% endif %} me-2"></i>
+                  Deutsch
+                </a>
+                <a class="dropdown-item" href="#" onclick="setLanguage('fr')">
+                  <i class="flag-icon {% if LANGUAGE_CODE == 'fr' %}fas fa-check text-primary{% else %}far fa-circle{% endif %} me-2"></i>
+                  Français
+                </a>
+                <a class="dropdown-item" href="#" onclick="setLanguage('ru')">
+                  <i class="flag-icon {% if LANGUAGE_CODE == 'ru' %}fas fa-check text-primary{% else %}far fa-circle{% endif %} me-2"></i>
+                  Русский
+                </a>
+                <input type="hidden" name="language" id="selectedLanguage">
+              </form>
+            </div>
+          </li>
         </ul>
       </div>
     </div>
@@ -748,6 +809,32 @@
           }
         }
       });
+    });
+
+    function setLanguage(langCode) {
+      document.getElementById('selectedLanguage').value = langCode;
+      document.getElementById('languageForm').submit();
+      
+      document.getElementById('languageMenu').classList.remove('show');
+      
+      const langNames = {
+        'en': 'English',
+        'es': 'Español',
+        'de': 'Deutsch',
+        'fr': 'Français',
+        'ru': 'Русский'
+      };
+      showNotification(`Language changed to ${langNames[langCode]}`, 'info');
+    }
+
+    document.addEventListener('click', function(e) {
+      const clickedInside = Array.from(document.querySelectorAll(
+        '.nav-link.dropdown-toggle, .custom-dropdown-menu, #languageMenu, #languageDropdown'
+      )).some(el => el.contains(e.target));
+      
+      if (!clickedInside) {
+        document.querySelectorAll('.custom-dropdown-menu').forEach(m => m.classList.remove('show'));
+      }
     });
   </script>
 
