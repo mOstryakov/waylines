@@ -20,10 +20,16 @@ class Conversation(models.Model):
         return f"Conversation #{self.id}"
 
     def get_participants_preview(self, limit=3):
-        return list(self.participants.values_list('username', flat=True)[:limit])
+        return list(
+            self.participants.values_list("username", flat=True)[:limit]
+        )
 
     def get_other_participant(self, user):
-        return self.participants.only('id', 'username').exclude(id=user.id).first()
+        return (
+            self.participants.only("id", "username")
+            .exclude(id=user.id)
+            .first()
+        )
 
     def get_unread_count(self, user):
         return self.messages.exclude(sender=user).filter(is_read=False).count()
@@ -95,7 +101,10 @@ class RouteChatMessage(models.Model):
         ordering = ["timestamp"]
 
     def __str__(self):
-        return f"{self.user.username} in {self.route_chat.route.name}: {self.message[:50]}"
+        return (
+            f"{self.user.username} in {self.route_chat.route.name}:"
+            f" {self.message[:50]}"
+        )
 
 
 @receiver(post_save, sender=Route)
