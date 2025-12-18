@@ -2,8 +2,8 @@
 {% load static i18n %}
 {% block title %}{{ route.name }} - Waylines{% endblock %}
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'static_dev/css/leaflet.css' %}" />
-<link rel="stylesheet" href="{% static 'static_dev/css/fontawesome-all.min.css' %}">
+<link rel="stylesheet" href="{% static 'css/leaflet.css' %}" />
+<link rel="stylesheet" href="{% static 'css/fontawesome-all.min.css' %}">
 <style>
 .route-detail-page {
     background: #fafafa;
@@ -320,6 +320,14 @@ audio::-webkit-media-controls-time-remaining-display {
 .point-photo-preview:hover .point-photo-more {
     opacity: 1;
 }
+.export-actions {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #e9ecef;
+}
+.btn-export {
+    min-width: 140px;
+}
 </style>
 {% endblock %}
 {% block content %}
@@ -510,6 +518,29 @@ audio::-webkit-media-controls-time-remaining-display {
                                         <div class="stat-label text-muted small">{% trans "Points" %}</div>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                        <div class="export-actions">
+                            <h6 class="text-dark mb-3">{% trans "Export Route" %}</h6>
+                            <div class="d-flex flex-wrap gap-3">
+                                <form method="post" action="{% url 'export_gpx' route.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-primary btn-export">
+                                        <i class="fas fa-download me-2"></i>{% trans "Export GPX" %}
+                                    </button>
+                                </form>
+                                <form method="post" action="{% url 'export_kml' route.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-success btn-export">
+                                        <i class="fas fa-file-export me-2"></i>{% trans "Export KML" %}
+                                    </button>
+                                </form>
+                                <form method="post" action="{% url 'export_geojson' route.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-info btn-export">
+                                        <i class="fas fa-map me-2"></i>{% trans "Export GeoJSON" %}
+                                    </button>
+                                </form>
                             </div>
                         </div>
                     </div>

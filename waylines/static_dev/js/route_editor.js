@@ -1,4 +1,3 @@
-// static/js/route_editor.js
 class RouteEditor {
     constructor() {
         this.map = null;
@@ -781,8 +780,11 @@ class RouteEditor {
         document.getElementById('point-hint-author').value = point.hint_author;
         document.getElementById('point-lat').value = point.lat.toFixed(6);
         document.getElementById('point-lng').value = point.lng.toFixed(6);
-        this.loadPhotoData(point);
+        
+        // Загрузка фото
+        this.loadPointPhotosToModal(point);
         this.loadAudioData(point);
+        
         if (window.audioGenerationManager) {
             if (point.id) {
                 window.audioGenerationManager.showAudioForPoint(point.id, point);
@@ -792,6 +794,7 @@ class RouteEditor {
                 if (btn) btn.disabled = true;
             }
         }
+        
         const modalElement = document.getElementById('point-editor-modal');
         if (modalElement) {
             const modal = new bootstrap.Modal(modalElement);
@@ -799,37 +802,26 @@ class RouteEditor {
         }
     }
 
-    cleanupPointModal() {
-        this.removePointMainPhoto();
-        const grid = document.querySelector('#point-editor-modal .additional-photos-grid');
-        if (grid) {
-            const photoItems = grid.querySelectorAll('.additional-photo-item');
-            photoItems.forEach(item => item.remove());
-            this.updatePointAdditionalPhotosCount();
-        }
-        const additionalInput = document.getElementById('additional-photos-upload');
-        if (additionalInput) additionalInput.value = '';
-        this.pointAdditionalPhotoFiles = [];
-    }
-
-    loadPhotoData(point) {
+    loadPointPhotosToModal(point) {
         this.pointMainPhotoFile = null;
         this.pointAdditionalPhotoFiles = [];
+        
         const mainUpload = document.querySelector('#point-editor-modal .main-photo-upload');
         if (!mainUpload) return;
+        
         const mainPreview = mainUpload.querySelector('.main-photo-preview');
         const mainPlaceholder = mainUpload.querySelector('.h-100');
         const additionalGrid = document.querySelector('#point-editor-modal .additional-photos-grid');
-
+        
         if (mainPlaceholder) mainPlaceholder.style.display = 'flex';
         if (mainPreview) mainPreview.style.display = 'none';
-
+        
         if (additionalGrid) {
             const uploadButton = additionalGrid.lastElementChild;
             additionalGrid.innerHTML = '';
             if (uploadButton) additionalGrid.appendChild(uploadButton);
         }
-
+        
         if (point.photos && point.photos.length > 0) {
             const photoUrls = point.photos.map(photo => {
                 if (typeof photo === 'string') {
@@ -839,7 +831,7 @@ class RouteEditor {
                 }
                 return null;
             }).filter(url => url !== null);
-
+            
             if (photoUrls[0]) {
                 if (mainPlaceholder) mainPlaceholder.style.display = 'none';
                 if (mainPreview) {
@@ -851,27 +843,92 @@ class RouteEditor {
                             try {
                                 fullUrl = new URL(fullUrl, window.location.origin).href;
                             } catch (e) {
-                                fullUrl = '/static/images/default-photo.jpg';
+                                fullUrl = fullUrl.startsWith('/media/') || fullUrl.startsWith('/uploads/') 
+                                    ? fullUrl 
+                                    : '/static/images/default-photo.jpg';
                             }
                         }
                         img.src = fullUrl;
                     }
                 }
             }
-
+            
             if (additionalGrid && photoUrls.length > 1) {
                 const uploadButton = additionalGrid.lastElementChild;
-                photoUrls.slice(1).forEach(photoUrl => {
+                photoUrls.slice(1).forEach((photoUrl, index) => {
                     if (!photoUrl) return;
                     let fullUrl = photoUrl;
                     if (fullUrl.startsWith('/')) {
-                        fullUrl = `http://localhost:8000${fullUrl}`;
+                        try {
+                            fullUrl = new URL(fullUrl, window.location.origin).href;
+                        } catch (e) {
+                            fullUrl = fullUrl.startsWith('/media/') || fullUrl.startsWith('/uploads/') 
+                                ? fullUrl 
+                                : null;
+                        }
                     }
-                    const photoItem = this.createAdditionalPhotoItem(fullUrl, null);
-                    additionalGrid.insertBefore(photoItem, uploadButton);
+                    if (fullUrl) {
+                        const photoItem = this.createAdditionalPhotoItem(fullUrl);
+                        additionalGrid.insertBefore(photoItem, uploadButton);
+                    }
                 });
             }
         }
+    }
+
+    createAdditionalPhotoItem(src) {
+        const div = document.createElement('div');
+        div.className = 'additional-photo-item';
+        div.innerHTML = `
+            <img src="${src}" class="w-100 h-100 object-fit-cover rounded" style="object-fit: cover;">
+            <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 photo-remove-btn" 
+                    style="width: 24px; height: 24px; padding: 0; display: flex; align-items: center; justify-content: center;"
+                    onclick="routeEditor?.removeAdditionalPhoto(this)">
+                <i class="fas fa-times" style="font-size: 12px;"></i>
+            </button>
+        `;
+        return div;
+    }
+
+    removeAdditionalPhoto(button) {
+        const photoItem = button.closest('.additional-photo-item');
+        if (photoItem) {
+            const index = Array.from(photoItem.parentNode.children).indexOf(photoItem);
+            this.pointAdditionalPhotoFiles.splice(index, 1);
+            photoItem.remove();
+            this.updateAdditionalPhotosCount();
+        }
+    }
+
+    updateAdditionalPhotosCount() {
+        const grid = document.querySelector('#point-editor-modal .additional-photos-grid');
+        const countElement = document.getElementById('additional-photos-count');
+        if (grid && countElement) {
+            const photoCount = grid.querySelectorAll('.additional-photo-item').length;
+            countElement.textContent = `${photoCount}/4`;
+            const uploadButton = grid.querySelector('.additional-photo-upload');
+            if (uploadButton) {
+                uploadButton.style.display = photoCount >= 4 ? 'none' : 'flex';
+            }
+        }
+    }
+
+    getPointPhotosForModal() {
+        const pointPhotos = [];
+        
+        const mainPreview = document.querySelector('#point-editor-modal .main-photo-preview img');
+        if (mainPreview && mainPreview.src && !mainPreview.src.includes('default-photo.jpg') && !mainPreview.src.includes('data:image/svg')) {
+            pointPhotos.push(mainPreview.src);
+        }
+        
+        const additionalItems = document.querySelectorAll('#point-editor-modal .additional-photo-item img');
+        additionalItems.forEach((img, i) => {
+            if (img.src && !img.src.includes('default-photo.jpg') && !img.src.includes('data:image/svg')) {
+                pointPhotos.push(img.src);
+            }
+        });
+        
+        return pointPhotos;
     }
 
     loadAudioData(point) {
@@ -922,27 +979,6 @@ class RouteEditor {
         });
     }
 
-    createAdditionalPhotoItem(src, file) {
-        const div = document.createElement('div');
-        div.className = 'additional-photo-item';
-        div.innerHTML = `
-            <img src="${src}" class="w-100 h-100 object-fit-cover rounded">
-            <button type="button" class="btn btn-sm photo-remove-btn position-absolute top-0 end-0 m-1">
-                <i class="fas fa-times"></i>
-            </button>
-        `;
-        const removeBtn = div.querySelector('.photo-remove-btn');
-        if (removeBtn) {
-            removeBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const index = Array.from(div.parentNode.children).indexOf(div) - 1;
-                this.routeAdditionalPhotoFiles.splice(index, 1);
-                div.remove();
-            });
-        }
-        return div;
-    }
-
     validateImageFile(file) {
         if (!file.type.startsWith('image/')) {
             this.showToast('Пожалуйста, выбирайте только изображения', 'warning');
@@ -959,22 +995,52 @@ class RouteEditor {
         const index = this.currentEditIndex;
         const nameInput = document.getElementById('point-name');
         if (!nameInput) return;
+        
         const name = nameInput.value.trim();
         if (!name) {
             this.showToast('Введите название точки', 'warning');
             return;
         }
+        
         this.saveToHistory();
+        
         const point = this.points[index];
-        const photosFromModal = this.getPointPhotosForModal();
-        let finalPhotos = photosFromModal.length > 0 ? photosFromModal : point.photos;
+        
+        let finalPhotos = [];
+        
+        const mainPreview = document.querySelector('#point-editor-modal .main-photo-preview img');
+        if (mainPreview && mainPreview.src && !mainPreview.src.includes('data:image/svg')) {
+            if (mainPreview.src.startsWith('blob:')) {
+                finalPhotos.push(mainPreview.src);
+            } else if (point.photos && point.photos.length > 0) {
+                finalPhotos.push(point.photos[0]);
+            }
+        } else if (point.photos && point.photos.length > 0) {
+            finalPhotos.push(point.photos[0]);
+        }
+        
+        const additionalItems = document.querySelectorAll('#point-editor-modal .additional-photo-item img');
+        additionalItems.forEach((img, i) => {
+            if (img.src && !img.src.includes('data:image/svg')) {
+                if (img.src.startsWith('blob:') || img.src.startsWith('data:')) {
+                    finalPhotos.push(img.src);
+                } else {
+                    if (point.photos && point.photos.length > i + 1) {
+                        finalPhotos.push(point.photos[i + 1]);
+                    }
+                }
+            }
+        });
+        
         const tagsInput = document.getElementById('point-tags');
         const tags = tagsInput ?
             tagsInput.value.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
+        
         const hasAIAudio = window.audioGenerationManager ?
             window.audioGenerationManager.currentAudioUrl !== null : false;
         const aiAudioUrl = window.audioGenerationManager ?
             window.audioGenerationManager.currentAudioUrl : null;
+        
         this.points[index] = {
             ...point,
             name: name,
@@ -990,28 +1056,15 @@ class RouteEditor {
             lat: this.normalizeCoordinate(document.getElementById('point-lat')?.value || 0),
             lng: this.normalizeCoordinate(document.getElementById('point-lng')?.value || 0)
         };
+        
         this.updateMap();
         this.showToast('Точка сохранена', 'success');
+        
         const modalElement = document.getElementById('point-editor-modal');
         if (modalElement) {
             const modal = bootstrap.Modal.getInstance(modalElement);
             if (modal) modal.hide();
         }
-    }
-
-    getPointPhotosForModal() {
-        const pointPhotos = [];
-        const mainPreview = document.querySelector('#point-editor-modal .main-photo-preview img');
-        if (mainPreview && mainPreview.src && !mainPreview.src.includes('default-photo.jpg') && !mainPreview.src.includes('data:image/svg')) {
-            pointPhotos.push(mainPreview.src);
-        }
-        const additionalItems = document.querySelectorAll('#point-editor-modal .additional-photo-item img');
-        additionalItems.forEach((img, i) => {
-            if (img.src && !img.src.includes('default-photo.jpg') && !img.src.includes('data:image/svg')) {
-                pointPhotos.push(img.src);
-            }
-        });
-        return pointPhotos;
     }
 
     getRoutePhotos() {
@@ -2078,8 +2131,8 @@ class RouteEditor {
     }
 
     initPointPhotoHandlers() {
-        const mainPhotoInput = document.getElementById('main-photo-upload');
-        const additionalPhotosInput = document.getElementById('additional-photos-upload');
+        const mainPhotoInput = document.getElementById('main-photo-input');
+        const additionalPhotosInput = document.getElementById('additional-photos-input');
         if (mainPhotoInput) {
             mainPhotoInput.addEventListener('change', (e) => {
                 this.handlePointMainPhotoUpload(e.target.files[0]);
@@ -2090,51 +2143,14 @@ class RouteEditor {
                 this.handlePointAdditionalPhotosUpload(e.target.files);
             });
         }
-        this.setupPointPhotoRemoveHandlers();
     }
 
-    setupPointPhotoRemoveHandlers() {
-        const mainRemoveBtn = document.querySelector('#point-editor-modal .main-photo-preview .photo-remove-btn');
-        if (mainRemoveBtn) {
-            mainRemoveBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.removePointMainPhoto();
-            });
+    updatePoint(index, updatedPoint) {
+        if (index >= 0 && index < this.points.length) {
+            this.points[index] = { ...this.points[index], ...updatedPoint };
+            this.updateMap();
+            this.showToast('Точка обновлена', 'success');
         }
-    }
-
-    handleRouteMainPhotoUpload(file) {
-        if (!file || !this.validateImageFile(file)) return;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const uploadSection = document.querySelector('.main-photo-section .main-photo-upload');
-            if (!uploadSection) return;
-            const preview = uploadSection.querySelector('.main-photo-preview');
-            const placeholder = uploadSection.querySelector('.h-100');
-            if (placeholder) placeholder.style.display = 'none';
-            if (preview) {
-                preview.style.display = 'block';
-                const img = preview.querySelector('img');
-                if (img) img.src = e.target.result;
-            }
-            this.routeMainPhotoFile = file;
-        };
-        reader.readAsDataURL(file);
-    }
-
-    handleRouteAdditionalPhotosUpload(files) {
-        const grid = document.querySelector('.additional-photos-grid');
-        if (!grid) return;
-        Array.from(files).forEach(file => {
-            if (!this.validateImageFile(file)) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const photoItem = this.createAdditionalPhotoItem(e.target.result, file);
-                grid.insertBefore(photoItem, grid.lastElementChild);
-                this.routeAdditionalPhotoFiles.push(file);
-            };
-            reader.readAsDataURL(file);
-        });
     }
 
     initAudioGenerationManager() {
@@ -2301,7 +2317,7 @@ window.removeMainPhoto = function () {
 
 window.removeAdditionalPhoto = function (button) {
     if (routeEditor) {
-        routeEditor.removePointAdditionalPhoto(button);
+        routeEditor.removeAdditionalPhoto(button);
     }
 };
 

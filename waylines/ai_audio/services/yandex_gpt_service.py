@@ -10,8 +10,8 @@ logger = logging.getLogger(__name__)
 
 class YandexGPTService:
     def __init__(self):
-        self.api_key = getattr(settings, "YANDEX_API_KEY", None)
-        self.folder_id = getattr(settings, "YANDEX_FOLDER_ID", None)
+        self.api_key = settings.YANDEX_API_KEY
+        self.folder_id = settings.YANDEX_FOLDER_ID
 
         if not self.api_key or self.api_key == "your-yandex-key-here":
             raise ImproperlyConfigured(
