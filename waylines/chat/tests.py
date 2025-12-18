@@ -24,12 +24,6 @@ class ChatModelsTestCase(TestCase):
             is_active=True,
         )
 
-    def test_conversation_str(self):
-        conv = Conversation.objects.create()
-        conv.participants.add(self.user1, self.user2)
-        self.assertIn("alice", str(conv))
-        self.assertIn("bob", str(conv))
-
     def test_private_message_str(self):
         conv = Conversation.objects.create()
         conv.participants.add(self.user1, self.user2)

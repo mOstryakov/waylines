@@ -6,6 +6,7 @@ import os
 import requests
 from gpxpy import gpx
 
+
 from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.contrib import messages
