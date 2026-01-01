@@ -553,7 +553,7 @@ msgstr "Для пожилых"
 
 #: .\routes\models.py:69
 msgid "Shared with"
-msgstr "Поделено с"
+msgstr "Поделились с"
 
 #: .\routes\models.py:74
 msgid "Last status update"
@@ -887,7 +887,7 @@ msgstr "Все маршруты"
 
 #: .\templates\base.html:555
 msgid "Shared with me"
-msgstr "Поделено со мной"
+msgstr "Поделились со мной"
 
 #: .\templates\base.html:561 .\templates\routes\my_routes.html:10
 msgid "My routes"
@@ -970,7 +970,7 @@ msgstr "Все маршруты"
 
 #: .\templates\chat\dashboard.html:651
 msgid "Active now"
-msgstr "Активны сейчас"
+msgstr "Активен сейчас"
 
 #: .\templates\chat\dashboard.html:661
 msgid "Search friends..."
@@ -1003,7 +1003,7 @@ msgstr "Мои маршруты"
 
 #: .\templates\chat\dashboard.html:807
 msgid "Mine"
-msgstr "Мои"
+msgstr "Мой"
 
 #: .\templates\chat\dashboard.html:822 .\templates\chat\dashboard.html:889
 #: .\templates\chat\dashboard.html:937 .\templates\chat\dashboard.html:1317
@@ -1503,7 +1503,7 @@ msgstr "Главная - Waylines"
 
 #: .\templates\home.html:19
 msgid "Travel. It's worth it."
-msgstr "Путешествуйте. Это того стоит."
+msgstr "Путешествуйте. Оно того стоит."
 
 #: .\templates\home.html:24
 msgid "Discover new"
@@ -2920,7 +2920,7 @@ msgstr "Для пожилых"
 
 #: .\templates\routes\partials\route_card.html:153
 msgid "Shared with you"
-msgstr "Поделено с вами"
+msgstr "Поделились с вами"
 
 #: .\templates\routes\partials\route_card.html:165
 msgid "Share"
@@ -3549,7 +3549,7 @@ msgstr "Общие маршруты - Waylines"
 
 #: .\templates\routes\shared_routes.html:12
 msgid "Routes shared with me"
-msgstr "Маршруты, поделенные со мной"
+msgstr "Маршруты, которыми со мной поделились"
 
 #: .\templates\routes\shared_routes.html:13
 msgid "Routes your friends have shared with you"
