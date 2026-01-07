@@ -6,6 +6,12 @@ from . import views
 
 urlpatterns = [
     path("", views.home, name="home"),
+    path("api/build-route/", views.build_route_api, name="build_route_api"),
+    path(
+        "api/route/<int:route_id>/path/",
+        views.get_route_path,
+        name="route_path",
+    ),
     path("api/routes/", views.RouteCreateView.as_view(), name="route_create"),
     path(
         "api/routes/<int:pk>/",

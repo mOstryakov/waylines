@@ -26,7 +26,6 @@ class RouteEditor {
         this.recordingStartTime = null;
         this.currentAudio = null;
         this.isRecording = false;
-        this.orsApiKey = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjYyMzA1OTQzOTI2NzQ1MDBiMTUwOGUxYmVhZTUwMGM4IiwiaCI6Im11cm11cjY0In0=';
         this.init();
         this.initAudioGenerationManager();
     }
@@ -371,36 +370,29 @@ class RouteEditor {
     }
 
     async buildRouteWithORS() {
-        const profiles = {
-            'walking': 'foot-walking',
-            'driving': 'driving-car',
-            'cycling': 'cycling-regular'
-        };
-        const profile = profiles[this.routeType] || 'driving-car';
         const coordinates = this.points.map(point => [point.lng, point.lat]);
-        const response = await fetch(`https://api.openrouteservice.org/v2/directions/${profile}/geojson`, {
+        const profiles = { walking: 'foot-walking', driving: 'driving-car', cycling: 'cycling-regular' };
+        const profile = profiles[this.routeType] || 'foot-walking';
+
+        const response = await fetch('/routes/api/build-route/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': this.orsApiKey
+                'X-CSRFToken': this.getCSRFToken(),
             },
-            body: JSON.stringify({
-                coordinates: coordinates,
-                instructions: false,
-                preference: 'recommended',
-                units: 'km',
-                language: 'ru'
-            })
+            body: JSON.stringify({ coordinates, profile })
         });
+
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
+            const err = await response.json();
+            throw new Error(err.error || 'Failed to build route');
         }
+
         const data = await response.json();
-        if (data.features && data.features[0] && data.features[0].geometry) {
+        if (data.features && data.features[0]?.geometry) {
             return data.features[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
         }
-        throw new Error('Не удалось получить геометрию маршрута');
+        throw new Error('No route geometry');
     }
 
     buildStraightRoute() {

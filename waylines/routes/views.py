@@ -1737,6 +1737,108 @@ def get_friends_list(request):
         return JsonResponse({"success": False, "error": str(e)})
 
 
+@csrf_exempt
+@require_POST
+def build_route_api(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "Authentication required"}, status=401)
+
+    try:
+        data = json.loads(request.body)
+        coordinates = data.get("coordinates")
+        profile = data.get("profile", "foot-walking")
+
+        if not coordinates or len(coordinates) < 2:
+            return JsonResponse(
+                {"error": "At least 2 coordinates required"}, status=400
+            )
+
+        ors_key = settings.OPENROUTESERVICE_API_KEY
+        if not ors_key:
+            return JsonResponse(
+                {"error": "ORS key not configured"}, status=500
+            )
+
+        response = requests.post(
+            "https://api.openrouteservice.org/v2/"
+            f"directions/{profile}/geojson",
+            headers={
+                "Authorization": ors_key,
+                "Content-Type": "application/json",
+            },
+            json={
+                "coordinates": coordinates,
+                "instructions": False,
+                "preference": "recommended",
+                "language": "ru",
+            },
+            timeout=10,
+        )
+
+        if response.status_code != 200:
+            return JsonResponse(
+                {
+                    "error": f"ORS error: {response.status_code}",
+                    "details": response.text[:200],
+                },
+                status=400,
+            )
+
+        return JsonResponse(response.json())
+
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@login_required
+def get_route_path(request, route_id):
+    route = get_object_or_404(Route, id=route_id)
+    if not can_view_route(request.user, route):
+        return JsonResponse({"error": "Access denied"}, status=403)
+
+    points = route.points.all().order_by("order")
+    if len(points) < 2:
+        return JsonResponse({"error": "Not enough points"}, status=400)
+
+    ors_key = getattr(settings, "OPENROUTESERVICE_API_KEY", None)
+    if not ors_key:
+        return JsonResponse({"error": "ORS key not configured"}, status=500)
+
+    coordinates = [[float(p.longitude), float(p.latitude)] for p in points]
+    profile_map = {
+        "walking": "foot-walking",
+        "driving": "driving-car",
+        "cycling": "cycling-regular",
+    }
+    profile = profile_map.get(route.route_type, "foot-walking")
+
+    try:
+        response = requests.post(
+            "https://api.openrouteservice.org/v2/"
+            f"directions/{profile}/geojson",
+            headers={
+                "Authorization": ors_key,
+                "Content-Type": "application/json",
+            },
+            json={
+                "coordinates": coordinates,
+                "instructions": False,
+                "preference": "recommended",
+                "language": "ru",
+            },
+            timeout=15,
+        )
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("features"):
+                geometry = data["features"][0]["geometry"]["coordinates"]
+                route_coords = [[coord[1], coord[0]] for coord in geometry]
+                return JsonResponse({"coordinates": route_coords})
+        return JsonResponse({"error": "ORS returned invalid data"}, status=400)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
 def export_gpx(request, route_id):
     route = get_object_or_404(Route, id=route_id)
     points = route.points.all().order_by("order")
