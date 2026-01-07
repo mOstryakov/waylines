@@ -1,14 +1,23 @@
-# Project: Waylines: a platform for author routes
+# Waylines: Platform for Author Routes
 
-[![Lint • Tests](https://gitlab.crja72.ru/django/2025/autumn/course/projects/team-2/badges/master/pipeline.svg?key_text=Lint%20%7C%20Tests&key_width=110)](https://gitlab.crja72.ru/django/2025/autumn/course/projects/team-2/pipelines)
+A web application for creating, sharing, and discovering custom routes with AI-generated audio guides.
 
+## Features
+- User authentication and friendship system
+- Route creation with interactive maps
+- AI-generated audio guides (Yandex GPT + SpeechKit)
+- Real-time chats for routes and users
+- Multilingual support (EN, ES, DE, FR, RU)
+- Search and filtering system
+- Mobile-responsive design
 
-## Development Mode Installation
+## Local Development Setup  
 
 ### 1. Clone repository
 
 ```bash
-git clone https://gitlab.crja72.ru/django/2025/autumn/course/projects/team-2.git
+git clone https://github.com/mOstryakov/waylines.git
+cd waylines
 ```
 
 ### 2. Create virtual environment
@@ -49,13 +58,14 @@ For development:
 pip install -r requirements/dev.txt
 ``` 
 
+### 5. Configure environment variables
+
+Copy the example environment file and fill in your API keys:
+```bash
+cp .env.example .env
+```
 
 ### 6. Apply database migrations
-
-All following commands with python manage.py must be executed from the directory containing manage.py (in this case, waylines)  
-```bash
-cd waylines
-```
 
 #### Apply migrations to database
 
@@ -81,14 +91,34 @@ python manage.py collectstatic --noinput
 python manage.py showmigrations
 ```
 
-### 8. Running tests
+### 7. Running tests
 
 ```bash
 python manage.py test
 ```
 
-### 9. Run development server:
+### 8. Run development server:
 
 ```bash
 python manage.py runserver
 ```
+Available at http://127.0.0.1:8000
+
+## API Keys Required
+
+#### Yandex Cloud API
+Go to Yandex Cloud Console  
+Create API key in your folder  
+Add to ```YANDEX_API_KEY``` in ```.env```  
+
+#### OpenRouteService API  
+Sign up at OpenRouteService  
+Get API key from dashboard  
+Add to ```OPENROUTESERVICE_API_KEY``` in ```.env```  
+
+## Built With
+- **Backend**: Python, Django
+- **Database**: SQLite
+- **Frontend**: HTML, CSS, JavaScript
+- **APIs**: Yandex GPT, Yandex SpeechKit, OpenRouteService
+- **DevOps**: GitLab CI, flake8, black, Django test client

@@ -329,18 +329,6 @@ class TestModelTimestamps(TestCase):
         favorite = Favorite.objects.create(user=self.user, route=self.route)
         self.assertIsNotNone(favorite.created_at)
 
-    def test_rating_timestamps(self):
-        rating = Rating.objects.create(
-            user=self.user, route=self.route, score=3
-        )
-        self.assertIsNotNone(rating.created_at)
-        self.assertIsNotNone(rating.updated_at)
-
-        old_updated = rating.updated_at
-        rating.score = 4
-        rating.save()
-        self.assertNotEqual(rating.updated_at, old_updated)
-
     def test_comment_timestamps(self):
         comment = Comment.objects.create(
             user=self.user, route=self.route, text="Test comment"

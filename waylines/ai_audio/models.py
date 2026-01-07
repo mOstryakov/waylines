@@ -55,7 +55,7 @@ class AudioGeneration(models.Model):
     class Meta:
         verbose_name = _("Audio generation")
         verbose_name_plural = _("Audio generations")
-        ordering = ["-created_at"]
+        ordering = ["-id"]
 
     def __str__(self):
         return f"Audio for point {self.point.id} ({self.status})"

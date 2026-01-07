@@ -1,13 +1,15 @@
 from pathlib import Path
 import os
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-SECRET_KEY = (
-    "django-insecure-r0#y!8!8l2+hqss+926&ke408+6n=xp=zir+0xz31ig6lq9fjp"
-)
-DEBUG = True
+SECRET_KEY = os.getenv("SECRET_KEY")
+DEBUG = os.getenv("DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 
@@ -67,13 +69,10 @@ DATABASES = {
     }
 }
 
-YANDEX_API_KEY = "AQVN3h5QwSX2b3vUHfW8x_9hO7iEYdLBUEIswTwk"
-YANDEX_FOLDER_ID = "b1gqv1ek8siro4365epf"
-OPENROUTESERVICE_API_KEY = (
-    "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6Ij"
-    "YyMzA1OTQzOTI2NzQ1MDBiMTUwOGUxYmVhZTUwMGM4IiwiaCI6Im11"
-    "cm11cjY0In0="
-)
+YANDEX_API_KEY = os.getenv("YANDEX_API_KEY")
+YANDEX_FOLDER_ID = os.getenv("YANDEX_FOLDER_ID")
+OPENROUTESERVICE_API_KEY = os.getenv("OPENROUTESERVICE_API_KEY")
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -95,7 +94,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-LANGUAGE_CODE = "ru-ru"
+LANGUAGE_CODE = "en-us"
 USE_I18N = True
 
 TIME_ZONE = "UTC"
@@ -141,16 +140,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 DOMAIN = "http://localhost:8000"
-OPENAI_API_KEY = os.getenv(
-    "OPENAI_API_KEY",
-    "sk-proj-1gob6GQWo4AlIGITCSRjAT2g-pepLniMflkljayooyZv03WVPZdV71lno4JFbakX"
-    "26yWaTp--KT3BlbkFJasRcOUq0c2rv9M6676yXlf1AivV_toIq5tSiyjEr"
-    "uX1MnN5gN2l0lWF6UCN11NdujRqnJsvA4A",
-)
-# YANDEX_TTS_API_KEY = os.getenv("YANDEX_TTS_API_KEY", "your-yandex-key-here")
-# GOOGLE_APPLICATION_CREDENTIALS = os.getenv(
-#     "GOOGLE_APPLICATION_CREDENTIALS", "path-to-google-credentials.json"
-# )
 
 DATA_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024
 FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024
